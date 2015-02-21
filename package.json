@@ -1,0 +1,50 @@
+{
+	"name": "memorydb",
+	"description": "distributed transactional in memory database",
+	"version": "0.0.0",
+	"author": "rain1017",
+	"private" : false,
+	"homepage" : "https://github.com/rain1017/memorydb",
+	"repository" : {
+		"type" : "git",
+		"url" : "https://github.com/rain1017/memorydb.git"
+	},
+	"bugs" : {
+		"url" : "https://github.com/rain1017/memorydb/issues"
+	},
+	"keywords" : [
+		"memory",
+		"database",
+		"mongodb",
+		"distributed",
+		"transaction"
+	],
+	"engines": {
+		"node": "0.10.x"
+	},
+	"scripts": {
+		"start": "grunt",
+		"test": "grunt test",
+		"postinstall": ""
+	},
+	"dependencies": {
+		"q": "~1.1.2",
+		"lodash": "~3.2.0",
+		"deepcopy": "~0.4.0",
+		"async-lock": "~0.2.1",
+		"global-events": "~0.0.2",
+		"node-uuid": "~1.4.2",
+		"pomelo-logger": "~0.1.7"
+	},
+	"devDependencies": {
+		"should": "~4.5.0",
+		"grunt-cli": "~0.1.13",
+		"grunt-env": "~0.4.2",
+		"grunt-contrib-watch": "~0.6.1",
+		"grunt-contrib-jshint": "~0.10.0",
+		"grunt-contrib-clean": "~0.6.0",
+		"grunt-mocha-test": "~0.12.6",
+		"load-grunt-tasks": "~2.0.0",
+		"blanket" : "~1.1.6"
+	}
+}
