@@ -33,6 +33,9 @@
 		"deepcopy": "~0.4.0",
 		"async-lock": "~0.2.1",
 		"global-events": "~0.0.2",
+		"redis": "~0.12.1",
+		"hiredis": "~0.2.0",
+		"mongodb": "~1.4.31",
 		"node-uuid": "~1.4.2",
 		"pomelo-logger": "~0.1.7"
 	},
