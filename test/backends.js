@@ -3,6 +3,7 @@
 var Q = require('q');
 var should = require('should');
 var backends = require('../lib/backends');
+var env = require('./env');
 
 describe('backends test', function(){
 	var testFunc = function(backend){
@@ -42,7 +43,7 @@ describe('backends test', function(){
 	};
 
 	it('mongo backend', function(cb){
-		var backend = backends.create('mongodb', {uri : 'mongodb://localhost/memorydb-test'});
+		var backend = backends.create('mongodb', env.mongoConfig);
 		return Q.fcall(function(){
 			return testFunc(backend);
 		})
@@ -52,7 +53,7 @@ describe('backends test', function(){
 	});
 
 	it('redis backend', function(cb){
-		var backend = backends.create('redis', {host : '127.0.0.1', port : 6379});
+		var backend = backends.create('redis', env.redisConfig);
 		return Q.fcall(function(){
 			return testFunc(backend);
 		})

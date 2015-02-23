@@ -4,11 +4,15 @@ var Q = require('q');
 var should = require('should');
 var logger = require('pomelo-logger').getLogger('test', __filename);
 var BackendLocker = require('../lib/backendlocker');
+var env = require('./env');
 
 describe('backendlocker test', function(){
 
 	it('lock/unlock', function(cb){
-		var locker = new BackendLocker();
+		var locker = new BackendLocker({
+							host : env.redisConfig.host,
+							port : env.redisConfig.port,
+							});
 
 		var docId = 'doc1', shardId = 'shard1';
 		return Q.fcall(function(){
@@ -87,6 +91,8 @@ describe('backendlocker test', function(){
 		var docId = 'doc1', shardId = 'shard1';
 
 		var locker = new BackendLocker({
+						host : env.redisConfig.host,
+						port : env.redisConfig.port,
 						shardHeartbeatTimeout : heartbeatTimeout,
 						autoUnlockTimeout : autoUnlockTimeout,
 						});
