@@ -29,12 +29,15 @@ describe('document test', function(){
 			// Update a field
 			doc.update('c1', {k1 : 2});
 			doc.find('c1').should.eql({k1 : 2, k2 : 1});
+			doc.find('c1', 'k1').should.eql({k1 : 2});
 			// Remove a field
 			doc.update('c1', {k2 : undefined});
 			doc.find('c1').should.eql({k1 : 2});
+			doc.find('c1', 'k2').should.eql({});
 			// Add a field
 			doc.update('c1', {k3 : 1});
 			doc.find('c1').should.eql({k1 : 2, k3: 1});
+			doc.find('c1', 'k3').should.eql({k3 : 1});
 			// Replace the whole doc
 			doc.update('c1', {k1 : 1}, {replace : true});
 			doc.find('c1').should.eql({k1 : 1});
@@ -79,7 +82,11 @@ describe('document test', function(){
 			// should throw when write without lock
 			should(doc.remove.bind(doc, 'c1')).throw();
 
-			return doc.lock('c1');
+			return doc.lock('c1')
+			.then(function(){
+				// lock twice should be ok
+				return doc.lock('c1');
+			});
 		})
 		.then(function(){
 			doc.update('c1', {k1 : 2});
