@@ -7,72 +7,104 @@ var memorydb = require('../lib');
 
 var main = function(){
 	var opts = {
+		_id : 's1',
+		redisConfig : {host : '127.0.0.1', port : 6379},
 		backend : 'mongodb',
-		backendConfig : {uri : 'mongodb://localhost'}
+		backendConfig : {uri : 'mongodb://localhost/memorydb-test'},
 	};
 
-	var client = null;
-
-	var id = 1, doc = {key : 0, key2 : 'string'};
+	var autoconn = null;
+	var user1 = {_id : 1, name : 'rain', level : 0};
 
 	return Q.fcall(function(){
 		return memorydb.start(opts);
-	}).then(function(){
-		client = memorydb.autoConnect();
-	}).then(function(){
-		client.execute(function(){
-			return client.collection('test').insert(id, doc);
+	})
+	.then(function(){
+		autoconn = memorydb.autoConnect();
+
+		return autoconn.execute(function(){
+			var User = autoconn.collection('user');
+			return User.insert(user1._id, user1);
 		});
-	}).then(function(){
+	})
+	.then(function(){
 		var concurrency = 8;
 
 		return Q.all(_.range(concurrency).map(function(){
 			// Simulate non-atomic check and update operation
-			// each 'thread' add 1 to doc.key
-			return client.execute(function(){
-				var collection = client.collection('test');
-				var value = null;
+			// each 'thread' add 1 to user1.level
+			return autoconn.execute(function(){
+				var User = autoconn.collection('user');
+				var level = null;
+
 				return Q() // jshint ignore:line
 				.delay(_.random(10))
-				.fcall(function(){
-					return collection.lock(id);
-				}).then(function(){
-					return collection.find(id, 'key');
-				}).then(function(doc){
-					value = doc.key;
+				.then(function(){
+					return User.lock(user1._id);
+				})
+				.then(function(){
+					return User.find(user1._id, 'level');
+				})
+				.then(function(ret){
+					level = ret.level;
 				})
 				.delay(_.random(20))
 				.then(function(){
-					return collection.update(id, {key : value + 1});
+					return User.update(user1._id, {level : level + 1});
 				});
 			});
 
-		})).then(function(){
-			return client.execute(function(){
-				var collection = client.collection('test');
+		}))
+		.then(function(){
+			return autoconn.execute(function(){
+				var User = autoconn.collection('user');
 				return Q.fcall(function(){
-					return collection.find(id);
-				}).then(function(doc){
-					// value should equal to concurrency
-					doc.key.should.equal(concurrency);
-
-					return collection.remove(id);
+					return User.find(user1._id);
+				})
+				.then(function(ret){
+					// level should equal to concurrency
+					ret.level.should.eql(concurrency);
+					return User.remove(user1._id);
 				});
 			});
 		});
-
-	}).then(function(){
-		return client.execute(function(){
+	})
+	.then(function(){
+		return autoconn.execute(function(){
 			return Q.fcall(function(){
-				return client.collection('test').insert(id, doc);
+				var User = autoconn.collection('user');
+				return User.insert(user1._id, user1);
 			}).then(function(){
 				//Should roll back on exception
 				throw new Error('Oops!');
 			});
+		})
+		.catch(function(e){
+			e.message.should.eql('Oops!');
 		});
 	})
-	.fin(function(){
+	.then(function(){
+		// You can also use connection directly
+		// Make sure the conn is used only by one api request
+		var conn = memorydb.connect();
+		return Q.fcall(function(){
+			return conn.collection('user').find(user1._id);
+		})
+		.then(function(ret){
+			(ret === null).should.eql(true);
+		})
+		.fin(function(){
+			conn.close();
+		});
+	})
+	.then(function(){
+		return autoconn.close();
+	})
+	.then(function(){
 		return memorydb.stop();
+	})
+	.fin(function(){
+		process.exit();
 	});
 };
 

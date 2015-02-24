@@ -28,8 +28,8 @@
 		"postinstall": ""
 	},
 	"dependencies": {
-		"q": "~1.1.2",
-		"lodash": "~3.2.0",
+		"q": "~1.2.0",
+		"lodash": "~3.3.0",
 		"deepcopy": "~0.4.0",
 		"async-lock": "~0.2.1",
 		"global-events": "~0.0.2",

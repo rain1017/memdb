@@ -138,6 +138,15 @@ describe('backendlocker test', function(){
 				(ret === null).should.be.true; //jshint ignore:line
 			});
 		})
+		.then(function(){
+			// Test shardStop
+			return Q.fcall(function(){
+				return locker.shardHeartbeat(shardId);
+			})
+			.then(function(){
+				return locker.shardStop(shardId);
+			});
+		})
 		.fin(function(){
 			return Q.fcall(function(){
 				return locker.unlockAll();
