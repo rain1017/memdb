@@ -1,113 +1,102 @@
 'use strict';
 
-var Q = require('q');
-var _ = require('lodash');
-var should = require('should');
 var memorydb = require('../lib');
+var Q = require('q');
+var should = require('should');
 
+// You can run this on multiple servers, each instance will be a shard in the cluster
 var main = function(){
-	var opts = {
-		_id : 's1',
-		redisConfig : {host : '127.0.0.1', port : 6379},
+
+	// memorydb's config
+	var config = {
+		//shard Id (optional)
+		_id : 'shard1',
+		// Center backend storage, must be same for shards in the same cluster
 		backend : 'mongodb',
 		backendConfig : {uri : 'mongodb://localhost/memorydb-test'},
+		// Used for backendLock, must be same for shards in the same cluster
+		redisConfig : {host : '127.0.0.1', port : 6379},
 	};
 
-	var autoconn = null;
-	var user1 = {_id : 1, name : 'rain', level : 0};
+	var doc = {_id : 1, name : 'rain', level : 1};
 
+	var autoconn = null;
 	return Q.fcall(function(){
-		return memorydb.start(opts);
+		// Start memorydb
+		return memorydb.start(config);
 	})
 	.then(function(){
+		// Get autoConnection
 		autoconn = memorydb.autoConnect();
 
 		return autoconn.execute(function(){
+			// Get collection
 			var User = autoconn.collection('user');
-			return User.insert(user1._id, user1);
-		});
-	})
-	.then(function(){
-		var concurrency = 8;
-
-		return Q.all(_.range(concurrency).map(function(){
-			// Simulate non-atomic check and update operation
-			// each 'thread' add 1 to user1.level
-			return autoconn.execute(function(){
-				var User = autoconn.collection('user');
-				var level = null;
-
-				return Q() // jshint ignore:line
-				.delay(_.random(10))
-				.then(function(){
-					return User.lock(user1._id);
-				})
-				.then(function(){
-					return User.find(user1._id, 'level');
-				})
+			return Q.fcall(function(){
+				// Insert a doc
+				return User.insert(doc._id, doc);
+			})
+			.then(function(){
+				// find the doc
+				return User.find(doc._id)
 				.then(function(ret){
-					level = ret.level;
-				})
-				.delay(_.random(20))
-				.then(function(){
-					return User.update(user1._id, {level : level + 1});
+					ret.should.eql(doc);
 				});
 			});
-
-		}))
-		.then(function(){
-			return autoconn.execute(function(){
-				var User = autoconn.collection('user');
-				return Q.fcall(function(){
-					return User.find(user1._id);
-				})
-				.then(function(ret){
-					// level should equal to concurrency
-					ret.level.should.eql(concurrency);
-					return User.remove(user1._id);
-				});
-			});
-		});
+		}); // Auto commit here
 	})
 	.then(function(){
 		return autoconn.execute(function(){
+			var User = autoconn.collection('user');
 			return Q.fcall(function(){
-				var User = autoconn.collection('user');
-				return User.insert(user1._id, user1);
+				// Update one field
+				return User.update(doc._id, {level : 2});
 			}).then(function(){
-				//Should roll back on exception
+				// Find specified field
+				return User.find(doc._id, 'level')
+				.then(function(ret){
+					ret.should.eql({level : 2});
+				});
+			}).then(function(){
+				// Exception here!
 				throw new Error('Oops!');
 			});
-		})
+		}) // Rollback on exception
 		.catch(function(e){
 			e.message.should.eql('Oops!');
 		});
 	})
 	.then(function(){
-		// You can also use connection directly
-		// Make sure the conn is used only by one api request
-		var conn = memorydb.connect();
-		return Q.fcall(function(){
-			return conn.collection('user').find(user1._id);
-		})
-		.then(function(ret){
-			(ret === null).should.eql(true);
-		})
-		.fin(function(){
-			conn.close();
+		return autoconn.execute(function(){
+			var User = autoconn.collection('user');
+			return Q.fcall(function(){
+				// doc should be rolled back
+				return User.find(doc._id, 'level')
+				.then(function(ret){
+					ret.should.eql({level : 1});
+				});
+			})
+			.then(function(){
+				// Remove the doc
+				return User.remove(doc._id);
+			}); // Auto commit here
 		});
 	})
 	.then(function(){
+		// Close autoConnection
 		return autoconn.close();
 	})
 	.then(function(){
+		// Stop memorydb
 		return memorydb.stop();
-	})
-	.fin(function(){
-		process.exit();
 	});
 };
 
 if (require.main === module) {
-    main();
+	return Q.fcall(function(){
+		return main();
+	})
+	.fin(function(){
+		process.exit();
+	});
 }

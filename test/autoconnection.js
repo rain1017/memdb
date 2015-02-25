@@ -64,7 +64,8 @@ describe('autoconnection test', function(){
 					});
 				});
 
-			})).then(function(){
+			}))
+			.then(function(){
 
 				return autoconn.execute(function(){
 					var User = autoconn.collection('user');
