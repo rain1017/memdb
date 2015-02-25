@@ -161,6 +161,10 @@ describe('shard test', function(){
 				.then(function(){
 					shard2.remove('c1', key);
 					shard2.commit('c1', key);
+
+					// unload should block during persistent call
+					shard2.persistent();
+					shard2._unload(key);
 				}),
 
 				// shard1:c2
@@ -218,7 +222,7 @@ describe('shard test', function(){
 					shard1.commit('c1', key);
 
 					// Will discover the inconsistency and force unload the doc
-					return shard1._saveAll();
+					return shard1.persistent();
 				})
 				.delay(100),
 

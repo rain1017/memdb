@@ -31,9 +31,6 @@ Geting the __performance__ of in memory database, the __scalibility__ of distrib
 
 * A shard is a node in the distributed system
 * Each shard preserve a part of data (on demand) in local memory
-
-### Client
-
 * Client is in the same process with one of the shard (Each client must connect to one shard, and all request is via this shard)
 * In process access if the requested data is already in the shard's local memory, otherwise the shard will load the data from backend.
 
