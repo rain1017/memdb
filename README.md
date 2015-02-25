@@ -162,6 +162,9 @@ return Q.fcall(function(){
 	// Stop memorydb
 	return memorydb.stop();
 });
+
+// For distributed system, just run memorydb in each server with the same config, and each server will be a shard.
+
 ```
 
 ### Best Practise

@@ -4,7 +4,7 @@ var memorydb = require('../lib');
 var Q = require('q');
 var should = require('should');
 
-// You can run this on multiple servers, each instance will be a shard in the cluster
+// For distributed system, just run memorydb in each server with the same config, and each server will be a shard.
 var main = function(){
 
 	// memorydb's config
