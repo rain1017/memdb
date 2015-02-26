@@ -27,6 +27,12 @@ describe('backendlocker test', function(){
 				ret.should.eql(shardId);
 			});
 		})
+		.then(function(){
+			return locker.getHolderIdMulti([docId, 'nonExistDoc'])
+			.then(function(ret){
+				ret.should.eql([shardId, null]);
+			});
+		})
 		.then(function(ret){
 			return locker.isHeldBy(docId, shardId)
 			.then(function(ret){
