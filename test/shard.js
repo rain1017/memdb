@@ -43,7 +43,7 @@ describe('shard test', function(){
 		})
 		.then(function(){
 			// request to unload doc
-			shard.emit('request:' + key);
+			shard.globalEvent.emit('request:' + shard._id ,key);
 		})
 		.delay(20)
 		.then(function(){
@@ -88,7 +88,7 @@ describe('shard test', function(){
 		})
 		.then(function(){
 			// request to unload
-			shard.emit('request:' + key);
+			shard.globalEvent.emit('request:' + shard._id, key);
 		})
 		.delay(100)
 		.then(function(){
@@ -189,19 +189,21 @@ describe('shard test', function(){
 		});
 	});
 
-	it('force unload from broken shards', function(cb){
+	it('shard heatbeat timeout', function(cb){
 		var shard1 = new Shard({
 			_id : 's1',
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
+			heartbeatInterval : 30 * 1000,
+			//Lower then heartbeatInterval, this will cause heartbeat timeout
+			heartbeatTimeout : 1000,
 		});
 		var shard2 = new Shard({
 			_id : 's2',
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
-			autoUnlockTimeout : 500,
 		});
 
 		var key = 'user:1', doc = {_id : '1', name : 'rain', age : 30};
@@ -214,24 +216,18 @@ describe('shard test', function(){
 				Q.fcall(function(){
 					return shard1.lock('c1', key);
 				})
-				.delay(1000) // Oops! program hang
+				.delay(1500) // Wait for hearbeat timeout
 				.then(function(){
-					// Actually, backendLock is already released
-					// Data is not consistent now
-					shard1.insert('c1', key, doc);
-					shard1.commit('c1', key);
-
-					// Will discover the inconsistency and force unload the doc
-					return shard1.persistent();
-				})
-				.delay(100),
+					//Shard 1 should already suicided
+					shard1._ensureState(4);
+				}),
 
 				// shard2
 				Q() // jshint ignore:line
-				.delay(50)
+				.delay(500)
 				.then(function(){
 					return shard2.find('c1', key);
-					// will autoUnlock since shard1 is hang
+					// will autoUnlock since shard1 is dead
 				})
 				.then(function(ret){
 					(ret === null).should.be.true; // jshint ignore:line
@@ -239,7 +235,61 @@ describe('shard test', function(){
 			]);
 		})
 		.then(function(){
-			return Q.all([shard1.stop(), shard2.stop()]);
+			return Q.all([shard2.stop()]);
+		})
+		.done(function(){
+			cb();
+		});
+	});
+
+	it('backendLock not consistent with shard', function(cb){
+		var shard = new Shard({
+			_id : 's1',
+			redisConfig : env.redisConfig,
+			backend : 'mongodb',
+			backendConfig : env.mongoConfig,
+		});
+
+		var key = 'user:1', doc = {_id : '1', name : 'rain', age : 30};
+		return Q.fcall(function(){
+			return shard.start();
+		})
+		.then(function(){
+			// Add a redundant lock
+			return shard.backendLocker.lock(key, shard._id);
+		})
+		.then(function(){
+			// request the key (actually not loaded by the shard)
+			return shard.globalEvent.emit('request:' + shard._id, key);
+		})
+		.delay(200)
+		.then(function(){
+			// should released the lock
+			return shard.backendLocker.getHolderId(key)
+			.then(function(ret){
+				(ret === null).should.eql(true);
+			});
+		})
+		.then(function(){
+			return shard.lock('c1', key);
+		})
+		.then(function(){
+			// release the lock without noticing the shard
+			return shard.backendLocker.unlockForce(key);
+		})
+		.then(function(){
+			// This is unlikely to happen in real production,
+			// since the shard will suicide on heartbeat timeout
+
+			// backendLock is already released, data is inconsistent
+			shard.insert('c1', key, doc);
+			shard.commit('c1', key);
+
+			// Will discover the inconsistency and force unload the doc
+			return shard.persistent();
+		})
+		.then(function(){
+			return shard.stop();
 		})
 		.done(function(){
 			cb();

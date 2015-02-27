@@ -69,6 +69,12 @@ Geting the __performance__ of in memory database, the __scalibility__ of distrib
 * All changes (after last commit) is not visible to other connections until being commited
 * All changes (after last commit) will be discarded after rollback or closing a connection without commit
 
+### System failures
+
+* Shard failure: If one shard fail (heartbeat timeout), data in that shard will lose the progress since last persistent point.
+* Backend failure: Data persistent will fail, and data can't transfer between shards (Cross shard data request will fail). This can get rescued when backend is online.
+* Redis failure: The cluster will hang, and you will lose the progress since last persistent point of each shard.
+
 ## Sample
 
 ```

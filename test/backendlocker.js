@@ -111,33 +111,20 @@ describe('backendlocker test', function(){
 			return locker.lock(docId, shardId);
 		})
 		.then(function(){
-			locker.autoUnlock(docId);
-			// Call more than once is ok
-			locker.autoUnlock(docId);
-		})
-		.delay(20)
-		.then(function(){
-			// Should still hold lock
-			return locker.ensureHeldBy(docId, shardId);
-		})
-		.delay(autoUnlockTimeout)
-		.then(function(){
-			// Timed out, should unlocked
-			return locker.getHolderId(docId)
+			// should not unlock
+			return locker.autoUnlock(docId)
 			.then(function(ret){
-				(ret === null).should.be.true; //jshint ignore:line
+				ret.should.eql(shardId);
 			});
-		})
-		.then(function(){
-			locker.shardHeartbeat(shardId);
-			return locker.lock(docId, shardId);
 		})
 		.delay(heartbeatTimeout + 20)
 		.then(function(){
-			// Heartbeat timed out, should unlocked immediately
-			locker.autoUnlock(docId);
+			// Heartbeat timed out, should unlocked
+			return locker.autoUnlock(docId)
+			.then(function(ret){
+				(ret === null).should.eql(true);
+			});
 		})
-		.delay(20)
 		.then(function(){
 			return locker.getHolderId(docId)
 			.then(function(ret){

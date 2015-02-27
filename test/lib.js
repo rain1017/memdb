@@ -59,4 +59,30 @@ describe('lib test', function(){
 			cb();
 		});
 	});
+
+	it('auto restart', function(cb){
+		var opts = {
+			_id : 's1',
+			redisConfig : env.redisConfig,
+			backend : 'mongodb',
+			backendConfig : env.mongoConfig,
+
+			// This will cause shard to suicide
+			heartbeatTimeout : 200,
+			heartbeatInterval : 30 * 1000,
+		};
+
+		return Q.fcall(function(){
+			return memorydb.start(opts);
+		})
+		.delay(500)
+		.then(function(){
+			return memorydb.stop()
+			.catch(function(e){}); //Exception is possible
+		})
+		.delay(500)
+		.done(function(){
+			cb();
+		});
+	});
 });
