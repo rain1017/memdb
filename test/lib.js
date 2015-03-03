@@ -21,6 +21,7 @@ describe('lib test', function(){
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
+			slaveConfig : env.redisConfig,
 		};
 
 		var user1 = {_id : 1, name : 'rain', level : 0};
@@ -64,6 +65,7 @@ describe('lib test', function(){
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
+			slaveConfig : env.redisConfig,
 
 			// This will cause shard to suicide
 			heartbeatTimeout : 200,

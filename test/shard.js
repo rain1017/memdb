@@ -21,6 +21,7 @@ describe('shard test', function(){
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
+			slaveConfig : env.redisConfig,
 		});
 		var connId = 'c1', key = 'user:1', doc = {_id : '1', name : 'rain', age : 30};
 
@@ -43,7 +44,7 @@ describe('shard test', function(){
 		})
 		.then(function(){
 			// request to unload doc
-			shard.globalEvent.emit('request:' + shard._id ,key);
+			shard.globalEvent.emit('request:' + shard._id, key);
 		})
 		.delay(20)
 		.then(function(){
@@ -84,7 +85,7 @@ describe('shard test', function(){
 		.then(function(){
 			shard.remove(connId, key);
 			(shard.find(connId, key) === null).should.be.true; // jshint ignore:line
-			shard.commit(connId, key);
+			return shard.commit(connId, key);
 		})
 		.then(function(){
 			// request to unload
@@ -110,6 +111,7 @@ describe('shard test', function(){
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
+			slaveConfig : env.redisConfig,
 			unloadDelay : 500, // This is required for this test
 		});
 		var shard2 = new Shard({
@@ -117,6 +119,7 @@ describe('shard test', function(){
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
+			slaveConfig : env.redisConfig,
 		});
 
 		var key = 'user:1', doc = {_id : '1', name : 'rain', age : 30};
@@ -141,7 +144,7 @@ describe('shard test', function(){
 					return shard1.lock('c1', key);
 				}).then(function(){
 					shard1.insert('c1', key, doc);
-					shard1.commit('c1', key);
+					return shard1.commit('c1', key);
 					// unlocked, unloading should continue
 				}),
 
@@ -158,8 +161,9 @@ describe('shard test', function(){
 				})
 				.then(function(){
 					shard2.remove('c1', key);
-					shard2.commit('c1', key);
-
+					return shard2.commit('c1', key);
+				})
+				.then(function(){
 					// unload should block during persistent call
 					shard2.persistent();
 					shard2._unload(key);
@@ -191,6 +195,7 @@ describe('shard test', function(){
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
+			slaveConfig : env.redisConfig,
 			heartbeatInterval : 30 * 1000,
 			//Lower then heartbeatInterval, this will cause heartbeat timeout
 			heartbeatTimeout : 1000,
@@ -200,6 +205,7 @@ describe('shard test', function(){
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
+			slaveConfig : env.redisConfig,
 		});
 
 		var key = 'user:1', doc = {_id : '1', name : 'rain', age : 30};
@@ -242,6 +248,7 @@ describe('shard test', function(){
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
+			slaveConfig : env.redisConfig,
 		});
 
 		var key = 'user:1', doc = {_id : '1', name : 'rain', age : 30};
@@ -277,8 +284,9 @@ describe('shard test', function(){
 
 			// backendLock is already released, data is inconsistent
 			shard.insert('c1', key, doc);
-			shard.commit('c1', key);
-
+			return shard.commit('c1', key);
+		})
+		.then(function(){
 			// Will discover the inconsistency and force unload the doc
 			return shard.persistent();
 		})
@@ -294,6 +302,7 @@ describe('shard test', function(){
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
+			slaveConfig : env.redisConfig,
 			docIdleTimeout : 100,
 		});
 

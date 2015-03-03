@@ -21,6 +21,7 @@ describe('database test', function(){
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
+			slaveConfig : env.redisConfig,
 		});
 		var connId = null;
 		var user1 = {_id : 1, name : 'rain', age : 30};
@@ -117,6 +118,7 @@ describe('database test', function(){
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
+			slaveConfig : env.redisConfig,
 			collections : collectionDefs,
 		});
 

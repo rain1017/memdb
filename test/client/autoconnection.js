@@ -22,6 +22,7 @@ describe('autoconnection test', function(){
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
+			slaveConfig : env.redisConfig,
 		});
 
 		var autoconn = new AutoConnection(database);

@@ -22,6 +22,7 @@ describe('connection test', function(){
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
+			slaveConfig : env.redisConfig,
 		});
 		var conn = null;
 		var User = null, News = null;
@@ -123,6 +124,7 @@ describe('connection test', function(){
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
+			slaveConfig : env.redisConfig,
 			collections : collectionDefs,
 		});
 
