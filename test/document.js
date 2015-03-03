@@ -21,6 +21,10 @@ describe('document test', function(){
 		var value = {k1 : 1, k2 : 1};
 		var doc = new Document({doc : value});
 
+		doc.on('updateUncommited', function(field, oldValue, newValue){
+			logger.debug(field, oldValue, newValue);
+		});
+
 		return Q.fcall(function(){
 			// Lock for write
 			return doc.lock('c1');
@@ -42,15 +46,17 @@ describe('document test', function(){
 			doc.update('c1', {k1 : 1}, {replace : true});
 			doc.find('c1').should.eql({k1 : 1});
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 
 	it('insert/remove', function(cb){
 		var value = {k1 : 1};
 		// Init with non-exist doc
 		var doc = new Document({exist : false});
+
+		doc.on('updateUncommited', function(field, oldValue, newValue){
+			logger.debug(field, oldValue, newValue);
+		});
 
 		return Q.fcall(function(){
 			assert(doc.find('c1') === null);
@@ -69,14 +75,16 @@ describe('document test', function(){
 			// should throw exception when remove non-exist doc
 			should(doc.remove.bind(doc, 'c1')).throw();
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 
 	it('commit/rollback/lock/unlock', function(cb){
 		var value = {k1 : 1};
 		var doc = new Document({doc : value});
+
+		doc.on('updateUncommited', function(field, oldValue, newValue){
+			logger.debug(field, oldValue, newValue);
+		});
 
 		return Q.fcall(function(){
 			// should throw when write without lock
@@ -139,14 +147,16 @@ describe('document test', function(){
 			doc.commit('c1');
 			doc.find('c1').should.eql(value);
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 
 	it('read from other connections', function(cb){
 		var value = {k1 : 1, k2 : 1};
 		var doc = new Document({doc : value});
+
+		doc.on('updateUncommited', function(field, oldValue, newValue){
+			logger.debug(field, oldValue, newValue);
+		});
 
 		return Q.fcall(function(){
 			return doc.lock('c1');
@@ -189,13 +199,15 @@ describe('document test', function(){
 			doc.commit('c1');
 			doc.find('c2').should.eql(value);
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 
 	it('concurrency', function(cb){
 		var doc = new Document({doc : {k : 0}});
+
+		doc.on('updateUncommited', function(field, oldValue, newValue){
+			logger.debug(field, oldValue, newValue);
+		});
 
 		var concurrency = 4;
 		// Simulate non-atomic check and update
@@ -223,8 +235,6 @@ describe('document test', function(){
 			//Result should equal to concurrency
 			doc.find(null).should.eql({k : concurrency});
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 });

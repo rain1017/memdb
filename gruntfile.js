@@ -68,7 +68,7 @@ module.exports = function(grunt) {
 					logConcurrentOutput: true
 				}
 			},
-			"debug-test": {
+			'debug-test': {
 				tasks: ['nodemon:debug-test', 'node-inspector', 'watch:testsJS'],
 				options: {
 					logConcurrentOutput: true

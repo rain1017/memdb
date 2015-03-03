@@ -65,9 +65,15 @@ describe('backends test', function(){
 		return Q.fcall(function(){
 			return testFunc(backend);
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
+	});
+
+	it('mongoose backend', function(cb){
+		var backend = backends.create('mongoose', env.mongoConfig);
+		return Q.fcall(function(){
+			return testFunc(backend);
+		})
+		.nodeify(cb);
 	});
 
 	it('redis backend', function(cb){
@@ -75,9 +81,7 @@ describe('backends test', function(){
 		return Q.fcall(function(){
 			return testFunc(backend);
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 });
 

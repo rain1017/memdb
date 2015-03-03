@@ -3,9 +3,9 @@
 var Q = require('q');
 var _ = require('lodash');
 var should = require('should');
-var env = require('./env');
-var Shard = require('../lib/shard');
-var AutoConnection = require('../lib/autoconnection');
+var env = require('../env');
+var Database = require('../../lib/database');
+var AutoConnection = require('../../lib/client/autoconnection');
 var logger = require('pomelo-logger').getLogger('test', __filename);
 
 describe('autoconnection test', function(){
@@ -17,18 +17,18 @@ describe('autoconnection test', function(){
 	});
 
 	it('concurrent execute', function(cb){
-		var shard = new Shard({
+		var database = new Database({
 			_id : 's1',
 			redisConfig : env.redisConfig,
 			backend : 'mongodb',
 			backendConfig : env.mongoConfig,
 		});
 
-		var autoconn = new AutoConnection({shard : shard});
+		var autoconn = new AutoConnection(database);
 		var user1 = {_id : 1, name : 'rain', level : 0};
 
 		return Q.fcall(function(){
-			return shard.start();
+			return database.start();
 		})
 		.then(function(){
 			return autoconn.execute(function(){
@@ -109,10 +109,8 @@ describe('autoconnection test', function(){
 			return autoconn.close();
 		})
 		.then(function(){
-			return shard.stop();
+			return database.stop();
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 });

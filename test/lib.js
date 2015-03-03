@@ -55,9 +55,7 @@ describe('lib test', function(){
 		.then(function(){
 			return memorydb.stop();
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 
 	it('auto restart', function(cb){
@@ -81,8 +79,6 @@ describe('lib test', function(){
 			.catch(function(e){}); //Exception is possible
 		})
 		.delay(500)
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 });

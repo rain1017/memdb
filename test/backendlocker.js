@@ -87,9 +87,7 @@ describe('backendlocker test', function(){
 				locker.close();
 			});
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 
 	it('autoUnlock', function(cb){
@@ -147,8 +145,6 @@ describe('backendlocker test', function(){
 				locker.close();
 			});
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 });

@@ -101,9 +101,7 @@ describe('shard test', function(){
 		.then(function(){
 			return shard.stop();
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 
 	it('backendLock between multiple shards', function(cb){
@@ -184,9 +182,7 @@ describe('shard test', function(){
 		.then(function(){
 			return Q.all([shard1.stop(), shard2.stop()]);
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 
 	it('shard heatbeat timeout', function(cb){
@@ -237,9 +233,7 @@ describe('shard test', function(){
 		.then(function(){
 			return Q.all([shard2.stop()]);
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 
 	it('backendLock not consistent with shard', function(cb){
@@ -291,9 +285,7 @@ describe('shard test', function(){
 		.then(function(){
 			return shard.stop();
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 
 	it('doc idle', function(cb){
@@ -317,8 +309,6 @@ describe('shard test', function(){
 			shard._isLoaded(key).should.eql(false);
 			return shard.stop();
 		})
-		.done(function(){
-			cb();
-		});
+		.nodeify(cb);
 	});
 });
