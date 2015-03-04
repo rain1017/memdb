@@ -41,4 +41,13 @@ module.exports = {
 	redisConfig : redisConfig,
 	mongoConfig : mongoConfig,
 	flushdb : flushdb,
+	dbConfig : function(shardId){
+		return {
+			_id : shardId,
+			redisConfig : redisConfig,
+			backend : 'mongodb',
+			backendConfig : mongoConfig,
+			slaveConfig : redisConfig,
+		};
+	},
 };

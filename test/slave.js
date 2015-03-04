@@ -87,4 +87,42 @@ describe('slave test', function(){
 		})
 		.nodeify(cb);
 	});
+
+	it('getAll/clear', function(cb){
+		var shard = {_id : 's1'};
+		var slave = new Slave(shard, env.redisConfig);
+
+		var key1 = 'player:1';
+		var doc1 = {exist : true, fields : {name : 'rain', age : 30}};
+		var key2 = 'player:2';
+		var doc2 = {exist : false, fields : {}};
+
+		return Q.fcall(function(){
+			return slave.start();
+		})
+		.then(function(){
+			return slave.insert(key1, doc1.fields, doc1.exist);
+		})
+		.then(function(){
+			return slave.insert(key2, doc2.fields, doc2.exist);
+		})
+		.then(function(){
+			return slave.getAllKeys()
+			.then(function(keys){
+				logger.debug(util.inspect(keys));
+				keys.length.should.eql(2);
+			});
+		})
+		.then(function(){
+			return slave.clear();
+		})
+		.then(function(){
+			return slave.getAllKeys()
+			.then(function(keys){
+				logger.debug(util.inspect(keys));
+				keys.length.should.eql(0);
+			});
+		})
+		.nodeify(cb);
+	});
 });

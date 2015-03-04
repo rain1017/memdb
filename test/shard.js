@@ -16,13 +16,7 @@ describe('shard test', function(){
 	});
 
 	it('load/unload/find/update/insert/remove/commit/rollback', function(cb){
-		var shard = new Shard({
-			_id : 's1',
-			redisConfig : env.redisConfig,
-			backend : 'mongodb',
-			backendConfig : env.mongoConfig,
-			slaveConfig : env.redisConfig,
-		});
+		var shard = new Shard(env.dbConfig('s1'));
 		var connId = 'c1', key = 'user:1', doc = {_id : '1', name : 'rain', age : 30};
 
 		return Q.fcall(function(){
@@ -106,21 +100,10 @@ describe('shard test', function(){
 	});
 
 	it('backendLock between multiple shards', function(cb){
-		var shard1 = new Shard({
-			_id : 's1',
-			redisConfig : env.redisConfig,
-			backend : 'mongodb',
-			backendConfig : env.mongoConfig,
-			slaveConfig : env.redisConfig,
-			unloadDelay : 500, // This is required for this test
-		});
-		var shard2 = new Shard({
-			_id : 's2',
-			redisConfig : env.redisConfig,
-			backend : 'mongodb',
-			backendConfig : env.mongoConfig,
-			slaveConfig : env.redisConfig,
-		});
+		var config = env.dbConfig('s1');
+		config.unloadDelay = 500; // This is required for this test
+		var shard1 = new Shard(config);
+		var shard2 = new Shard(env.dbConfig('s2'));
 
 		var key = 'user:1', doc = {_id : '1', name : 'rain', age : 30};
 		return Q.fcall(function(){
@@ -162,11 +145,6 @@ describe('shard test', function(){
 				.then(function(){
 					shard2.remove('c1', key);
 					return shard2.commit('c1', key);
-				})
-				.then(function(){
-					// unload should block during persistent call
-					shard2.persistent();
-					shard2._unload(key);
 				}),
 
 				// shard1:c2
@@ -189,67 +167,8 @@ describe('shard test', function(){
 		.nodeify(cb);
 	});
 
-	it('shard heatbeat timeout', function(cb){
-		var shard1 = new Shard({
-			_id : 's1',
-			redisConfig : env.redisConfig,
-			backend : 'mongodb',
-			backendConfig : env.mongoConfig,
-			slaveConfig : env.redisConfig,
-			heartbeatInterval : 30 * 1000,
-			//Lower then heartbeatInterval, this will cause heartbeat timeout
-			heartbeatTimeout : 1000,
-		});
-		var shard2 = new Shard({
-			_id : 's2',
-			redisConfig : env.redisConfig,
-			backend : 'mongodb',
-			backendConfig : env.mongoConfig,
-			slaveConfig : env.redisConfig,
-		});
-
-		var key = 'user:1', doc = {_id : '1', name : 'rain', age : 30};
-		return Q.fcall(function(){
-			return Q.all([shard1.start(), shard2.start()]);
-		})
-		.then(function(){
-			return Q.all([
-				// shard1
-				Q.fcall(function(){
-					return shard1.lock('c1', key);
-				})
-				.delay(1500) // Wait for hearbeat timeout
-				.then(function(){
-					//Shard 1 should already suicided
-					shard1._ensureState(4);
-				}),
-
-				// shard2
-				Q() // jshint ignore:line
-				.delay(500)
-				.then(function(){
-					return shard2.find('c1', key);
-					// will autoUnlock since shard1 is dead
-				})
-				.then(function(ret){
-					(ret === null).should.be.true; // jshint ignore:line
-				})
-			]);
-		})
-		.then(function(){
-			return Q.all([shard2.stop()]);
-		})
-		.nodeify(cb);
-	});
-
 	it('backendLock not consistent with shard', function(cb){
-		var shard = new Shard({
-			_id : 's1',
-			redisConfig : env.redisConfig,
-			backend : 'mongodb',
-			backendConfig : env.mongoConfig,
-			slaveConfig : env.redisConfig,
-		});
+		var shard = new Shard(env.dbConfig('s1'));
 
 		var key = 'user:1', doc = {_id : '1', name : 'rain', age : 30};
 		return Q.fcall(function(){
@@ -279,8 +198,8 @@ describe('shard test', function(){
 			return shard.backendLocker.unlockForce(key);
 		})
 		.then(function(){
-			// This is unlikely to happen in real production,
-			// since the shard will suicide on heartbeat timeout
+			// This is unlikely to happen in real production
+			// since the lock can't be force released by others
 
 			// backendLock is already released, data is inconsistent
 			shard.insert('c1', key, doc);
@@ -288,7 +207,7 @@ describe('shard test', function(){
 		})
 		.then(function(){
 			// Will discover the inconsistency and force unload the doc
-			return shard.persistent();
+			return shard.persistentAll();
 		})
 		.then(function(){
 			return shard.stop();
@@ -297,14 +216,9 @@ describe('shard test', function(){
 	});
 
 	it('doc idle', function(cb){
-		var shard = new Shard({
-			_id : 's1',
-			redisConfig : env.redisConfig,
-			backend : 'mongodb',
-			backendConfig : env.mongoConfig,
-			slaveConfig : env.redisConfig,
-			docIdleTimeout : 100,
-		});
+		var config = env.dbConfig('s1');
+		config.docIdleTimeout = 100;
+		var shard = new Shard(config);
 
 		var key = 'user:1';
 		return Q.fcall(function(){
@@ -318,6 +232,25 @@ describe('shard test', function(){
 			shard._isLoaded(key).should.eql(false);
 			return shard.stop();
 		})
+		.nodeify(cb);
+	});
+
+	it('globalEvent register/unregister', function(cb){
+		var shard = new Shard(env.dbConfig('s1'));
+		return Q.fcall(function(){
+			return shard.start();
+		})
+		.then(function(){
+			shard.globalEvent.emit('request:s1', 'player:1');
+		})
+		.delay(100)
+		.then(function(){
+			return shard.stop();
+		})
+		.then(function(){
+			shard.globalEvent.emit('request:s1', 'player:1');
+		})
+		.delay(100)
 		.nodeify(cb);
 	});
 });

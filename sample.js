@@ -86,7 +86,7 @@ var main = function(){
 		// Close autoConnection
 		return autoconn.close();
 	})
-	.then(function(){
+	.fin(function(){
 		// Stop memorydb
 		return memorydb.stop();
 	});
