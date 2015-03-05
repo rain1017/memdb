@@ -225,7 +225,7 @@ describe('database test', function(){
 		.then(function(){
 			return db2.stop();
 		})
-		.then(function(){
+		.fin(function(){
 			// clean up
 			db1.shard.state = 2;
 			return db1.stop(true);

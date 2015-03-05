@@ -16,6 +16,8 @@ var main = function(){
 		backendConfig : {uri : 'mongodb://localhost/memorydb-test'},
 		// Used for backendLock, must be same for shards in the same cluster
 		redisConfig : {host : '127.0.0.1', port : 6379},
+
+		slaveConfig : {host : '127.0.0.1', port : 6379},
 	};
 
 	var doc = {_id : 1, name : 'rain', level : 1};

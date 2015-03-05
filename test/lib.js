@@ -16,18 +16,10 @@ describe('lib test', function(){
 	});
 
 	it('lib test', function(cb){
-		var opts = {
-			_id : 's1',
-			redisConfig : env.redisConfig,
-			backend : 'mongodb',
-			backendConfig : env.mongoConfig,
-			slaveConfig : env.redisConfig,
-		};
-
 		var user1 = {_id : 1, name : 'rain', level : 0};
 
 		return Q.fcall(function(){
-			return memorydb.start(opts);
+			return memorydb.start(env.dbConfig('s1'));
 		})
 		.then(function(){
 			var autoconn = memorydb.autoConnect();
@@ -53,34 +45,9 @@ describe('lib test', function(){
 				conn.close();
 			});
 		})
-		.then(function(){
+		.fin(function(){
 			return memorydb.stop();
 		})
-		.nodeify(cb);
-	});
-
-	it('auto restart', function(cb){
-		var opts = {
-			_id : 's1',
-			redisConfig : env.redisConfig,
-			backend : 'mongodb',
-			backendConfig : env.mongoConfig,
-			slaveConfig : env.redisConfig,
-
-			// This will cause shard to suicide
-			heartbeatTimeout : 200,
-			heartbeatInterval : 30 * 1000,
-		};
-
-		return Q.fcall(function(){
-			return memorydb.start(opts);
-		})
-		.delay(500)
-		.then(function(){
-			return memorydb.stop()
-			.catch(function(e){}); //Exception is possible
-		})
-		.delay(500)
 		.nodeify(cb);
 	});
 });
