@@ -51,10 +51,7 @@ describe('autoconnection test', function(){
 					return Q() // jshint ignore:line
 					.delay(_.random(10))
 					.then(function(){
-						return User.lock(user1._id);
-					})
-					.then(function(){
-						return User.find(user1._id, 'level');
+						return User.findForUpdate(user1._id, 'level');
 					})
 					.then(function(ret){
 						level = ret.level;

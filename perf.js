@@ -2,6 +2,7 @@
 
 var memorydb = require('./lib');
 var Q = require('q');
+var _ = require('lodash');
 var env = require('./test/env');
 Q.longStackSupport = false;
 var should = require('should');
@@ -12,7 +13,7 @@ pomeloLogger.setGlobalLogLevel(pomeloLogger.levels.WARN);
 var logger = pomeloLogger.getLogger('test', __filename);
 
 var writeSingleDoc = function(){
-	var count = 1000;
+	var count = 5000;
 	var autoconn = null;
 	var player = {_id : 1, name : 'rain', exp : 0};
 
@@ -20,10 +21,9 @@ var writeSingleDoc = function(){
 		return autoconn.execute(function(){
 			var Player = autoconn.collection('player');
 			return Q.fcall(function(){
-				return Player.lock(player._id);
-			})
-			.then(function(){
-				return Player.find(player._id);
+				// player.exp = _.random(60);
+				// return Player.update(player._id, player);
+				return Player.findForUpdate(player._id);
 			})
 			.then(function(doc){
 				doc.exp++;
@@ -39,7 +39,9 @@ var writeSingleDoc = function(){
 	var startTick = null;
 	var qps = null;
 	return Q.fcall(function(){
-		return memorydb.start(env.dbConfig('s1'));
+		var config = env.dbConfig('s1');
+		//config.disableSlave = true;
+		return memorydb.start(config);
 	})
 	.then(function(){
 		autoconn = memorydb.autoConnect();
@@ -58,10 +60,16 @@ var writeSingleDoc = function(){
 	})
 	.then(function(){
 		qps = count * 1000 / (Date.now() - startTick);
-		logger.warn('QPS: %s', qps);
 		return autoconn.execute(function(){
 			var Player = autoconn.collection('player');
-			return Player.remove(player._id);
+			return Q.fcall(function(){
+				return Player.find(player._id);
+			})
+			.then(function(ret){
+				logger.warn('%j', ret);
+
+				return Player.remove(player._id);
+			});
 		});
 	})
 	.fin(function(){
