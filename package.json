@@ -31,11 +31,12 @@
 		"q": "~1.2.0",
 		"lodash": "~3.3.0",
 		"deepcopy": "~0.4.0",
-		"async-lock": "~0.2.1",
+		"async-lock": "~0.3.0",
 		"redis": "~0.12.1",
 		"hiredis": "~0.2.0",
 		"mongodb": "~1.4.31",
 		"mongoose": "~3.8.24",
+		"mongoose-q": "~0.0.16",
 		"global-events": "~0.0.2",
 		"node-uuid": "~1.4.2",
 		"pomelo-logger": "~0.1.7"
@@ -51,7 +52,8 @@
 		"load-grunt-tasks": "~2.0.0",
 		"grunt-concurrent": "~0.4.1",
 		"grunt-nodemon": "~0.2.0",
-		"grunt-node-inspector": "^0.1.3",
+		"grunt-node-inspector": "~0.1.3",
+		"heapdump": "~0.3.5",
 		"blanket" : "~1.1.6"
 	}
 }

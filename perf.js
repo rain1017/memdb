@@ -1,5 +1,6 @@
 'use strict';
 
+var heapdump = require('heapdump');
 var memorydb = require('./lib');
 var Q = require('q');
 var _ = require('lodash');
@@ -75,13 +76,86 @@ var writeSingleDoc = function(){
 	.fin(function(){
 		return memorydb.stop()
 		.fin(function(){
+			logger.warn('TPS: %s', qps);
+		});
+	});
+};
+
+var writeSingleDocInOneTransaction = function(){
+	var count = 10000;
+	var autoconn = null;
+
+	var startTick = null;
+	var qps = null;
+	return Q.fcall(function(){
+		return memorydb.start(env.dbConfig('s1'));
+	})
+	.then(function(){
+		autoconn = memorydb.autoConnect();
+
+		startTick = Date.now();
+		return autoconn.execute(function(){
+			var Player = autoconn.collection('player');
+			var promise = Q(); // jshint ignore:line
+			_.range(count).forEach(function(i){
+				var doc = {_id : 1, name : 'rain', exp : i};
+				promise = promise.then(function(){
+					return Player.update(doc._id, doc, {upsert : true});
+				});
+			});
+			return promise;
+		});
+	})
+	.then(function(){
+		qps = count * 1000 / (Date.now() - startTick);
+	})
+	.fin(function(){
+		return memorydb.stop()
+		.fin(function(){
 			logger.warn('QPS: %s', qps);
 		});
 	});
 };
 
 var writeHugeDoc = function(){
+	var count = 10000;
+	var autoconn = null;
 
+	var startTick = null;
+	var qps = null;
+	return Q.fcall(function(){
+		var config = env.dbConfig('s1');
+		//Disable auto persistent
+		config.persistentInterval = 3600 * 1000;
+		return memorydb.start(config);
+	})
+	.then(function(){
+		autoconn = memorydb.autoConnect();
+
+		startTick = Date.now();
+		return autoconn.execute(function(){
+			var Player = autoconn.collection('player');
+			var promise = Q(); // jshint ignore:line
+			_.range(count).forEach(function(id){
+				var doc = {_id : id, name : 'rain', exp : id};
+				promise = promise.then(function(){
+					return Player.update(doc._id, doc, {upsert : true});
+				});
+			})
+			return promise;
+		});
+	})
+	.then(function(){
+		qps = count * 1000 / (Date.now() - startTick);
+		logger.warn('%j', process.memoryUsage());
+		heapdump.writeSnapshot('/tmp/mdb.heapsnapshot');
+	})
+	.fin(function(){
+		return memorydb.stop()
+		.fin(function(){
+			logger.warn('QPS: %s', qps);
+		});
+	});
 };
 
 var crossShardsWrite = function(){
@@ -89,19 +163,15 @@ var crossShardsWrite = function(){
 };
 
 var main = function(){
-	// var p = Q();
-	// var start = Date.now();
-	// var count = 100000;
-	// for(var i=0; i<count; i++){
-	// 	p = p.then(function(){
-	// 	});
-	// }
-	// return p.then(function(){
-	// 	var qps = count / (Date.now() - start) * 1000
-	// 	logger.warn('qps %s', qps);
-	// });
-
-	return writeSingleDoc();
+	return Q.fcall(function(){
+		return writeSingleDoc();
+	})
+	.then(function(){
+	//	return writeSingleDocInOneTransaction();
+	})
+	.then(function(){
+	//	return writeHugeDoc();
+	});
 };
 
 if (require.main === module) {

@@ -17,13 +17,7 @@ describe('autoconnection test', function(){
 	});
 
 	it('concurrent execute', function(cb){
-		var database = new Database({
-			_id : 's1',
-			redisConfig : env.redisConfig,
-			backend : 'mongodb',
-			backendConfig : env.mongoConfig,
-			slaveConfig : env.redisConfig,
-		});
+		var database = new Database(env.dbConfig('s1'));
 
 		var autoconn = new AutoConnection(database);
 		var user1 = {_id : 1, name : 'rain', level : 0};
@@ -108,6 +102,28 @@ describe('autoconnection test', function(){
 		})
 		.then(function(){
 			return database.stop();
+		})
+		.nodeify(cb);
+	});
+
+	it('reentrant lock', function(cb){
+		var db = new Database(env.dbConfig('s1'));
+		var autoconn = new AutoConnection(db);
+
+		return Q.fcall(function(){
+			return db.start();
+		})
+		.then(function(){
+			return autoconn.execute(function(){
+				var player = autoconn.collection('player');
+				return player.findForUpdate('p1')
+				.then(function(){
+					return player.findForUpdate('p1');
+				});
+			});
+		})
+		.fin(function(){
+			return db.stop();
 		})
 		.nodeify(cb);
 	});

@@ -237,4 +237,18 @@ describe('document test', function(){
 		})
 		.nodeify(cb);
 	});
+
+	it('update nested set', function(cb){
+		var value = {a : {}};
+		var doc = new Document({doc : value});
+
+		return Q.fcall(function(){
+			return doc.lock('c1');
+		})
+		.then(function(){
+			doc.update('c1', {'a.b.c' : 2});
+			doc.find('c1').should.eql({a : {b : {c : 2}}});
+		})
+		.nodeify(cb);
+	});
 });

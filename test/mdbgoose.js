@@ -14,9 +14,10 @@ var playerSchema = new Schema({
 	_id : String,
 	areaId : String,
 	name : String,
+	//NOTE : change player.fullname.first will fail on newest mongodb
 	fullname : {first: String, second: String},
 	extra : types.Mixed,
-}, {collection : 'player'});
+}, {collection : 'player', versionKey: false});
 
 var Player = mdbgoose.model('player', playerSchema);
 
@@ -61,10 +62,10 @@ describe('mdbgoose test', function(){
 									extra: {},
 								});
 				return Q.fcall(function(){
-					return Q.ninvoke(player1, 'save');
+					return player1.saveQ();
 				})
 				.then(function(){
-					return Q.ninvoke(Player, 'findOneInMdb', 'p1');
+					return Player.findForUpdateQ('p1');
 				})
 				.then(function(player){
 					logger.debug('%j', player);
@@ -73,21 +74,27 @@ describe('mdbgoose test', function(){
 					player.name = 'snow';
 					player.areaId = 'a1';
 					player.fullname.first = 'changed first';
+					player.fullname.second = 'changed second';
 					player.extra = {xx1 : 'changed extra'};
-					return Q.ninvoke(player, 'save');
+
+					return player.saveQ();
 				})
 				.then(function(){
-					return Q.ninvoke(Player, 'findOneInMdb', 'p1')
+					return Q.fcall(function(){
+						return Player.findQ('p1');
+					})
 					.then(function(player){
 						logger.debug('%j', player);
 						player.name.should.eql('snow');
 					});
 				})
 				.then(function(){
-					return Q.ninvoke(player2, 'save');
+					return player2.saveQ();
 				})
 				.then(function(){
-					return Q.ninvoke(Player, 'findByIndexInMdb', 'areaId', 'a1')
+					return Q.fcall(function(){
+						return Player.findByIndexQ('areaId', 'a1');
+					})
 					.then(function(players){
 						logger.debug('%j', players);
 						players.length.should.eql(2);
@@ -104,13 +111,13 @@ describe('mdbgoose test', function(){
 		})
 		.then(function(){
 			// Call mongodb directly
-			return Q.ninvoke(Player, 'find');
+			return Player.findMongoQ();
 		})
 		.then(function(players){
 			logger.debug('%j', players);
 			players.length.should.eql(2);
 
-			return Q.ninvoke(players[0], 'save')
+			return players[0].saveQ()
 			.fail(function(e){
 				logger.warn(e); // should throw error
 			});
