@@ -55,6 +55,12 @@ describe('backends test', function(){
 				(ret === null).should.be.true; // jshint ignore:line
 			});
 		})
+		.then(function(){
+			return backend.drop('test');
+		})
+		.then(function(){
+			return backend.drop();
+		})
 		.fin(function(){
 			return backend.stop();
 		});
