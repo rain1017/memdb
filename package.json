@@ -1,9 +1,9 @@
 {
 	"name": "memorydb",
 	"description": "distributed transactional in memory database",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"author": "rain1017",
-	"private" : false,
+	"private" : true,
 	"homepage" : "https://github.com/rain1017/memorydb",
 	"repository" : {
 		"type" : "git",
