@@ -38,7 +38,7 @@ var writeSingleDoc = function(){
 	};
 
 	var startTick = null;
-	var qps = null;
+	var rate = null;
 	return Q.fcall(function(){
 		var config = env.dbConfig('s1');
 		//config.disableSlave = true;
@@ -60,7 +60,7 @@ var writeSingleDoc = function(){
 		return promise;
 	})
 	.then(function(){
-		qps = count * 1000 / (Date.now() - startTick);
+		rate = count * 1000 / (Date.now() - startTick);
 		return autoconn.execute(function(){
 			var Player = autoconn.collection('player');
 			return Q.fcall(function(){
@@ -76,7 +76,7 @@ var writeSingleDoc = function(){
 	.fin(function(){
 		return memorydb.stop()
 		.fin(function(){
-			logger.warn('TPS: %s', qps);
+			logger.warn('Rate: %s', rate);
 		});
 	});
 };
@@ -86,7 +86,7 @@ var writeSingleDocInOneTransaction = function(){
 	var autoconn = null;
 
 	var startTick = null;
-	var qps = null;
+	var rate = null;
 	return Q.fcall(function(){
 		return memorydb.start(env.dbConfig('s1'));
 	})
@@ -107,26 +107,27 @@ var writeSingleDocInOneTransaction = function(){
 		});
 	})
 	.then(function(){
-		qps = count * 1000 / (Date.now() - startTick);
+		rate = count * 1000 / (Date.now() - startTick);
 	})
 	.fin(function(){
 		return memorydb.stop()
 		.fin(function(){
-			logger.warn('QPS: %s', qps);
+			logger.warn('Rate: %s', rate);
 		});
 	});
 };
 
 var writeHugeDoc = function(){
-	var count = 10000;
+	var count = 5000;
 	var autoconn = null;
 
 	var startTick = null;
-	var qps = null;
+	var rate = null;
 	return Q.fcall(function(){
 		var config = env.dbConfig('s1');
 		//Disable auto persistent
 		config.persistentInterval = 3600 * 1000;
+		config.unloadDelay = 1;
 		return memorydb.start(config);
 	})
 	.then(function(){
@@ -146,15 +147,18 @@ var writeHugeDoc = function(){
 		});
 	})
 	.then(function(){
-		qps = count * 1000 / (Date.now() - startTick);
+		rate = count * 1000 / (Date.now() - startTick);
+		logger.warn('Load Rate: %s', rate);
 		logger.warn('%j', process.memoryUsage());
 		heapdump.writeSnapshot('/tmp/mdb.heapsnapshot');
 	})
-	.fin(function(){
-		return memorydb.stop()
-		.fin(function(){
-			logger.warn('QPS: %s', qps);
-		});
+	.then(function(){
+		startTick = Date.now();
+		return memorydb.stop();
+	})
+	.then(function(){
+		rate = count * 1000 / (Date.now() - startTick);
+		logger.warn('Unload Rate: %s', rate);
 	});
 };
 
@@ -164,13 +168,13 @@ var crossShardsWrite = function(){
 
 var main = function(){
 	return Q.fcall(function(){
-		return writeSingleDoc();
+	//	return writeSingleDoc();
 	})
 	.then(function(){
 	//	return writeSingleDocInOneTransaction();
 	})
 	.then(function(){
-	//	return writeHugeDoc();
+		return writeHugeDoc();
 	});
 };
 

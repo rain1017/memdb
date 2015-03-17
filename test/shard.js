@@ -167,54 +167,6 @@ describe('shard test', function(){
 		.nodeify(cb);
 	});
 
-	it('backendLock not consistent with shard', function(cb){
-		var shard = new Shard(env.dbConfig('s1'));
-
-		var key = 'user:1', doc = {_id : '1', name : 'rain', age : 30};
-		return Q.fcall(function(){
-			return shard.start();
-		})
-		.then(function(){
-			// Add a redundant lock
-			return shard.backendLocker.lock(key, shard._id);
-		})
-		.then(function(){
-			// request the key (actually not loaded by the shard)
-			return shard.globalEvent.emit('request:' + shard._id, key);
-		})
-		.delay(200)
-		.then(function(){
-			// should released the lock
-			return shard.backendLocker.getHolderId(key)
-			.then(function(ret){
-				(ret === null).should.eql(true);
-			});
-		})
-		.then(function(){
-			return shard.lock('c1', key);
-		})
-		.then(function(){
-			// release the lock without noticing the shard
-			return shard.backendLocker.unlockForce(key);
-		})
-		.then(function(){
-			// This is unlikely to happen in real production
-			// since the lock can't be force released by others
-
-			// backendLock is already released, data is inconsistent
-			shard.insert('c1', key, doc);
-			return shard.commit('c1', key);
-		})
-		.then(function(){
-			// Will discover the inconsistency and force unload the doc
-			return shard.persistentAll();
-		})
-		.then(function(){
-			return shard.stop();
-		})
-		.nodeify(cb);
-	});
-
 	it('doc idle', function(cb){
 		var config = env.dbConfig('s1');
 		config.docIdleTimeout = 100;

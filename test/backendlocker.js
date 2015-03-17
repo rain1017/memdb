@@ -50,7 +50,7 @@ describe('backendlocker test', function(){
 			});
 		})
 		.then(function(){
-			return locker.unlock(docId, shardId);
+			return locker.unlock(docId);
 		})
 		.then(function(){
 			//Should throw error
@@ -59,83 +59,6 @@ describe('backendlocker test', function(){
 				throw new Error('Should throw error');
 			}, function(e){
 				//expected
-			});
-		})
-		.then(function(){
-			return locker.tryUnlock(docId, shardId)
-			.then(function(ret){
-				ret.should.be.false; //jshint ignore:line
-			});
-		})
-		.then(function(){
-			return locker.lock(docId, shardId);
-		})
-		.then(function(){
-			// Force unlock
-			return locker.unlockForce(docId);
-		})
-		.then(function(){
-			return locker.getHolderId(docId)
-			.then(function(ret){
-				(ret === null).should.be.true; //jshint ignore:line
-			});
-		})
-		.fin(function(){
-			return Q.fcall(function(){
-				return locker.unlockAll();
-			}).then(function(){
-				locker.close();
-			});
-		})
-		.nodeify(cb);
-	});
-
-	it('autoUnlock', function(cb){
-		var autoUnlockTimeout = 50, heartbeatTimeout = 1000;
-		var docId = 'doc1', shardId = 'shard1';
-
-		var locker = new BackendLocker({
-						host : env.redisConfig.host,
-						port : env.redisConfig.port,
-						shardHeartbeatTimeout : heartbeatTimeout,
-						autoUnlockTimeout : autoUnlockTimeout,
-						});
-
-		return Q.fcall(function(){
-			locker.unlockAll();
-		})
-		.then(function(){
-			locker.shardHeartbeat(shardId);
-			return locker.lock(docId, shardId);
-		})
-		.then(function(){
-			// should not unlock
-			return locker.autoUnlock(docId)
-			.then(function(ret){
-				ret.should.eql(shardId);
-			});
-		})
-		.delay(heartbeatTimeout + 20)
-		.then(function(){
-			// Heartbeat timed out, should unlocked
-			return locker.autoUnlock(docId)
-			.then(function(ret){
-				(ret === null).should.eql(true);
-			});
-		})
-		.then(function(){
-			return locker.getHolderId(docId)
-			.then(function(ret){
-				(ret === null).should.be.true; //jshint ignore:line
-			});
-		})
-		.then(function(){
-			// Test shardStop
-			return Q.fcall(function(){
-				return locker.shardHeartbeat(shardId);
-			})
-			.then(function(){
-				return locker.shardStop(shardId);
 			});
 		})
 		.fin(function(){
