@@ -122,7 +122,7 @@ describe('autoconnection test', function(){
 				});
 			});
 		})
-		.fin(function(){
+		.then(function(){
 			return db.stop();
 		})
 		.nodeify(cb);

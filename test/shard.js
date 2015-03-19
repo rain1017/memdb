@@ -205,4 +205,54 @@ describe('shard test', function(){
 		.delay(100)
 		.nodeify(cb);
 	});
+
+	it('find cached', function(cb){
+		var config = env.dbConfig('s1');
+		config.docCacheTimeout = 100;
+		config.docIdleTimeout = 100;
+		var shard = new Shard(config);
+
+		var key = 'user:1', doc = {_id : '1', name : 'rain'};
+		return Q.fcall(function(){
+			return shard.start();
+		})
+		.then(function(){
+			return shard.lock('c1', key);
+		})
+		.then(function(){
+			return shard.insert('c1', key, doc);
+		})
+		.then(function(){
+			return shard.commit('c1', [key]);
+		})
+		.then(function(){
+			return shard.findCached('c1', key)
+			.then(function(ret){
+				ret.should.eql(doc);
+			});
+		})
+		.delay(500) // doc unloaded and cache timed out
+		.then(function(){
+			// read from backend
+			return Q.fcall(function(){
+				return shard.findCached('c1', key);
+			})
+			.then(function(ret){
+				ret.should.eql(doc);
+			});
+		})
+		.then(function(){
+			// get from cache
+			return Q.fcall(function(){
+				return shard.findCached('c1', key);
+			})
+			.then(function(ret){
+				ret.should.eql(doc);
+			});
+		})
+		.then(function(){
+			return shard.stop();
+		})
+		.nodeify(cb);
+	});
 });

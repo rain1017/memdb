@@ -17,13 +17,7 @@ describe('connection test', function(){
 	});
 
 	it('find/update/insert/remove/commit/rollback', function(cb){
-		var db = new Database({
-			_id : 's1',
-			redisConfig : env.redisConfig,
-			backend : 'mongodb',
-			backendConfig : env.mongoConfig,
-			slaveConfig : env.redisConfig,
-		});
+		var db = new Database(env.dbConfig('s1'));
 		var conn = null;
 		var User = null, News = null;
 		var user1 = {_id : 1, name : 'rain', age : 30};
@@ -119,14 +113,9 @@ describe('connection test', function(){
 				'indexes' : ['areaId'],
 			}
 		};
-		var db = new Database({
-			_id : 's1',
-			redisConfig : env.redisConfig,
-			backend : 'mongodb',
-			backendConfig : env.mongoConfig,
-			slaveConfig : env.redisConfig,
-			collections : collectionDefs,
-		});
+		var config = env.dbConfig('s1');
+		config.collections = collectionDefs;
+		var db = new Database(config);
 
 		var conn = null;
 		var Player = null;
@@ -187,6 +176,33 @@ describe('connection test', function(){
 		})
 		.then(function(){
 			conn.close();
+			return db.stop();
+		})
+		.nodeify(cb);
+	});
+
+	it('findCached', function(cb){
+		var db = new Database(env.dbConfig('s1'));
+		var conn = new Connection(db);
+
+		return Q.fcall(function(){
+			return db.start();
+		})
+		.then(function(){
+			// miss cache
+			return conn.collection('player').findCached('p1')
+			.then(function(ret){
+				(ret === null).should.eql(true);
+			});
+		})
+		.then(function(){
+			// hit cache
+			return conn.collection('player').findCached('p1')
+			.then(function(ret){
+				(ret === null).should.eql(true);
+			});
+		})
+		.then(function(){
 			return db.stop();
 		})
 		.nodeify(cb);

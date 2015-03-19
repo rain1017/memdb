@@ -29,6 +29,12 @@ describe('database test', function(){
 			connId = db.connect();
 		})
 		.then(function(){
+			return db.findForUpdate(connId, 'user', user1._id)
+			.then(function(ret){
+				(ret === null).should.eql(true);
+			});
+		})
+		.then(function(){
 			return db.insert(connId, 'user', user1._id, user1);
 		})
 		.then(function(){

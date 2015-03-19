@@ -138,7 +138,7 @@ describe.skip('performance test', function(){
 	it('write huge docs', function(cb){
 		this.timeout(30 * 1000);
 
-		//TODO: Unload rate decreased when count >= 5000
+		//TODO: Unload rate decreased when count > 3000
 		var count = 1000;
 		var autoconn = null;
 
@@ -186,9 +186,9 @@ describe.skip('performance test', function(){
 	it('move huge docs across shards', function(cb){
 		this.timeout(30 * 1000);
 
-		var count = 1000;
+		var count = 1000, requestRate = 200;
 		var db1 = null, db2 = null;
-		var startTick = null;
+		var startTick = null, responseTimeTotal = 0;
 
 		return Q.fcall(function(){
 			var config1 = env.dbConfig('s1');
@@ -220,15 +220,27 @@ describe.skip('performance test', function(){
 			startTick = Date.now();
 			var autoconn = new AutoConnection(db2);
 
-			return Q.all(_.range(count).map(function(id){
-				return autoconn.execute(function(){
-					return autoconn.collection('player').remove(id);
-				});
-			}));
+			return Q.fcall(function(){
+				return Q.all(_.range(count).map(function(id){
+					return Q() // jshint ignore:line
+					.delay(_.random(count * 1000 / requestRate))
+					.then(function(){
+						var start = null;
+						return autoconn.execute(function(){
+							start = Date.now();
+							return autoconn.collection('player').remove(id);
+						})
+						.then(function(){
+							responseTimeTotal += Date.now() - start;
+						});
+					});
+
+				}));
+			});
 		})
 		.then(function(){
 			var rate = count * 1000 / (Date.now() - startTick);
-			logger.warn('Rate: %s', rate);
+			logger.warn('Rate: %s, Response Time: %s', rate, responseTimeTotal / count);
 			return Q.all([db1.stop(), db2.stop()]);
 		})
 		.nodeify(cb);
@@ -237,21 +249,20 @@ describe.skip('performance test', function(){
 	it('move one doc across shards', function(cb){
 		this.timeout(180 * 1000);
 
-		var moveSingleDoc = function(shardCount, lockRetryInterval, concurrency){
+		var moveSingleDoc = function(shardCount, requestRate, lockRetryInterval){
 			if(!shardCount){
 				shardCount = 8;
+			}
+			if(!requestRate){
+				requestRate = 200;
 			}
 			if(!lockRetryInterval){
 				lockRetryInterval = 100;
 			}
-			if(!concurrency){
-				concurrency = 128;
-			}
 
-			var requestCount = concurrency * 10;
+			logger.warn('shardCount: %s, lockRetryInterval %s, requestRate: %s', shardCount, lockRetryInterval, requestRate);
 
-			logger.warn('shardCount: %s, lockRetryInterval %s, requestCount: %s, concurrency: %s', shardCount, lockRetryInterval, requestCount, concurrency);
-
+			var requestCount = 1000;
 			var shards = [];
 			var startTick = null;
 			var responseTimeTotal = 0;
@@ -278,36 +289,34 @@ describe.skip('performance test', function(){
 				var delay = 0;
 				startTick = Date.now();
 
-				return Q.all(_.range(concurrency).map(function(threadId){
-					var promise = Q(); //jshint ignore:line
-					_.range(requestCount / concurrency).forEach(function(requestId){
-						promise = promise.then(function(){
-							var conn = _.sample(conns);
-							logger.info('start request %s:%s on shard %s', threadId, requestId, conn.db.shard._id);
+				return Q.all(_.range(requestCount).map(function(requestId){
+					return Q() //jshint ignore:line
+					.delay(_.random(requestCount * 1000 / requestRate))
+					.then(function(){
+						var conn = _.sample(conns);
+						logger.info('start request %s on shard %s', requestId, conn.db.shard._id);
 
-							var start = Date.now();
-							return conn.execute(function(){
-								var Player = conn.collection('player');
-								return Q.fcall(function(){
-									return Player.findForUpdate(doc._id);
-								})
-								.then(function(ret){
-									if(!ret){
-										return Player.insert(doc._id, doc);
-									}
-									return Player.update(ret._id, {exp : ret.exp + 1});
-								});
+						var start = Date.now();
+						return conn.execute(function(){
+							var Player = conn.collection('player');
+							return Q.fcall(function(){
+								return Player.findForUpdate(doc._id);
 							})
-							.catch(function(e){
-								logger.error(e);
-							})
-							.fin(function(){
-								responseTimeTotal += Date.now() - start;
-								logger.info('done request %s:%s on shard %s', threadId, requestId, conn.db.shard._id);
+							.then(function(ret){
+								if(!ret){
+									return Player.insert(doc._id, doc);
+								}
+								return Player.update(ret._id, {exp : ret.exp + 1});
 							});
+						})
+						.catch(function(e){
+							logger.warn(e);
+						})
+						.fin(function(){
+							responseTimeTotal += Date.now() - start;
+							logger.info('done request %s on shard %s', requestId, conn.db.shard._id);
 						});
 					});
-					return promise;
 				}));
 			})
 			.then(function(){
@@ -321,13 +330,27 @@ describe.skip('performance test', function(){
 			});
 		};
 
+		/**
+		 * According to perf test result, the recommended parameter and the system load is
+		 *
+		 * shards	retry	maxRate
+		 * 4 		50 		450
+		 * 8 		50 		400
+		 * 16 		50 		350
+		 * 32 		100		300
+		 * 64 		100 	250
+		 * 128 		200 	200
+		 */
 		var promise = Q(); //jshint ignore:line
 		var counts = [4, 8, 16, 32, 64, 128];
+		var reqRate = 300;
+		var retryDelay = 100;
 		counts.forEach(function(count){
 			promise = promise.then(function(){
-				return moveSingleDoc(count);
+				return moveSingleDoc(count, reqRate, retryDelay);
 			});
 		});
 		promise.nodeify(cb);
 	});
 });
+

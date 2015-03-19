@@ -14,7 +14,6 @@ var playerSchema = new Schema({
 	_id : String,
 	areaId : String,
 	name : String,
-	//NOTE : change player.fullname.first will fail on newest mongodb
 	fullname : {first: String, second: String},
 	extra : types.Mixed,
 }, {collection : 'player', versionKey: false});
@@ -101,6 +100,12 @@ describe('mdbgoose test', function(){
 						players.forEach(function(player){
 							player.areaId.should.eql('a1');
 						});
+					});
+				})
+				.then(function(){
+					return Player.findCachedQ('p1')
+					.then(function(ret){
+						logger.debug('%j', ret);
 					});
 				});
 			});
