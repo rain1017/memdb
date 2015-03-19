@@ -74,14 +74,6 @@ describe('backends test', function(){
 		.nodeify(cb);
 	});
 
-	it('mongoose backend', function(cb){
-		var backend = backends.create('mongoose', env.mongoConfig);
-		return Q.fcall(function(){
-			return testFunc(backend);
-		})
-		.nodeify(cb);
-	});
-
 	it('redis backend', function(cb){
 		var backend = backends.create('redis', env.redisConfig);
 		return Q.fcall(function(){

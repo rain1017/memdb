@@ -101,7 +101,7 @@ describe('shard test', function(){
 
 	it('backendLock between multiple shards', function(cb){
 		var config = env.dbConfig('s1');
-		config.unloadDelay = 500; // This is required for this test
+		config.backendLockRetryInterval = 500; // This is required for this test
 		var shard1 = new Shard(config);
 		var shard2 = new Shard(env.dbConfig('s2'));
 

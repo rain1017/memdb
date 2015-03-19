@@ -3,11 +3,12 @@
 var Q = require('q');
 var util = require('util');
 var should = require('should');
-var env = require('./env');
-var mdbgoose = require('../lib/mdbgoose');
+var env = require('../env');
+var mdb = require('../../lib');
+var mdbgoose = mdb.goose();
 var Schema = mdbgoose.Schema;
 var types = mdbgoose.SchemaTypes;
-var mdb = require('../lib');
+
 var logger = require('pomelo-logger').getLogger('test', __filename);
 
 var playerSchema = new Schema({
@@ -35,7 +36,6 @@ describe('mdbgoose test', function(){
 				'indexes' : ['areaId'],
 			}
 		};
-		config.backend = 'mongoose';
 		var autoconn = null;
 
 		return Q.fcall(function(){
@@ -114,19 +114,19 @@ describe('mdbgoose test', function(){
 			// flush all to backend mongodb
 			return mdb.persistentAll();
 		})
-		.then(function(){
-			// Call mongodb directly
-			return Player.findMongoQ();
-		})
-		.then(function(players){
-			logger.debug('%j', players);
-			players.length.should.eql(2);
+		// .then(function(){
+		// 	// Call mongodb directly
+		// 	return Player.findMongoQ();
+		// })
+		// .then(function(players){
+		// 	logger.debug('%j', players);
+		// 	players.length.should.eql(2);
 
-			return players[0].saveQ()
-			.fail(function(e){
-				logger.warn(e); // should throw error
-			});
-		})
+		// 	return players[0].saveQ()
+		// 	.fail(function(e){
+		// 		logger.warn(e); // should throw error
+		// 	});
+		// })
 		.fin(function(){
 			return mdb.stop();
 		})
