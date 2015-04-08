@@ -4,7 +4,7 @@ var Q = require('q');
 var _ = require('lodash');
 var should = require('should');
 var assert = require('assert');
-var Document = require('../lib/document'); // jshint ignore:line
+var Document = require('../../app/document'); // jshint ignore:line
 var logger = require('pomelo-logger').getLogger('test', __filename);
 
 describe('document test', function(){

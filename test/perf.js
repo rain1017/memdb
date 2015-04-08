@@ -5,8 +5,8 @@ var _ = require('lodash');
 var should = require('should');
 var env = require('./env');
 var memorydb = require('../lib');
-var Database = require('../lib/database');
-var AutoConnection = require('../lib/client/autoconnection');
+var Database = require('../app/database');
+var AutoConnection = require('../lib/autoconnection');
 
 var pomeloLogger = require('pomelo-logger');
 var logger = require('pomelo-logger').getLogger('test', __filename);

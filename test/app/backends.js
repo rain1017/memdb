@@ -2,17 +2,12 @@
 
 var Q = require('q');
 var should = require('should');
-var backends = require('../lib/backends');
-var env = require('./env');
+var backends = require('../../app/backends');
+var env = require('../env');
 
 describe('backends test', function(){
-
-	beforeEach(function(cb){
-		env.flushdb(cb);
-	});
-	after(function(cb){
-		env.flushdb(cb);
-	});
+	beforeEach(env.flushdb);
+	after(env.flushdb);
 
 	var testFunc = function(backend){
 		var item1 = {name : 'test', id : 1, doc : {_id : 1, k : 1}};
@@ -67,7 +62,7 @@ describe('backends test', function(){
 	};
 
 	it('mongo backend', function(cb){
-		var backend = backends.create('mongodb', env.mongoConfig);
+		var backend = backends.create('mongodb', env.config.backendConfig);
 		return Q.fcall(function(){
 			return testFunc(backend);
 		})
@@ -75,7 +70,7 @@ describe('backends test', function(){
 	});
 
 	it('redis backend', function(cb){
-		var backend = backends.create('redis', env.redisConfig);
+		var backend = backends.create('redis', env.config.redisConfig);
 		return Q.fcall(function(){
 			return testFunc(backend);
 		})

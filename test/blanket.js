@@ -2,8 +2,10 @@
 
 var blanket = require('blanket');
 var path = require('path');
-var srcDir = path.join(__dirname, '../lib');
+
+var appDir = path.join(__dirname, '../app');
+var libDir = path.join(__dirname, '../lib');
 
 blanket({
-	pattern: srcDir
+	pattern: [appDir, libDir]
 });

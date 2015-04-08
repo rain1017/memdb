@@ -38,8 +38,12 @@
 		"mongoose": "~3.8.24",
 		"mongoose-q": "~0.0.16",
 		"global-events": "~0.0.2",
+		"socket.io": "~1.3.5",
+		"socket.io-client": "~1.3.5",
 		"node-uuid": "~1.4.2",
-		"pomelo-logger": "~0.1.7"
+		"pomelo-logger": "~0.1.7",
+		"minimist" : "~1.1.1",
+		"forever" : "~0.14.1"
 	},
 	"devDependencies": {
 		"should": "~4.5.0",

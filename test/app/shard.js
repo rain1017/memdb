@@ -3,17 +3,13 @@
 var Q = require('q');
 var _ = require('lodash');
 var should = require('should');
-var env = require('./env');
-var Shard = require('../lib/shard');
+var env = require('../env');
+var Shard = require('../../app/shard');
 var logger = require('pomelo-logger').getLogger('test', __filename);
 
 describe('shard test', function(){
-	beforeEach(function(cb){
-		env.flushdb(cb);
-	});
-	after(function(cb){
-		env.flushdb(cb);
-	});
+	beforeEach(env.flushdb);
+	after(env.flushdb);
 
 	it('load/unload/find/update/insert/remove/commit/rollback', function(cb){
 		var shard = new Shard(env.dbConfig('s1'));

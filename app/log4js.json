@@ -1,0 +1,23 @@
+{
+	"appenders": [
+		{
+			"type": "console"
+		},
+		{
+			"type": "dateFile",
+			"filename": "${opts:base}/memorydb-${opts:shardId}.log",
+			"pattern": "-yyyyMMdd",
+			"layout": {
+				"type": "basic"
+			  }
+			,"backups": 5,
+			"category":"memorydb"
+		}
+	],
+
+	"levels" : {
+	},
+
+	"replaceConsole": true,
+	"lineDebug": true
+}

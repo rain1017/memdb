@@ -4,31 +4,29 @@ var Q = require('q');
 var _ = require('lodash');
 var should = require('should');
 var env = require('../env');
-var Database = require('../../lib/database');
-var Connection = require('../../lib/client/connection');
+var memorydb = require('../../lib');
 var logger = require('pomelo-logger').getLogger('test', __filename);
 
 describe('connection test', function(){
-	beforeEach(function(cb){
-		env.flushdb(cb);
-	});
-	after(function(cb){
-		env.flushdb(cb);
-	});
+	beforeEach(env.flushdb);
+	after(env.flushdb);
 
 	it('find/update/insert/remove/commit/rollback', function(cb){
-		var db = new Database(env.dbConfig('s1'));
-		var conn = null;
+		var serverProcess = null, conn = null;
 		var User = null, News = null;
 		var user1 = {_id : 1, name : 'rain', age : 30};
 		var user2 = {_id : 2, name : 'tina', age : 24};
 		var news1 = {_id : 1, text : 'hello'};
 
 		return Q.fcall(function(){
-			return db.start();
+			return env.startServer('s1');
 		})
-		.then(function(){
-			conn = new Connection(db);
+		.then(function(ret){
+			serverProcess = ret;
+			return memorydb.connect(env.config.shards.s1.host, env.config.shards.s1.port);
+		})
+		.then(function(ret){
+			conn = ret;
 			User = conn.collection('user');
 			News = conn.collection('news');
 		})
@@ -101,30 +99,24 @@ describe('connection test', function(){
 		.then(function(){
 			return conn.close();
 		})
-		.then(function(){
-			return db.stop();
+		.fin(function(){
+			return env.stopServer(serverProcess);
 		})
 		.nodeify(cb);
 	});
 
 	it('index test', function(cb){
-		var collectionDefs = {
-			'player' : {
-				'indexes' : ['areaId'],
-			}
-		};
-		var config = env.dbConfig('s1');
-		config.collections = collectionDefs;
-		var db = new Database(config);
-
-		var conn = null;
+		var serverProcess = null, conn = null;
 		var Player = null;
 
 		return Q.fcall(function(){
-			return db.start();
+			return env.startServer('s1');
+		}).then(function(ret){
+			serverProcess = ret;
+			return memorydb.connect(env.config.shards.s1.host, env.config.shards.s1.port);
 		})
-		.then(function(){
-			conn = new Connection(db);
+		.then(function(ret){
+			conn = ret;
 			Player = conn.collection('player');
 		})
 		.then(function(){
@@ -175,20 +167,27 @@ describe('connection test', function(){
 			});
 		})
 		.then(function(){
-			conn.close();
-			return db.stop();
+			return conn.close();
+		})
+		.fin(function(){
+			return env.stopServer(serverProcess);
 		})
 		.nodeify(cb);
 	});
 
 	it('findCached', function(cb){
-		var db = new Database(env.dbConfig('s1'));
-		var conn = new Connection(db);
+		var serverProcess = null, conn = null;
 
 		return Q.fcall(function(){
-			return db.start();
+			return env.startServer('s1');
+		}).then(function(ret){
+			serverProcess = ret;
+
+			return memorydb.connect(env.config.shards.s1.host, env.config.shards.s1.port);
 		})
-		.then(function(){
+		.then(function(ret){
+			conn = ret;
+
 			// miss cache
 			return conn.collection('player').findCached('p1')
 			.then(function(ret){
@@ -203,7 +202,10 @@ describe('connection test', function(){
 			});
 		})
 		.then(function(){
-			return db.stop();
+			return conn.close();
+		})
+		.fin(function(){
+			return env.stopServer(serverProcess);
 		})
 		.nodeify(cb);
 	});

@@ -4,48 +4,39 @@ var Q = require('q');
 var util = require('util');
 var should = require('should');
 var env = require('../env');
-var mdb = require('../../lib');
-var mdbgoose = mdb.goose();
-var Schema = mdbgoose.Schema;
-var types = mdbgoose.SchemaTypes;
-
+var memorydb = require('../../lib');
 var logger = require('pomelo-logger').getLogger('test', __filename);
 
-var playerSchema = new Schema({
-	_id : String,
-	areaId : String,
-	name : String,
-	fullname : {first: String, second: String},
-	extra : types.Mixed,
-}, {collection : 'player', versionKey: false});
-
-var Player = mdbgoose.model('player', playerSchema);
-
 describe('mdbgoose test', function(){
-	beforeEach(function(cb){
-		env.flushdb(cb);
-	});
-	after(function(cb){
-		env.flushdb(cb);
-	});
+	beforeEach(env.flushdb);
+	after(env.flushdb);
 
 	it('mdbgoose', function(cb){
-		var config = env.dbConfig('s1');
-		config.collections = {
-			'player' : {
-				'indexes' : ['areaId'],
-			}
-		};
-		var autoconn = null;
+		var mdbgoose = memorydb.goose();
+		var Schema = mdbgoose.Schema;
+		var types = mdbgoose.SchemaTypes;
+
+		var playerSchema = new Schema({
+			_id : String,
+			areaId : String,
+			name : String,
+			fullname : {first: String, second: String},
+			extra : types.Mixed,
+		}, {collection : 'player', versionKey: false});
+
+		var Player = mdbgoose.model('player', playerSchema);
+
+		var serverProcess = null;
 
 		return Q.fcall(function(){
-			return mdb.start(config);
+			return env.startServer('s1');
 		})
-		.then(function(){
-			autoconn = mdb.autoConnect();
-		})
-		.then(function(){
-			return autoconn.execute(function(){
+		.then(function(ret){
+			serverProcess = ret;
+
+			mdbgoose.connectMdb(env.config.shards.s1.host, env.config.shards.s1.port);
+
+			return mdbgoose.execute(function(){
 				var player1 = new Player({
 									_id : 'p1',
 									areaId: 'a2',
@@ -110,10 +101,6 @@ describe('mdbgoose test', function(){
 				});
 			});
 		})
-		.then(function(){
-			// flush all to backend mongodb
-			return mdb.persistentAll();
-		})
 		// .then(function(){
 		// 	// Call mongodb directly
 		// 	return Player.findMongoQ();
@@ -128,7 +115,7 @@ describe('mdbgoose test', function(){
 		// 	});
 		// })
 		.fin(function(){
-			return mdb.stop();
+			return env.stopServer(serverProcess);
 		})
 		.nodeify(cb);
 	});

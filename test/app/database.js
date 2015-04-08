@@ -3,17 +3,13 @@
 var Q = require('q');
 var _ = require('lodash');
 var should = require('should');
-var env = require('./env');
-var Database = require('../lib/database');
+var env = require('../env');
+var Database = require('../../app/database');
 var logger = require('pomelo-logger').getLogger('test', __filename);
 
 describe('database test', function(){
-	beforeEach(function(cb){
-		env.flushdb(cb);
-	});
-	after(function(cb){
-		env.flushdb(cb);
-	});
+	beforeEach(env.flushdb);
+	after(env.flushdb);
 
 	it('find/update/insert/remove/commit/rollback', function(cb){
 		var db = new Database(env.dbConfig('s1'));

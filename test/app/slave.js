@@ -3,21 +3,17 @@
 var Q = require('q');
 var util = require('util');
 var should = require('should');
-var env = require('./env');
-var Slave = require('../lib/slave');
+var env = require('../env');
+var Slave = require('../../app/slave');
 var logger = require('pomelo-logger').getLogger('test', __filename);
 
 describe('slave test', function(){
-	beforeEach(function(cb){
-		env.flushdb(cb);
-	});
-	after(function(cb){
-		env.flushdb(cb);
-	});
+	beforeEach(env.flushdb);
+	after(env.flushdb);
 
 	it('insert/remove', function(cb){
 		var shard = {_id : 's1'};
-		var slave = new Slave(shard, env.redisConfig);
+		var slave = new Slave(shard, env.config.shards.s1.slaveConfig);
 
 		var key1 = 'player:1';
 		var doc1 = {exist : true, fields : {name : 'rain', age : 30}};
@@ -90,7 +86,7 @@ describe('slave test', function(){
 
 	it('getAll/clear', function(cb){
 		var shard = {_id : 's1'};
-		var slave = new Slave(shard, env.redisConfig);
+		var slave = new Slave(shard, env.config.shards.s1.slaveConfig);
 
 		var key1 = 'player:1';
 		var doc1 = {exist : true, fields : {name : 'rain', age : 30}};

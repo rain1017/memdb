@@ -1,0 +1,37 @@
+{
+	"redisConfig" : {
+		"port" : 6379,
+		"host" : "127.0.0.1"
+	},
+	"backend" : "mongodb",
+	"backendConfig" : {
+		"uri" : "mongodb://localhost/memorydb-test"
+	},
+	"logger" : {
+		"path" : "/tmp",
+		"level" : "DEBUG"
+	},
+	"collections" : {
+		"player" : {
+			"indexes" : ["areaId"]
+		}
+	},
+	"shards" : {
+		"s1" : {
+			"host" : "127.0.0.1",
+			"port" : 3000,
+			"slaveConfig" : {
+				"host" : "127.0.0.1",
+				"port" : 6379
+			}
+		},
+		"s2" : {
+			"host" : "127.0.0.1",
+			"port" : 3001,
+			"slaveConfig" : {
+				"host" : "127.0.0.1",
+				"port" : 6379
+			}
+		}
+	}
+}

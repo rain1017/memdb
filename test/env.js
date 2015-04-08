@@ -1,17 +1,18 @@
 'use strict';
 
+var child_process = require('child_process');
+var path = require('path');
 var redis = require('redis');
 var mongodb = require('mongodb');
 var logger = require('pomelo-logger').getLogger('test', __filename);
 var Q = require('q');
 Q.longStackSupport = true;
 
-var redisConfig = {host : '127.0.0.1', port : 6379};
-var mongoConfig = {uri: 'mongodb://localhost/memorydb-test', options : {}};
+var config = require('./memorydb.json');
 
 var flushdb = function(cb){
-	Q.fcall(function(){
-		return Q.ninvoke(mongodb.MongoClient, 'connect', mongoConfig.uri, mongoConfig.options);
+	return Q.fcall(function(){
+		return Q.ninvoke(mongodb.MongoClient, 'connect', config.backendConfig.uri, config.backendConfig.options);
 	})
 	.then(function(db){
 		return Q.fcall(function(){
@@ -22,7 +23,7 @@ var flushdb = function(cb){
 		});
 	})
 	.then(function(){
-		var client = redis.createClient(redisConfig.port, redisConfig.host);
+		var client = redis.createClient(config.redisConfig.port, config.redisConfig.host);
 		return Q.nfcall(function(cb){
 			client.flushdb(cb);
 		})
@@ -32,22 +33,56 @@ var flushdb = function(cb){
 	})
 	.then(function(){
 		logger.info('flushed db');
-		cb();
 	})
-	.catch(cb);
+	.nodeify(cb);
+};
+
+var startServer = function(shardId){
+	var confPath = path.join(__dirname, 'memorydb.json');
+	var serverScript = path.join(__dirname, '../app/server.js');
+	var args = [serverScript, '--conf=' + confPath, '--shard=' + shardId];
+	var serverProcess = child_process.spawn(process.execPath, args);
+
+	// This is required! otherwise server will block due to stdout buffer full
+	serverProcess.stdout.pipe(process.stdout);
+	serverProcess.stderr.pipe(process.stderr);
+
+	return Q() //jshint ignore:line
+	.delay(1000) // wait for server start
+	.then(function(){
+		return serverProcess;
+	});
+};
+
+var stopServer = function(serverProcess){
+	if(!serverProcess){
+		return;
+	}
+	var deferred = Q.defer();
+	serverProcess.on('exit', function(code, signal){
+		if(code === 0){
+			deferred.resolve();
+		}
+		else{
+			deferred.reject('server process returned non-zero code');
+		}
+	});
+	serverProcess.kill();
+	return deferred.promise;
 };
 
 module.exports = {
-	redisConfig : redisConfig,
-	mongoConfig : mongoConfig,
+	config : config,
 	flushdb : flushdb,
+	startServer : startServer,
+	stopServer : stopServer,
 	dbConfig : function(shardId){
 		return {
 			_id : shardId,
-			redisConfig : redisConfig,
-			backend : 'mongodb',
-			backendConfig : mongoConfig,
-			slaveConfig : redisConfig,
+			redisConfig : config.redisConfig,
+			backend : config.backend,
+			backendConfig : config.backendConfig,
+			slaveConfig : config.shards[shardId].slaveConfig,
 		};
 	},
 };
