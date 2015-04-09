@@ -124,6 +124,8 @@ if (require.main === module) {
 
 	var shardId = argv.s || argv.shard || null;
 
+	Q.longStackSupport = conf.q ? !!conf.q.longStackSupport : false;
+
 	// Configure logger
 	var loggerConf = conf.logger || {};
 

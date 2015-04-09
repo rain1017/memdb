@@ -12,9 +12,11 @@ describe('mdbgoose test', function(){
 	after(env.flushdb);
 
 	it('mdbgoose', function(cb){
-		var mdbgoose = memorydb.goose();
+		var mdbgoose = memorydb.goose;
 		var Schema = mdbgoose.Schema;
 		var types = mdbgoose.SchemaTypes;
+
+		mdbgoose.init({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
 
 		var playerSchema = new Schema({
 			_id : String,
@@ -33,8 +35,6 @@ describe('mdbgoose test', function(){
 		})
 		.then(function(ret){
 			serverProcess = ret;
-
-			mdbgoose.connectMdb(env.config.shards.s1.host, env.config.shards.s1.port);
 
 			return mdbgoose.execute(function(){
 				var player1 = new Player({

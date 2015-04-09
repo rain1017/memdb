@@ -28,6 +28,7 @@ describe.skip('performance test', function(){
 	it('write single doc', function(cb){
 		this.timeout(30 * 1000);
 
+		var serverProcess = null;
 		var count = 1000;
 		var autoconn = null;
 		var player = {_id : 1, name : 'rain', exp : 0};
@@ -42,7 +43,6 @@ describe.skip('performance test', function(){
 				})
 				.then(function(doc){
 					doc.exp++;
-					logger.debug('player.exp = %s', doc.exp);
 					return Player.update(player._id, doc);
 				});
 			})
@@ -54,12 +54,12 @@ describe.skip('performance test', function(){
 		var startTick = null;
 		var rate = null;
 		return Q.fcall(function(){
-			var config = env.dbConfig('s1');
-			//config.disableSlave = true;
-			return memorydb.start(config);
+			return env.startServer('s1');
 		})
-		.then(function(){
-			autoconn = memorydb.autoConnect();
+		.then(function(ret){
+			serverProcess = ret;
+
+			autoconn = memorydb.autoConnect(env.config.shards.s1.host, env.config.shards.s1.port);
 			return autoconn.execute(function(){
 				var Player = autoconn.collection('player');
 				return Player.insert(player._id, player);
@@ -75,6 +75,8 @@ describe.skip('performance test', function(){
 		})
 		.then(function(){
 			rate = count * 1000 / (Date.now() - startTick);
+			logger.warn('Rate: %s', rate);
+
 			return autoconn.execute(function(){
 				var Player = autoconn.collection('player');
 				return Q.fcall(function(){
@@ -88,10 +90,7 @@ describe.skip('performance test', function(){
 			});
 		})
 		.fin(function(){
-			return memorydb.stop()
-			.fin(function(){
-				logger.warn('Rate: %s', rate);
-			});
+			return env.stopServer(serverProcess);
 		})
 		.nodeify(cb);
 	});

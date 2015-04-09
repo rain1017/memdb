@@ -12,21 +12,18 @@ describe('autoconnection test', function(){
 	after(env.flushdb);
 
 	it('concurrent execute', function(cb){
-		var serverProcess = null, autoconn = null;
+		var serverProcess = null;
 		var shardId = Object.keys(env.config.shards)[0];
 
 		var user1 = {_id : 1, name : 'rain', level : 0};
+
+		var autoconn = memorydb.autoConnect(env.config.shards[shardId].host, env.config.shards[shardId].port);
 
 		return Q.fcall(function(){
 			return env.startServer(shardId);
 		})
 		.then(function(ret){
 			serverProcess = ret;
-
-			return memorydb.autoConnect(env.config.shards[shardId].host, env.config.shards[shardId].port);
-		})
-		.then(function(ret){
-			autoconn = ret;
 
 			return autoconn.execute(function(){
 				var User = autoconn.collection('user');

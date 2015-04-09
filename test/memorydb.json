@@ -11,6 +11,9 @@
 		"path" : "/tmp",
 		"level" : "DEBUG"
 	},
+	"q" : {
+		"longStackSupport" : true
+	},
 	"collections" : {
 		"player" : {
 			"indexes" : ["areaId"]
