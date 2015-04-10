@@ -11,9 +11,11 @@ Geting the __performance__ of in memory database, the __scalibility__ of distrib
 
 * __Performance__ : Data access is mainly based on in process memory, which is extremely fast.
 
-* __Scalable__ : System is horizontally scalable by adding more shards
+* __Scalablility__ : System is horizontally scalable by adding more shards.
 
-* __Transaction/Locking__ : You can commit/rollback change just like traditional database. 'row' based locking is also supported.
+* __Transaction__ : You can commit/rollback change just like traditional database. 'row' based locking is also supported.
+
+* __High Availability : All server is backed by one or more redis replication, you will never lose and commited data.
 
 ### Which is suite for memorydb?
 
@@ -22,8 +24,7 @@ Geting the __performance__ of in memory database, the __scalibility__ of distrib
 
 ### Which is not suite for memorydb?
 
-* Data critical application
-* Application heavily relied on SQL
+* Application require complex SQL quering
 
 ## Main Concepts
 
@@ -57,19 +58,41 @@ Geting the __performance__ of in memory database, the __scalibility__ of distrib
 * Use one connection in each execution scope, and auto commit on execution complete and rollback on execution failure.
 * You can put each API handler in one execution scope.
 
-### Lock
+### Mdbgoose
+
+Mdbgoose is modified from mongoose. mdbgoose for memorydb is similar to mongoose for mongodb. You can leverage the power of mongoose for object modeling. Just use it like you were using mongoose!
+
+### Concurrency/Locking/Transaction
+
+The concurrency behavior is similar to mysql with innodb engine
 
 * Lock is based on document
 * One connection must hold the lock in order to write (insert/remove/update) to a doc
 * All locks held by a connection will be released after commit or rollback
 * A connection will always read the latest commited value (if not holding the lock), you must explicitly lock the doc first if you do non-atomic 'read and update' operation.
-
-###	Commit/Rollback
-
 * All changes (after last commit) is not visible to other connections until being commited
 * All changes (after last commit) will be discarded after rollback or closing a connection without commit
 
+### High Availability
+
+Every shard use redis as data replication, you can add more replication to redis too. All commited data can be restored after server failure, you will never lose any commited data.
+
+### In-process mode VS standalone mode
+
+Memorydb support two running mode: in-process and standalone. 
+
+* In-process mode: memorydb is used as a library and started by library caller. Both client and server is in the same node process,which can maximize performance. You can use this mode as long as your client is written with node.js.
+* Standalone mode: memorydb is started as a socket server, the client should use socket to communicate with server (like other database). This mode is more flexible and support clients from other programming languages, but at a cost of performance penalty on network transfering. Use this mode when you need to access database from other programming languages or you need more flexibility on deployment.
+
+### Best Practise
+
+* Access same data from the same shard if possible, this will maximize the performance
+* Access same data from different shards will cause the data to be synced between shards, which has huge performance penalty.
+
+
 ## Sample
+
+### Quick Start
 
 ```
 var memorydb = require('memorydb');
@@ -78,21 +101,103 @@ var should = require('should');
 
 // memorydb's config
 var config = {
-	//shard Id (optional)
-	_id : 'shard1',
+	//shard Id
+	shard : 'shard1',
 	// Center backend storage, must be same for shards in the same cluster
-	backend : 'mongodb',
-	backendConfig : {uri : 'mongodb://localhost/memorydb-test'},
+	backend : {engine : 'mongodb', url : 'mongodb://localhost/memorydb-test'},
 	// Used for backendLock, must be same for shards in the same cluster
-	redisConfig : {host : '127.0.0.1', port : 6379},
+	redis : {host : '127.0.0.1', port : 6379},
+	// For data replication
+	slave : {host : '127.0.0.1', port : 6379},
 };
+
+var player = {_id : 'p1', name : 'rain', level : 1};
+
+var conn = null;
+return Q.fcall(function(){
+	// Start memorydb
+	return memorydb.startServer(config);
+})
+.then(function(){
+	return memorydb.connect();
+})
+.then(function(ret){
+	conn = ret;
+
+	return conn.collection('player').insert(player._id, player);
+})
+.then(function(){
+	return conn.collection('player').find(player._id)
+	.then(function(ret){
+		ret.should.eql(player);
+	});
+})
+.then(function(){
+	return conn.commit();
+})
+.then(function(){
+	return conn.collection('player').update(player._id, {level : 2});
+})
+.then(function(){
+	return conn.collection('player').find(player._id, 'level')
+	.then(function(ret){
+		ret.level.should.eql(2);
+	});
+})
+.then(function(){
+	return conn.rollback();
+})
+.then(function(){
+	return conn.collection('player').find(player._id, 'level')
+	.then(function(ret){
+		ret.level.should.eql(1); // Rolled back to 1
+	});
+})
+.then(function(){
+	return conn.collection('player').remove(player._id);
+})
+.then(function(){
+	return conn.commit();
+})
+.then(function(){
+	return conn.collection('player').find(player._id)
+	.then(function(ret){
+		(ret === null).should.eql(true);
+	});
+})
+.then(function(){
+	return conn.close();
+})
+.fin(function(){
+	// Stop memorydb
+	return memorydb.stopServer();
+});
+
+// For distributed system, just run memorydb in each server with the same config, and each server will be a shard.
+
+```
+
+
+### AutoConnection
+
+```
+var memorydb = require('memorydb');
+var Q = require('q');
+var should = require('should');
 
 var doc = {_id : 1, name : 'rain', level : 1};
 
 var autoconn = null;
+
 return Q.fcall(function(){
 	// Start memorydb
-	return memorydb.start(config);
+	var config = {	
+		shard : 'shard1',	
+		backend : {engine : 'mongodb', url : 'mongodb://localhost/memorydb-test'},	
+		redis : {host : '127.0.0.1', port : 6379},	
+		slave : {host : '127.0.0.1', port : 6379},
+	};	
+	return memorydb.startServer(config);
 })
 .then(function(){
 	// Get autoConnection
@@ -155,25 +260,67 @@ return Q.fcall(function(){
 	// Close autoConnection
 	return autoconn.close();
 })
-.then(function(){
+.fin(function(){
 	// Stop memorydb
-	return memorydb.stop();
+	return memorydb.stopServer();
 });
-
-// For distributed system, just run memorydb in each server with the same config, and each server will be a shard.
 
 ```
 
-### Best Practise
+### Mdbgoose
+```
+var memorydb = require('memorydb');
+var Q = require('q');
+var should = require('should');
 
-* Access same data from the same shard if possible, this will maximize the performance
-* Access same data from different shards will cause the data to be synced between shards, which has huge performance penalty.
+var mdbgoose = memorydb.goose;
+var Schema = mdbgoose.Schema;
 
-### System failures
+var playerSchema = new Schema({
+	_id : String,
+	areaId : String,
+	name : String,
+}, {collection : 'player', versionKey: false});
 
-* Shard failure: If one shard fail (heartbeat timeout), data in that shard will lose the progress since last persistent point.
-* Backend failure: Data persistent will fail, and data can't transfer between shards (Cross shard data request will fail). This can get rescued when backend is online.
-* Redis failure: The cluster will hang, and you will lose the progress since last persistent point of each shard.
+var Player = mdbgoose.model('player', playerSchema);
+
+return Q.fcall(function(){
+	var config = {	
+		shard : 'shard1',	
+		backend : {engine : 'mongodb', url : 'mongodb://localhost/memorydb-test'},
+		redis : {host : '127.0.0.1', port : 6379},
+		slave : {host : '127.0.0.1', port : 6379},
+	};
+	return memorydb.startServer(config);
+})
+.then(function(){
+	return mdbgoose.execute(function(){
+		var player = new Player({
+							_id : 'p1',
+							areaId: 'a1',
+							name: 'rain',
+						});
+		return Q.fcall(function(){
+			return player.saveQ();
+		})
+		.then(function(){
+			return Player.findQ('p1');
+		})
+		.then(function(player){
+			player.name.should.eql('rain');
+			return player.removeQ();
+		});
+	});
+})
+.fin(function(){
+	return memorydb.stopServer();
+});
+```
+
+### Standalone mode
+
+TBD
+
 
 ## License
 (The MIT License)

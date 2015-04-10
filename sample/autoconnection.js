@@ -1,6 +1,6 @@
 'use strict';
 
-var memorydb = require('./lib');
+var memorydb = require('../lib');
 var Q = require('q');
 var should = require('should');
 
