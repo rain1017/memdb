@@ -19,5 +19,5 @@
 	},
 
 	"replaceConsole": true,
-	"lineDebug": true
+	"lineDebug": false
 }

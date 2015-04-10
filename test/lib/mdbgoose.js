@@ -16,8 +16,9 @@ describe('mdbgoose test', function(){
 		var Schema = mdbgoose.Schema;
 		var types = mdbgoose.SchemaTypes;
 
-		mdbgoose.init({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
+		mdbgoose.setConnectOpts({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
 
+		delete mdbgoose.connection.models.player;
 		var playerSchema = new Schema({
 			_id : String,
 			areaId : String,
@@ -36,6 +37,12 @@ describe('mdbgoose test', function(){
 		.then(function(ret){
 			serverProcess = ret;
 
+			// connect to backend mongodb
+			return Q.nfcall(function(cb){
+				mdbgoose.connect(env.config.backendConfig.uri, cb);
+			});
+		})
+		.then(function(){
 			return mdbgoose.execute(function(){
 				var player1 = new Player({
 									_id : 'p1',
@@ -101,21 +108,74 @@ describe('mdbgoose test', function(){
 				});
 			});
 		})
-		// .then(function(){
-		// 	// Call mongodb directly
-		// 	return Player.findMongoQ();
-		// })
-		// .then(function(players){
-		// 	logger.debug('%j', players);
-		// 	players.length.should.eql(2);
+		.then(function(){
+			// force persistent to mongodb
+			return mdbgoose.autoConnect().persistentAll();
+		})
+		.then(function(){
+			// Call mongodb directly
+			return Player.findMongoQ();
+		})
+		.then(function(players){
+			logger.debug('%j', players);
+			players.length.should.eql(2);
 
-		// 	return players[0].saveQ()
-		// 	.fail(function(e){
-		// 		logger.warn(e); // should throw error
-		// 	});
-		// })
+			return players[0].saveQ()
+			.fail(function(e){
+				logger.warn(e); // should throw error
+			});
+		})
+		.then(function(){
+			return memorydb.close();
+		})
 		.fin(function(){
 			return env.stopServer(serverProcess);
+		})
+		.nodeify(cb);
+	});
+
+	it('mdbgoose (in-process mode)', function(cb){
+		var mdbgoose = memorydb.goose;
+		var Schema = mdbgoose.Schema;
+		var types = mdbgoose.SchemaTypes;
+
+		mdbgoose.setConnectOpts();
+
+		delete mdbgoose.connection.models.player;
+		var playerSchema = new Schema({
+			_id : String,
+			areaId : String,
+			name : String,
+			fullname : {first: String, second: String},
+			extra : types.Mixed,
+		}, {collection : 'player', versionKey: false});
+
+		var Player = mdbgoose.model('player', playerSchema);
+
+		return Q.fcall(function(){
+			return memorydb.startServer(env.dbConfig('s1'));
+		})
+		.then(function(){
+			return mdbgoose.execute(function(){
+				var player1 = new Player({
+									_id : 'p1',
+									areaId: 'a2',
+									name: 'rain',
+								});
+				return Q.fcall(function(){
+					return player1.saveQ();
+				})
+				.then(function(){
+					return Player.findQ('p1');
+				})
+				.then(function(player){
+					player.name.should.eql('rain');
+					return player.removeQ();
+				});
+			});
+		})
+		.fin(function(){
+			return memorydb.stopServer();
 		})
 		.nodeify(cb);
 	});

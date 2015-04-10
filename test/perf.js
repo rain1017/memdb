@@ -28,8 +28,7 @@ describe.skip('performance test', function(){
 	it('write single doc', function(cb){
 		this.timeout(30 * 1000);
 
-		var serverProcess = null;
-		var count = 1000;
+		var count = 2000;
 		var autoconn = null;
 		var player = {_id : 1, name : 'rain', exp : 0};
 
@@ -54,12 +53,11 @@ describe.skip('performance test', function(){
 		var startTick = null;
 		var rate = null;
 		return Q.fcall(function(){
-			return env.startServer('s1');
+			return memorydb.startServer(env.dbConfig('s1'));
 		})
-		.then(function(ret){
-			serverProcess = ret;
+		.then(function(){
+			autoconn = memorydb.autoConnect();
 
-			autoconn = memorydb.autoConnect(env.config.shards.s1.host, env.config.shards.s1.port);
 			return autoconn.execute(function(){
 				var Player = autoconn.collection('player');
 				return Player.insert(player._id, player);
@@ -90,7 +88,7 @@ describe.skip('performance test', function(){
 			});
 		})
 		.fin(function(){
-			return env.stopServer(serverProcess);
+			return memorydb.stopServer();
 		})
 		.nodeify(cb);
 	});
@@ -104,7 +102,7 @@ describe.skip('performance test', function(){
 		var startTick = null;
 		var rate = null;
 		return Q.fcall(function(){
-			return memorydb.start(env.dbConfig('s1'));
+			return memorydb.startServer(env.dbConfig('s1'));
 		})
 		.then(function(){
 			autoconn = memorydb.autoConnect();
@@ -126,7 +124,7 @@ describe.skip('performance test', function(){
 			rate = count * 1000 / (Date.now() - startTick);
 		})
 		.fin(function(){
-			return memorydb.stop()
+			return memorydb.stopServer()
 			.fin(function(){
 				logger.warn('Rate: %s', rate);
 			});
@@ -147,7 +145,7 @@ describe.skip('performance test', function(){
 			var config = env.dbConfig('s1');
 			//Disable auto persistent
 			config.persistentInterval = 3600 * 1000;
-			return memorydb.start(config);
+			return memorydb.startServer(config);
 		})
 		.then(function(){
 			autoconn = memorydb.autoConnect();
@@ -173,7 +171,7 @@ describe.skip('performance test', function(){
 		})
 		.then(function(){
 			startTick = Date.now();
-			return memorydb.stop();
+			return memorydb.stopServer();
 		})
 		.then(function(){
 			rate = count * 1000 / (Date.now() - startTick);
@@ -202,7 +200,7 @@ describe.skip('performance test', function(){
 			return Q.all([db1.start(), db2.start()]);
 		})
 		.then(function(){
-			var autoconn = new AutoConnection(db1);
+			var autoconn = new AutoConnection({db : db1});
 			return autoconn.execute(function(){
 				var Player = autoconn.collection('player');
 				var promise = Q(); // jshint ignore:line
@@ -217,7 +215,7 @@ describe.skip('performance test', function(){
 		})
 		.then(function(){
 			startTick = Date.now();
-			var autoconn = new AutoConnection(db2);
+			var autoconn = new AutoConnection({db : db2});
 
 			return Q.fcall(function(){
 				return Q.all(_.range(count).map(function(id){
@@ -268,9 +266,14 @@ describe.skip('performance test', function(){
 
 			return Q.fcall(function(){
 				shards = _.range(1, shardCount + 1).map(function(shardId){
-					var config = env.dbConfig(shardId);
-					config.backendLockRetryInterval = lockRetryInterval;
-
+					var config = {
+						_id : shardId,
+						redisConfig : env.config.redisConfig,
+						backend : env.config.backend,
+						backendConfig : env.config.backendConfig,
+						slaveConfig : env.config.redisConfig,
+						backendLockRetryInterval : lockRetryInterval,
+					};
 					return new Database(config);
 				});
 
@@ -280,7 +283,7 @@ describe.skip('performance test', function(){
 			})
 			.then(function(){
 				var conns = shards.map(function(shard){
-					return new AutoConnection(shard);
+					return new AutoConnection({db : shard});
 				});
 
 				var doc = {_id : 1, name : 'rain', exp : 0};

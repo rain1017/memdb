@@ -23,7 +23,7 @@ describe('connection test', function(){
 		})
 		.then(function(ret){
 			serverProcess = ret;
-			return memorydb.connect(env.config.shards.s1.host, env.config.shards.s1.port);
+			return memorydb.connect({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
 		})
 		.then(function(ret){
 			conn = ret;
@@ -113,7 +113,7 @@ describe('connection test', function(){
 			return env.startServer('s1');
 		}).then(function(ret){
 			serverProcess = ret;
-			return memorydb.connect(env.config.shards.s1.host, env.config.shards.s1.port);
+			return memorydb.connect({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
 		})
 		.then(function(ret){
 			conn = ret;
@@ -183,7 +183,7 @@ describe('connection test', function(){
 		}).then(function(ret){
 			serverProcess = ret;
 
-			return memorydb.connect(env.config.shards.s1.host, env.config.shards.s1.port);
+			return memorydb.connect({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
 		})
 		.then(function(ret){
 			conn = ret;

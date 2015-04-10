@@ -17,7 +17,7 @@ describe('autoconnection test', function(){
 
 		var user1 = {_id : 1, name : 'rain', level : 0};
 
-		var autoconn = memorydb.autoConnect(env.config.shards[shardId].host, env.config.shards[shardId].port);
+		var autoconn = memorydb.autoConnect({host : env.config.shards[shardId].host, port : env.config.shards[shardId].port});
 
 		return Q.fcall(function(){
 			return env.startServer(shardId);

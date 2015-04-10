@@ -76,6 +76,7 @@ module.exports = {
 	flushdb : flushdb,
 	startServer : startServer,
 	stopServer : stopServer,
+
 	dbConfig : function(shardId){
 		return {
 			_id : shardId,
@@ -83,6 +84,7 @@ module.exports = {
 			backend : config.backend,
 			backendConfig : config.backendConfig,
 			slaveConfig : config.shards[shardId].slaveConfig,
+			collections : config.collections,
 		};
 	},
 };
