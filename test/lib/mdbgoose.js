@@ -39,7 +39,7 @@ describe('mdbgoose test', function(){
 
 			// connect to backend mongodb
 			return Q.nfcall(function(cb){
-				mdbgoose.connect(env.config.backendConfig.uri, cb);
+				mdbgoose.connect(env.config.backend.url, cb);
 			});
 		})
 		.then(function(){

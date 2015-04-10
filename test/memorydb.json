@@ -1,11 +1,13 @@
 {
-	"redisConfig" : {
+	"redis" : {
+		"host" : "127.0.0.1",
 		"port" : 6379,
-		"host" : "127.0.0.1"
+		"options" : {}
 	},
-	"backend" : "mongodb",
-	"backendConfig" : {
-		"uri" : "mongodb://localhost/memorydb-test"
+	"backend" : {
+		"engine" : "mongodb",
+		"url" : "mongodb://localhost/memorydb-test",
+		"options" : {}
 	},
 	"logger" : {
 		"path" : "/tmp",
@@ -23,17 +25,19 @@
 		"s1" : {
 			"host" : "127.0.0.1",
 			"port" : 3000,
-			"slaveConfig" : {
+			"slave" : {
 				"host" : "127.0.0.1",
-				"port" : 6379
+				"port" : 6379,
+				"options" : {}
 			}
 		},
 		"s2" : {
 			"host" : "127.0.0.1",
 			"port" : 3001,
-			"slaveConfig" : {
+			"slave" : {
 				"host" : "127.0.0.1",
-				"port" : 6379
+				"port" : 6379,
+				"options" : {}
 			}
 		}
 	}

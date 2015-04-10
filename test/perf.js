@@ -268,10 +268,9 @@ describe.skip('performance test', function(){
 				shards = _.range(1, shardCount + 1).map(function(shardId){
 					var config = {
 						_id : shardId,
-						redisConfig : env.config.redisConfig,
+						redis : env.config.redis,
 						backend : env.config.backend,
-						backendConfig : env.config.backendConfig,
-						slaveConfig : env.config.redisConfig,
+						slave : env.config.redis,
 						backendLockRetryInterval : lockRetryInterval,
 					};
 					return new Database(config);

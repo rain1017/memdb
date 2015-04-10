@@ -10,8 +10,8 @@ describe('backendlocker test', function(){
 
 	it('lock/unlock', function(cb){
 		var locker = new BackendLocker({
-							host : env.config.redisConfig.host,
-							port : env.config.redisConfig.port,
+							host : env.config.redis.host,
+							port : env.config.redis.port,
 							});
 
 		var docId = 'doc1', shardId = 'shard1';

@@ -5,7 +5,7 @@ var mongodb = require('mongodb');
 
 var MongoBackend = function(opts){
 	opts = opts || {};
-	this._uri = opts.uri || 'mongodb://localhost';
+	this._url = opts.url || 'mongodb://localhost/memorydb';
 	this._options = opts.options || {};
 };
 
@@ -14,7 +14,7 @@ var proto = MongoBackend.prototype;
 proto.start = function(){
 	var self = this;
 	return Q.nfcall(function(cb){
-		mongodb.MongoClient.connect(self._uri, self._options, cb);
+		mongodb.MongoClient.connect(self._url, self._options, cb);
 	}).then(function(ret){
 		self.conn = ret;
 

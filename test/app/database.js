@@ -104,14 +104,7 @@ describe('database test', function(){
 	});
 
 	it('index test', function(cb){
-		var collectionDefs = {
-			'player' : {
-				'indexes' : ['areaId'],
-			}
-		};
-		var dbConfig = env.dbConfig('s1');
-		dbConfig.collections = collectionDefs;
-		var db = new Database(dbConfig);
+		var db = new Database(env.dbConfig('s1'));
 
 		var connId = null;
 

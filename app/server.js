@@ -143,7 +143,7 @@ if (require.main === module) {
 		// Main script, will start all shards via ssh
 		Object.keys(shards).forEach(function(shardId){
 			var host = shards[shardId].host;
-			console.info('start %s via ssh...', shardId);
+			console.info('start %s via ssh... (TBD)', shardId);
 			// TODO: start shard
 		});
 	}
@@ -168,12 +168,12 @@ if (require.main === module) {
 		}
 		else{
 			var opts = {
-				_id : shardId,
+				shard : shardId,
+				host : shardConfig.host,
 				port : shardConfig.port,
-				slaveConfig : shardConfig.slaveConfig,
-				redisConfig : conf.redisConfig,
+				redis : conf.redis,
 				backend : conf.backend,
-				backendConfig : conf.backendConfig,
+				slave : shardConfig.slave,
 				collections : conf.collections,
 			};
 			startShard(opts);

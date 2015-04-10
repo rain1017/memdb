@@ -47,12 +47,20 @@ var DEFAULT_TASKLOCK_TIMEOUT = 10 * 1000;
 
 
 /**
- * opts.redisConfig - {host, port} (for backendLocker)
- * opts.backend - 'mongodb' or 'redis'
- * opts.backendConfig -
- *		{host : '127.0.0.1', port : 6379} for redis backend,
- * 		{uri : 'mongodb://localhost', options : {...}} for mongodb backend
- * opts.slaveConfig - {host, port} (redis slave for data backup)
+ * opts.redis - {host : '127.0.0.1', port : 6379} (for backendLocker)
+ * opts.backend - (for data persistent)
+ *	{
+ *		engine : 'mongodb',
+ *		url : 'mongodb://localhost',
+ *		options : {...},
+ * 	}
+ *	or
+ *  {
+ *		engine : 'redis',
+ *		host : '127.0.0.1',
+ *		port : 6379,
+ *	}
+ * opts.slave - {host : '127.0.0.1', port : 6379} (redis slave for data replication)
  *
  * Events:
  * docUpdateUncommited:CollectionName - (connectionId, docId, field, oldValue, newValue)
@@ -63,18 +71,18 @@ var Shard = function(opts){
 	opts = opts || {};
 	var self = this;
 
-	this._id = opts._id || uuid.v4();
+	this._id = opts.shard || uuid.v4();
 
-	var redisConfig = opts.redisConfig || {};
+	opts.redis = opts.redis || {};
 
 	this.config = {
-		redisConfig : {
-			host : redisConfig.host || '127.0.0.1',
-			port : redisConfig.port || 6379,
+		redis : {
+			host : opts.redis.host || '127.0.0.1',
+			port : opts.redis.port || 6379,
+			options : opts.redis.options || {},
 		},
-		backend : opts.backend || 'mongodb',
-		backendConfig : opts.backendConfig || {},
-		slaveConfig : opts.slaveConfig || {},
+		backend : opts.backend || {},
+		slave : opts.slave || {},
 
 		maxPendingTasks : opts.maxPendingTasks || DEFAULT_MAX_PENDING_TASKS,
 		persistentInterval : opts.persistentInterval || DEFAULT_PERSISTENT_INTERVAL,
@@ -91,15 +99,16 @@ var Shard = function(opts){
 	};
 
 	this.backendLocker = new BackendLocker({
-								host : this.config.redisConfig.host,
-								port : this.config.redisConfig.port,
+								host : this.config.redis.host,
+								port : this.config.redis.port,
+								options : this.config.redis.options,
 								shardHeartbeatTimeout : this.config.heartbeatTimeout,
 							});
 
-	this.backend = backends.create(this.config.backend, this.config.backendConfig);
+	this.backend = backends.create(this.config.backend);
 
 	// Redis slave for data backup
-	this.slave = new Slave(this, this.config.slaveConfig);
+	this.slave = new Slave(this, this.config.slave);
 
 	// Document storage {key : doc}
 	this.docs = {};
@@ -112,8 +121,8 @@ var Shard = function(opts){
 	this.persistentInterval = null;
 
 	// For sending messages between shards
-	var pubClient = redis.createClient(this.config.redisConfig.port, this.config.redisConfig.host);
-	var subClient = redis.createClient(this.config.redisConfig.port, this.config.redisConfig.host);
+	var pubClient = redis.createClient(this.config.redis.port, this.config.redis.host, this.config.redis.options);
+	var subClient = redis.createClient(this.config.redis.port, this.config.redis.host, this.config.redis.options);
 	this.globalEvent = new GlobalEventEmitter({pub : pubClient, sub: subClient});
 
 	// Request for unlock backend key

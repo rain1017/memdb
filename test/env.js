@@ -12,7 +12,7 @@ var config = require('./memorydb.json');
 
 var flushdb = function(cb){
 	return Q.fcall(function(){
-		return Q.ninvoke(mongodb.MongoClient, 'connect', config.backendConfig.uri, config.backendConfig.options);
+		return Q.ninvoke(mongodb.MongoClient, 'connect', config.backend.url, config.backend.options);
 	})
 	.then(function(db){
 		return Q.fcall(function(){
@@ -23,7 +23,7 @@ var flushdb = function(cb){
 		});
 	})
 	.then(function(){
-		var client = redis.createClient(config.redisConfig.port, config.redisConfig.host);
+		var client = redis.createClient(config.redis.port, config.redis.host);
 		return Q.nfcall(function(cb){
 			client.flushdb(cb);
 		})
@@ -79,11 +79,10 @@ module.exports = {
 
 	dbConfig : function(shardId){
 		return {
-			_id : shardId,
-			redisConfig : config.redisConfig,
+			shard : shardId,
+			redis : config.redis,
 			backend : config.backend,
-			backendConfig : config.backendConfig,
-			slaveConfig : config.shards[shardId].slaveConfig,
+			slave : config.shards[shardId].slave,
 			collections : config.collections,
 		};
 	},

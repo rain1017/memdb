@@ -13,7 +13,7 @@ describe('slave test', function(){
 
 	it('insert/remove', function(cb){
 		var shard = {_id : 's1'};
-		var slave = new Slave(shard, env.config.shards.s1.slaveConfig);
+		var slave = new Slave(shard, env.config.shards.s1.slave);
 
 		var key1 = 'player:1';
 		var doc1 = {exist : true, fields : {name : 'rain', age : 30}};
@@ -86,7 +86,7 @@ describe('slave test', function(){
 
 	it('getAll/clear', function(cb){
 		var shard = {_id : 's1'};
-		var slave = new Slave(shard, env.config.shards.s1.slaveConfig);
+		var slave = new Slave(shard, env.config.shards.s1.slave);
 
 		var key1 = 'player:1';
 		var doc1 = {exist : true, fields : {name : 'rain', age : 30}};

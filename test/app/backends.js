@@ -62,7 +62,11 @@ describe('backends test', function(){
 	};
 
 	it('mongo backend', function(cb){
-		var backend = backends.create('mongodb', env.config.backendConfig);
+		var opts = {
+			engine : 'mongodb',
+			url : env.config.backend.url,
+		};
+		var backend = backends.create(opts);
 		return Q.fcall(function(){
 			return testFunc(backend);
 		})
@@ -70,7 +74,12 @@ describe('backends test', function(){
 	});
 
 	it('redis backend', function(cb){
-		var backend = backends.create('redis', env.config.redisConfig);
+		var opts = {
+			engine : 'redis',
+			host : env.config.redis.host,
+			port : env.config.redis.port,
+		};
+		var backend = backends.create(opts);
 		return Q.fcall(function(){
 			return testFunc(backend);
 		})

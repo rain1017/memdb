@@ -9,15 +9,14 @@ var main = function(){
 
 	// memorydb's config
 	var config = {
-		//shard Id (optional)
-		_id : 'shard1',
+		//shard Id
+		shard : 'shard1',
 		// Center backend storage, must be same for shards in the same cluster
-		backend : 'mongodb',
-		backendConfig : {uri : 'mongodb://localhost/memorydb-test'},
+		backend : {engine : 'mongodb', url : 'mongodb://localhost/memorydb-test'},
 		// Used for backendLock, must be same for shards in the same cluster
-		redisConfig : {host : '127.0.0.1', port : 6379},
-
-		slaveConfig : {host : '127.0.0.1', port : 6379},
+		redis : {host : '127.0.0.1', port : 6379},
+		// For data replication
+		slave : {host : '127.0.0.1', port : 6379},
 	};
 
 	var doc = {_id : 1, name : 'rain', level : 1};
@@ -25,7 +24,7 @@ var main = function(){
 	var autoconn = null;
 	return Q.fcall(function(){
 		// Start memorydb
-		return memorydb.start(config);
+		return memorydb.startServer(config);
 	})
 	.then(function(){
 		// Get autoConnection
@@ -90,7 +89,7 @@ var main = function(){
 	})
 	.fin(function(){
 		// Stop memorydb
-		return memorydb.stop();
+		return memorydb.stopServer();
 	});
 };
 

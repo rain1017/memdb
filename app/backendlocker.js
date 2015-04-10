@@ -19,9 +19,10 @@ var BackendLocker = function(opts){
 	opts = opts || {};
 	var host = opts.host || '127.0.0.1';
 	var port = opts.port || 6379;
+	var options = opts.options || {};
 
 	this.prefix = 'doc2shard:';
-	this.client = redis.createClient(port, host);
+	this.client = redis.createClient(port, host, options);
 
 	this.shardHeartbeatTimeout = opts.shardHeartbeatTimeout || DEFAULT_SHARD_HEARTBEAT_TIMEOUT;
 };
