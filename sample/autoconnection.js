@@ -4,18 +4,19 @@ var memorydb = require('../lib');
 var Q = require('q');
 var should = require('should');
 
-// For distributed system, just run memorydb in each server with the same config, and each server will be a shard.
+// For distributed system, just run memorydb in each server (Each instance is a shard).
+
 var main = function(){
 
 	// memorydb's config
 	var config = {
-		//shard Id
+		//shard Id (Must unique and immutable for each server)
 		shard : 'shard1',
-		// Center backend storage, must be same for shards in the same cluster
+		// Center backend storage, must be same for all shards
 		backend : {engine : 'mongodb', url : 'mongodb://localhost/memorydb-test'},
-		// Used for backendLock, must be same for shards in the same cluster
+		// Used for backendLock, must be same for all shards
 		redis : {host : '127.0.0.1', port : 6379},
-		// For data replication
+		// Redis data replication (for current shard)
 		slave : {host : '127.0.0.1', port : 6379},
 	};
 
@@ -30,6 +31,7 @@ var main = function(){
 		// Get autoConnection
 		autoconn = memorydb.autoConnect();
 
+		// One transaction for each execution scope
 		return autoconn.execute(function(){
 			// Get collection
 			var User = autoconn.collection('user');
@@ -47,18 +49,22 @@ var main = function(){
 		}); // Auto commit here
 	})
 	.then(function(){
+		// One transaction for each execution scope
 		return autoconn.execute(function(){
+			// Get collection
 			var User = autoconn.collection('user');
 			return Q.fcall(function(){
 				// Update one field
 				return User.update(doc._id, {level : 2});
-			}).then(function(){
+			})
+			.then(function(){
 				// Find specified field
 				return User.find(doc._id, 'level')
 				.then(function(ret){
 					ret.should.eql({level : 2});
 				});
-			}).then(function(){
+			})
+			.then(function(){
 				// Exception here!
 				throw new Error('Oops!');
 			});
@@ -69,6 +75,7 @@ var main = function(){
 	})
 	.then(function(){
 		return autoconn.execute(function(){
+			// Get collection
 			var User = autoconn.collection('user');
 			return Q.fcall(function(){
 				// doc should be rolled back

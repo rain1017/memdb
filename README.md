@@ -15,7 +15,7 @@ Geting the __performance__ of in memory database, the __scalibility__ of distrib
 
 * __Transaction__ : You can commit/rollback change just like traditional database. 'row' based locking is also supported.
 
-* __High Availability : All server is backed by one or more redis replication, you will never lose and commited data.
+* __High Availability__ : All server is backed by one or more redis replication, you will never lose any commited data.
 
 ### Which is suite for memorydb?
 
@@ -32,13 +32,20 @@ Geting the __performance__ of in memory database, the __scalibility__ of distrib
 
 * A shard is a node in the distributed system
 * Each shard preserve a part of data (on demand) in local memory
-* Client is in the same process with one of the shard (Each client must connect to one shard, and all request is via this shard)
-* In process access if the requested data is already in the shard's local memory, otherwise the shard will load the data from backend.
+* The data is performed in local memory when requsted data is already in this shard, otherwise data will be synced between shards. You should access same data from the same shard if possible, this will maximize the performance
 
-### Backend
+### Backend Persistent
 
 * Backend is center persistent storage, all data in the system is eventually persistented to backend db.
-* You can choose mongodb or redis as backend.
+* Mongodb is recommended for backend engine.
+
+### Global Redis
+
+* Internal use for database global locking/event mechanism
+
+### Shard Redis Replication
+
+Every shard use redis as data replication, you can add more replication to redis too. All commited data can be restored after server failure, you will never lose any commited data.
 
 ### Collection
 
@@ -50,13 +57,13 @@ Geting the __performance__ of in memory database, the __scalibility__ of distrib
 
 ### Connection
 
-* A virtual 'connection' to database, like traditional database's connection.
+* A 'connection' to shard, like traditional database's connection.
 * Connection is not concurrency safe (due to node's async nature), DO NOT share connection in different API handlers which may run concurrently. We suggest you use AutoConnection instead.
 
 ### AutoConnection
 
 * Use one connection in each execution scope, and auto commit on execution complete and rollback on execution failure.
-* You can put each API handler in one execution scope.
+* Please put each request handler in one execution scope, therefore the request will be processed in one connection and guarded with transaction.
 
 ### Mdbgoose
 
@@ -73,10 +80,6 @@ The concurrency behavior is similar to mysql with innodb engine
 * All changes (after last commit) is not visible to other connections until being commited
 * All changes (after last commit) will be discarded after rollback or closing a connection without commit
 
-### High Availability
-
-Every shard use redis as data replication, you can add more replication to redis too. All commited data can be restored after server failure, you will never lose any commited data.
-
 ### In-process mode VS standalone mode
 
 Memorydb support two running mode: in-process and standalone. 
@@ -84,15 +87,10 @@ Memorydb support two running mode: in-process and standalone.
 * In-process mode: memorydb is used as a library and started by library caller. Both client and server is in the same node process,which can maximize performance. You can use this mode as long as your client is written with node.js.
 * Standalone mode: memorydb is started as a socket server, the client should use socket to communicate with server (like other database). This mode is more flexible and support clients from other programming languages, but at a cost of performance penalty on network transfering. Use this mode when you need to access database from other programming languages or you need more flexibility on deployment.
 
-### Best Practise
-
-* Access same data from the same shard if possible, this will maximize the performance
-* Access same data from different shards will cause the data to be synced between shards, which has huge performance penalty.
-
 
 ## Sample
 
-### Quick Start
+### The Basic
 
 ```
 var memorydb = require('memorydb');
@@ -101,71 +99,83 @@ var should = require('should');
 
 // memorydb's config
 var config = {
-	//shard Id
+	//shard Id (Must unique and immutable for each server)
 	shard : 'shard1',
-	// Center backend storage, must be same for shards in the same cluster
+	// Center backend storage, must be same for all shards
 	backend : {engine : 'mongodb', url : 'mongodb://localhost/memorydb-test'},
-	// Used for backendLock, must be same for shards in the same cluster
+	// Used for backendLock, must be same for all shards
 	redis : {host : '127.0.0.1', port : 6379},
-	// For data replication
+	// Redis data replication (for current shard)
 	slave : {host : '127.0.0.1', port : 6379},
 };
 
 var player = {_id : 'p1', name : 'rain', level : 1};
 
 var conn = null;
+
 return Q.fcall(function(){
 	// Start memorydb
 	return memorydb.startServer(config);
 })
 .then(function(){
+	// Create a new connection
 	return memorydb.connect();
 })
 .then(function(ret){
 	conn = ret;
-
+	// Insert a doc to collection 'player'
 	return conn.collection('player').insert(player._id, player);
 })
 .then(function(){
+	// Find the doc
 	return conn.collection('player').find(player._id)
 	.then(function(ret){
 		ret.should.eql(player);
 	});
 })
 .then(function(){
+	// Commit changes
 	return conn.commit();
 })
 .then(function(){
+	// Update a field
 	return conn.collection('player').update(player._id, {level : 2});
 })
 .then(function(){
+	// Find the doc (only return specified field)
 	return conn.collection('player').find(player._id, 'level')
 	.then(function(ret){
 		ret.level.should.eql(2);
 	});
 })
 .then(function(){
+	// Roll back changes
 	return conn.rollback();
 })
 .then(function(){
+	// Doc should rolled back
 	return conn.collection('player').find(player._id, 'level')
 	.then(function(ret){
-		ret.level.should.eql(1); // Rolled back to 1
+		ret.level.should.eql(1);
 	});
 })
 .then(function(){
+	// Remove doc
 	return conn.collection('player').remove(player._id);
 })
 .then(function(){
+	// Commit changes
 	return conn.commit();
 })
 .then(function(){
+	// Doc should not exist
 	return conn.collection('player').find(player._id)
 	.then(function(ret){
 		(ret === null).should.eql(true);
 	});
 })
 .then(function(){
+	// Close connection
 	return conn.close();
 })
 .fin(function(){
@@ -176,7 +186,6 @@ return Q.fcall(function(){
 // For distributed system, just run memorydb in each server with the same config, and each server will be a shard.
 
 ```
-
 
 ### AutoConnection
 
@@ -203,6 +212,7 @@ return Q.fcall(function(){
 	// Get autoConnection
 	autoconn = memorydb.autoConnect();
 
+	// One transaction for each execution scope
 	return autoconn.execute(function(){
 		// Get collection
 		var User = autoconn.collection('user');
@@ -220,18 +230,22 @@ return Q.fcall(function(){
 	}); // Auto commit here
 })
 .then(function(){
+	// One transaction for each execution scope
 	return autoconn.execute(function(){
+		// Get collection
 		var User = autoconn.collection('user');
 		return Q.fcall(function(){
 			// Update one field
 			return User.update(doc._id, {level : 2});
-		}).then(function(){
+		})
+		.then(function(){
 			// Find specified field
 			return User.find(doc._id, 'level')
 			.then(function(ret){
 				ret.should.eql({level : 2});
 			});
-		}).then(function(){
+		})
+		.then(function(){
 			// Exception here!
 			throw new Error('Oops!');
 		});
@@ -242,6 +256,7 @@ return Q.fcall(function(){
 })
 .then(function(){
 	return autoconn.execute(function(){
+		// Get collection
 		var User = autoconn.collection('user');
 		return Q.fcall(function(){
 			// doc should be rolled back
@@ -278,8 +293,9 @@ var Schema = mdbgoose.Schema;
 
 var playerSchema = new Schema({
 	_id : String,
-	areaId : String,
 	name : String,
+	fullname : {first: String, last: String},
+	extra : mdbgoose.SchemaTypes.mixed,
 }, {collection : 'player', versionKey: false});
 
 var Player = mdbgoose.model('player', playerSchema);
@@ -295,12 +311,13 @@ return Q.fcall(function(){
 })
 .then(function(){
 	return mdbgoose.execute(function(){
-		var player = new Player({
-							_id : 'p1',
-							areaId: 'a1',
-							name: 'rain',
-						});
 		return Q.fcall(function(){
+			var player = new Player({
+				_id : 'p1',
+				name: 'rain',
+				fullname : {firt : 'Yu', last : 'Xia'},
+				extra : {},
+			});
 			return player.saveQ();
 		})
 		.then(function(){
@@ -319,7 +336,45 @@ return Q.fcall(function(){
 
 ### Standalone mode
 
-TBD
+```
+/**
+ * First, start memorydb server manually
+ *
+ * node ./app/server.js --conf=./test/memorydb.json --shard=s1
+ */
+
+var memorydb = require('../lib');
+var Q = require('q');
+var should = require('should');
+
+var autoconn = null;
+return Q.fcall(function(){
+	// Connect to server, specify host and port
+	return memorydb.autoConnect({host : '127.0.0.1', port : 3000});
+})
+.then(function(ret){
+	autoconn = ret;
+
+	return autoconn.execute(function(){
+		var Player = autoconn.collection('player');
+		return Q.fcall(function(){
+			return Player.insert(1, {name : 'rain'});
+		})
+		.then(function(){
+			return Player.find(1);
+		})
+		.then(function(player){
+			player.name.should.eql('rain');
+			return Player.remove(1);
+		});
+	});
+})
+.then(function(){
+	// Close connection
+	return autoconn.close();
+});
+
+```
 
 
 ## License

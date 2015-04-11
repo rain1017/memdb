@@ -2,6 +2,7 @@
 var Q = require('q');
 var minimist = require('minimist');
 var path = require('path');
+var fs = require('fs');
 var forever = require('forever');
 var child_process = require('child_process');
 
@@ -107,18 +108,16 @@ if (require.main === module) {
 	if(confPath){
 		searchPaths.push(confPath);
 	}
-	searchPaths.push(['./memorydb.json', '~/.memorydb.json', '/etc/memorydb.json']);
+	searchPaths = searchPaths.concat(['./memorydb.json', '~/.memorydb.json', '/etc/memorydb.json']);
 	var conf = null;
 	for(var i=0; i<searchPaths.length; i++){
-		try{
-			conf = require(searchPaths[i]);
+		if(fs.existsSync(searchPaths[i])){
+			conf = require(path.resolve(searchPaths[i]));
 			break;
-		}
-		catch(e){
 		}
 	}
 	if(!conf){
-		console.error('Error: config file not found!');
+		console.error('Error: config file not found! %j', searchPaths);
 		process.exit(1);
 	}
 
@@ -140,19 +139,27 @@ if (require.main === module) {
 	var isDaemon = argv.d || argv.daemon;
 
 	if(!shardId){
+		console.error('Please specify shardId with --shard');
+		process.exit(1);
+
 		// Main script, will start all shards via ssh
-		Object.keys(shards).forEach(function(shardId){
-			var host = shards[shardId].host;
-			console.info('start %s via ssh... (TBD)', shardId);
-			// TODO: start shard
-		});
+		// Object.keys(shards).forEach(function(shardId){
+		// 	var host = shards[shardId].host;
+		// 	console.info('start %s via ssh... (TBD)', shardId);
+		// 	// TODO: start shard
+		// });
 	}
 	else{
 		// Start specific shard
 		var shardConfig = shards[shardId];
 		if(!shardConfig){
-			console.error('config not found for shard %s', shardId);
+			console.error('Shard %s not exist in config', shardId);
 			process.exit(1);
+		}
+
+		if(isDaemon){
+			console.warn('Daemon mode is not supported now');
+			isDaemon = false;
 		}
 
 		if(isDaemon && !argv.child){

@@ -9,8 +9,9 @@ var Schema = mdbgoose.Schema;
 
 var playerSchema = new Schema({
 	_id : String,
-	areaId : String,
 	name : String,
+	fullname : {first: String, last: String},
+	extra : mdbgoose.SchemaTypes.mixed,
 }, {collection : 'player', versionKey: false});
 
 var Player = mdbgoose.model('player', playerSchema);
@@ -18,13 +19,13 @@ var Player = mdbgoose.model('player', playerSchema);
 var main = function(){
 	// memorydb's config
 	var config = {
-		//shard Id
+		//shard Id (Must unique and immutable for each server)
 		shard : 'shard1',
-		// Center backend storage, must be same for shards in the same cluster
+		// Center backend storage, must be same for all shards
 		backend : {engine : 'mongodb', url : 'mongodb://localhost/memorydb-test'},
-		// Used for backendLock, must be same for shards in the same cluster
+		// Used for backendLock, must be same for all shards
 		redis : {host : '127.0.0.1', port : 6379},
-		// For data replication
+		// Redis data replication (for current shard)
 		slave : {host : '127.0.0.1', port : 6379},
 	};
 
@@ -33,12 +34,13 @@ var main = function(){
 	})
 	.then(function(){
 		return mdbgoose.execute(function(){
-			var player = new Player({
-								_id : 'p1',
-								areaId: 'a1',
-								name: 'rain',
-							});
 			return Q.fcall(function(){
+				var player = new Player({
+					_id : 'p1',
+					name: 'rain',
+					fullname : {firt : 'Yu', last : 'Xia'},
+					extra : {},
+				});
 				return player.saveQ();
 			})
 			.then(function(){
