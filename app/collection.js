@@ -102,7 +102,7 @@ proto.update = function(connId, id, doc, opts){
 	}).then(function(){
 		return self._finishIndexTasks(id);
 	}).then(function(ret){
-		logger.debug('shard[%s].collection[%s].update(%s, %s, %j, %s) => %s', self.shard._id, self.name, connId, id, doc, opts, ret);
+		logger.debug('shard[%s].collection[%s].update(%s, %s, %j, %j) => %s', self.shard._id, self.name, connId, id, doc, opts, ret);
 		return ret;
 	});
 };
@@ -131,6 +131,9 @@ proto.findByIndex = function(connId, field, value, fields){
 		if(!ids){
 			ids = {};
 		}
+		//TODO: this is a bug
+		delete ids._id;
+
 		return Q.all(Object.keys(ids).map(function(id){
 			return self.find(connId, id, fields);
 		}))
@@ -153,6 +156,11 @@ proto.findCached = function(connId, id){
 };
 
 proto._insertIndex = function(connId, id, field, value){
+	if(id === '_id'){
+		//TODO: this is a bug
+		throw new Error('index key "_id" not supported');
+	}
+
 	var self = this;
 	var indexCollection = self.db._collection(self._indexCollectionName(field));
 	return Q.fcall(function(){
@@ -163,6 +171,11 @@ proto._insertIndex = function(connId, id, field, value){
 };
 
 proto._removeIndex = function(connId, id, field, value){
+	if(id === '_id'){
+		//TODO: this is a bug
+		throw new Error('index key "_id" not supported');
+	}
+
 	var self = this;
 	var indexCollection = self.db._collection(self._indexCollectionName(field));
 	return Q.fcall(function(){

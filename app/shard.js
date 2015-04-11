@@ -71,7 +71,10 @@ var Shard = function(opts){
 	opts = opts || {};
 	var self = this;
 
-	this._id = opts.shard || uuid.v4();
+	this._id = opts.shard;
+	if(!this._id){
+		throw new Error('You must specify shard id');
+	}
 
 	opts.redis = opts.redis || {};
 

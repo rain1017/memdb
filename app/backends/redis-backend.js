@@ -1,6 +1,6 @@
 'use strict';
 
-var Q = require('q');
+var Q = global.MEMORYDB_Q || require('q');
 var redis = require('redis');
 var utils = require('../utils');
 
