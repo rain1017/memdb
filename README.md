@@ -1,13 +1,13 @@
-# memorydb
+# memdb
 
 Distributed transactional in memory database
 
-[![Build Status](https://travis-ci.org/rain1017/memorydb.svg?branch=master)](https://travis-ci.org/rain1017/memorydb)
-[![Dependencies Status](https://david-dm.org/rain1017/memorydb.svg)](https://david-dm.org/rain1017/memorydb)
+[![Build Status](https://travis-ci.org/rain1017/memdb.svg?branch=master)](https://travis-ci.org/rain1017/memdb)
+[![Dependencies Status](https://david-dm.org/rain1017/memdb.svg)](https://david-dm.org/rain1017/memdb)
 
 Geting the __performance__ of in memory database, the __scalibility__ of distributed database, and the __robustness__ of transactional database.
 
-## Why memorydb?
+## Why memdb?
 
 * __Performance__ : Data access is mainly based on in process memory, which is extremely fast.
 
@@ -17,12 +17,12 @@ Geting the __performance__ of in memory database, the __scalibility__ of distrib
 
 * __High Availability__ : All server is backed by one or more redis replication, you will never lose any commited data.
 
-### Which is suite for memorydb?
+### Which is suite for memdb?
 
 * Network intensitive realtime application
 * Online Game, Chat/Push service, etc.
 
-### Which is not suite for memorydb?
+### Which is not suite for memdb?
 
 * Application require complex SQL quering
 
@@ -67,7 +67,7 @@ Every shard use redis as data replication, you can add more replication to redis
 
 ### Mdbgoose
 
-Mdbgoose is modified from mongoose. mdbgoose for memorydb is similar to mongoose for mongodb. You can leverage the power of mongoose for object modeling. Just use it like you were using mongoose!
+Mdbgoose is modified from mongoose. mdbgoose for memdb is similar to mongoose for mongodb. You can leverage the power of mongoose for object modeling. Just use it like you were using mongoose!
 
 ### Concurrency/Locking/Transaction
 
@@ -84,8 +84,8 @@ The concurrency behavior is similar to mysql with innodb engine
 
 Memorydb support two running mode: in-process and standalone. 
 
-* In-process mode: memorydb is used as a library and started by library caller. Both client and server is in the same node process,which can maximize performance. You can use this mode as long as your client is written with node.js.
-* Standalone mode: memorydb is started as a socket server, the client should use socket to communicate with server (like other database). This mode is more flexible and support clients from other programming languages, but at a cost of performance penalty on network transfering. Use this mode when you need to access database from other programming languages or you need more flexibility on deployment.
+* In-process mode: memdb is used as a library and started by library caller. Both client and server is in the same node process,which can maximize performance. You can use this mode as long as your client is written with node.js.
+* Standalone mode: memdb is started as a socket server, the client should use socket to communicate with server (like other database). This mode is more flexible and support clients from other programming languages, but at a cost of performance penalty on network transfering. Use this mode when you need to access database from other programming languages or you need more flexibility on deployment.
 
 
 ## Sample
@@ -93,16 +93,16 @@ Memorydb support two running mode: in-process and standalone.
 ### The Basic
 
 ```
-var memorydb = require('memorydb');
+var memdb = require('memdb');
 var Q = require('q');
 var should = require('should');
 
-// memorydb's config
+// memdb's config
 var config = {
 	//shard Id (Must unique and immutable for each server)
 	shard : 'shard1',
 	// Center backend storage, must be same for all shards
-	backend : {engine : 'mongodb', url : 'mongodb://localhost/memorydb-test'},
+	backend : {engine : 'mongodb', url : 'mongodb://localhost/memdb-test'},
 	// Used for backendLock, must be same for all shards
 	redis : {host : '127.0.0.1', port : 6379},
 	// Redis data replication (for current shard)
@@ -114,12 +114,12 @@ var player = {_id : 'p1', name : 'rain', level : 1};
 var conn = null;
 
 return Q.fcall(function(){
-	// Start memorydb
-	return memorydb.startServer(config);
+	// Start memdb
+	return memdb.startServer(config);
 })
 .then(function(){
 	// Create a new connection
-	return memorydb.connect();
+	return memdb.connect();
 })
 .then(function(ret){
 	conn = ret;
@@ -179,18 +179,18 @@ return Q.fcall(function(){
 	return conn.close();
 })
 .fin(function(){
-	// Stop memorydb
-	return memorydb.stopServer();
+	// Stop memdb
+	return memdb.stopServer();
 });
 
-// For distributed system, just run memorydb in each server with the same config, and each server will be a shard.
+// For distributed system, just run memdb in each server with the same config, and each server will be a shard.
 
 ```
 
 ### AutoConnection
 
 ```
-var memorydb = require('memorydb');
+var memdb = require('memdb');
 var Q = require('q');
 var should = require('should');
 
@@ -199,18 +199,18 @@ var doc = {_id : 1, name : 'rain', level : 1};
 var autoconn = null;
 
 return Q.fcall(function(){
-	// Start memorydb
+	// Start memdb
 	var config = {	
 		shard : 'shard1',	
-		backend : {engine : 'mongodb', url : 'mongodb://localhost/memorydb-test'},	
+		backend : {engine : 'mongodb', url : 'mongodb://localhost/memdb-test'},	
 		redis : {host : '127.0.0.1', port : 6379},	
 		slave : {host : '127.0.0.1', port : 6379},
 	};	
-	return memorydb.startServer(config);
+	return memdb.startServer(config);
 })
 .then(function(){
 	// Get autoConnection
-	autoconn = memorydb.autoConnect();
+	autoconn = memdb.autoConnect();
 
 	// One transaction for each execution scope
 	return autoconn.execute(function(){
@@ -276,19 +276,19 @@ return Q.fcall(function(){
 	return autoconn.close();
 })
 .fin(function(){
-	// Stop memorydb
-	return memorydb.stopServer();
+	// Stop memdb
+	return memdb.stopServer();
 });
 
 ```
 
 ### Mdbgoose
 ```
-var memorydb = require('memorydb');
+var memdb = require('memdb');
 var Q = require('q');
 var should = require('should');
 
-var mdbgoose = memorydb.goose;
+var mdbgoose = memdb.goose;
 var Schema = mdbgoose.Schema;
 
 var playerSchema = new Schema({
@@ -303,11 +303,11 @@ var Player = mdbgoose.model('player', playerSchema);
 return Q.fcall(function(){
 	var config = {	
 		shard : 'shard1',	
-		backend : {engine : 'mongodb', url : 'mongodb://localhost/memorydb-test'},
+		backend : {engine : 'mongodb', url : 'mongodb://localhost/memdb-test'},
 		redis : {host : '127.0.0.1', port : 6379},
 		slave : {host : '127.0.0.1', port : 6379},
 	};
-	return memorydb.startServer(config);
+	return memdb.startServer(config);
 })
 .then(function(){
 	return mdbgoose.execute(function(){
@@ -330,7 +330,7 @@ return Q.fcall(function(){
 	});
 })
 .fin(function(){
-	return memorydb.stopServer();
+	return memdb.stopServer();
 });
 ```
 
@@ -338,19 +338,19 @@ return Q.fcall(function(){
 
 ```
 /**
- * First, start memorydb server manually
+ * First, start memdb server manually
  *
- * node ./app/server.js --conf=./test/memorydb.json --shard=s1
+ * node ./app/server.js --conf=./test/memdb.json --shard=s1
  */
 
-var memorydb = require('../lib');
+var memdb = require('../lib');
 var Q = require('q');
 var should = require('should');
 
 var autoconn = null;
 return Q.fcall(function(){
 	// Connect to server, specify host and port
-	return memorydb.autoConnect({host : '127.0.0.1', port : 3000});
+	return memdb.autoConnect({host : '127.0.0.1', port : 3000});
 })
 .then(function(ret){
 	autoconn = ret;

@@ -4,7 +4,7 @@ var Q = require('q');
 var util = require('util');
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
-var logger = require('pomelo-logger').getLogger('memorydb', __filename);
+var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 /**
  * opts.indexes - [field, field]

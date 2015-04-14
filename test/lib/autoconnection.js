@@ -3,7 +3,7 @@
 var Q = require('q');
 var _ = require('lodash');
 var should = require('should');
-var memorydb = require('../../lib');
+var memdb = require('../../lib');
 var env = require('../env');
 var logger = require('pomelo-logger').getLogger('test', __filename);
 
@@ -17,7 +17,7 @@ describe('autoconnection test', function(){
 
 		var user1 = {_id : 1, name : 'rain', level : 0};
 
-		var autoconn = memorydb.autoConnect({host : env.config.shards[shardId].host, port : env.config.shards[shardId].port});
+		var autoconn = memdb.autoConnect({host : env.config.shards[shardId].host, port : env.config.shards[shardId].port});
 
 		return Q.fcall(function(){
 			return env.startServer(shardId);
@@ -99,7 +99,7 @@ describe('autoconnection test', function(){
 			});
 		})
 		.then(function(){
-			return memorydb.close();
+			return memdb.close();
 		})
 		.fin(function(){
 			return env.stopServer(serverProcess);

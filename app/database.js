@@ -6,7 +6,7 @@ var EventEmitter = require('events').EventEmitter;
 var Collection = require('./collection');
 var Connection = require('./connection');
 var Shard = require('./shard');
-var logger = require('pomelo-logger').getLogger('memorydb', __filename);
+var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 /**
  * opts.collections - {name : definition}

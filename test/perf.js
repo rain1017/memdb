@@ -4,7 +4,7 @@ var Q = require('q');
 var _ = require('lodash');
 var should = require('should');
 var env = require('./env');
-var memorydb = require('../lib');
+var memdb = require('../lib');
 var Database = require('../app/database');
 var AutoConnection = require('../lib/autoconnection');
 
@@ -53,10 +53,10 @@ describe.skip('performance test', function(){
 		var startTick = null;
 		var rate = null;
 		return Q.fcall(function(){
-			return memorydb.startServer(env.dbConfig('s1'));
+			return memdb.startServer(env.dbConfig('s1'));
 		})
 		.then(function(){
-			autoconn = memorydb.autoConnect();
+			autoconn = memdb.autoConnect();
 
 			return autoconn.execute(function(){
 				var Player = autoconn.collection('player');
@@ -88,7 +88,7 @@ describe.skip('performance test', function(){
 			});
 		})
 		.fin(function(){
-			return memorydb.stopServer();
+			return memdb.stopServer();
 		})
 		.nodeify(cb);
 	});
@@ -102,10 +102,10 @@ describe.skip('performance test', function(){
 		var startTick = null;
 		var rate = null;
 		return Q.fcall(function(){
-			return memorydb.startServer(env.dbConfig('s1'));
+			return memdb.startServer(env.dbConfig('s1'));
 		})
 		.then(function(){
-			autoconn = memorydb.autoConnect();
+			autoconn = memdb.autoConnect();
 
 			startTick = Date.now();
 			return autoconn.execute(function(){
@@ -124,7 +124,7 @@ describe.skip('performance test', function(){
 			rate = count * 1000 / (Date.now() - startTick);
 		})
 		.fin(function(){
-			return memorydb.stopServer()
+			return memdb.stopServer()
 			.fin(function(){
 				logger.warn('Rate: %s', rate);
 			});
@@ -145,10 +145,10 @@ describe.skip('performance test', function(){
 			var config = env.dbConfig('s1');
 			//Disable auto persistent
 			config.persistentInterval = 3600 * 1000;
-			return memorydb.startServer(config);
+			return memdb.startServer(config);
 		})
 		.then(function(){
-			autoconn = memorydb.autoConnect();
+			autoconn = memdb.autoConnect();
 
 			startTick = Date.now();
 			return autoconn.execute(function(){
@@ -171,7 +171,7 @@ describe.skip('performance test', function(){
 		})
 		.then(function(){
 			startTick = Date.now();
-			return memorydb.stopServer();
+			return memdb.stopServer();
 		})
 		.then(function(){
 			rate = count * 1000 / (Date.now() - startTick);

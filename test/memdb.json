@@ -6,7 +6,7 @@
 	},
 	"backend" : {
 		"engine" : "mongodb",
-		"url" : "mongodb://localhost/memorydb-test",
+		"url" : "mongodb://localhost/memdb-test",
 		"options" : {}
 	},
 	"logger" : {

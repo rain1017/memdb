@@ -4,7 +4,7 @@ var Q = require('q');
 var _ = require('lodash');
 var should = require('should');
 var env = require('../env');
-var memorydb = require('../../lib');
+var memdb = require('../../lib');
 var logger = require('pomelo-logger').getLogger('test', __filename);
 
 describe('connection test', function(){
@@ -23,7 +23,7 @@ describe('connection test', function(){
 		})
 		.then(function(ret){
 			serverProcess = ret;
-			return memorydb.connect({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
+			return memdb.connect({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
 		})
 		.then(function(ret){
 			conn = ret;
@@ -113,7 +113,7 @@ describe('connection test', function(){
 			return env.startServer('s1');
 		}).then(function(ret){
 			serverProcess = ret;
-			return memorydb.connect({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
+			return memdb.connect({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
 		})
 		.then(function(ret){
 			conn = ret;
@@ -183,7 +183,7 @@ describe('connection test', function(){
 		}).then(function(ret){
 			serverProcess = ret;
 
-			return memorydb.connect({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
+			return memdb.connect({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
 		})
 		.then(function(ret){
 			conn = ret;

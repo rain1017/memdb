@@ -1,10 +1,10 @@
 'use strict';
 
-var memorydb = require('../lib');
+var memdb = require('../lib');
 var Q = require('q');
 var should = require('should');
 
-var mdbgoose = memorydb.goose;
+var mdbgoose = memdb.goose;
 var Schema = mdbgoose.Schema;
 
 var playerSchema = new Schema({
@@ -17,12 +17,12 @@ var playerSchema = new Schema({
 var Player = mdbgoose.model('player', playerSchema);
 
 var main = function(){
-	// memorydb's config
+	// memdb's config
 	var config = {
 		//shard Id (Must unique and immutable for each server)
 		shard : 'shard1',
 		// Center backend storage, must be same for all shards
-		backend : {engine : 'mongodb', url : 'mongodb://localhost/memorydb-test'},
+		backend : {engine : 'mongodb', url : 'mongodb://localhost/memdb-test'},
 		// Used for backendLock, must be same for all shards
 		redis : {host : '127.0.0.1', port : 6379},
 		// Redis data replication (for current shard)
@@ -30,7 +30,7 @@ var main = function(){
 	};
 
 	return Q.fcall(function(){
-		return memorydb.startServer(config);
+		return memdb.startServer(config);
 	})
 	.then(function(){
 		return mdbgoose.execute(function(){
@@ -53,7 +53,7 @@ var main = function(){
 		});
 	})
 	.fin(function(){
-		return memorydb.stopServer();
+		return memdb.stopServer();
 	});
 };
 

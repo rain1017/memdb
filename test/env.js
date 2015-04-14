@@ -8,7 +8,7 @@ var logger = require('pomelo-logger').getLogger('test', __filename);
 var Q = require('q');
 Q.longStackSupport = true;
 
-var config = require('./memorydb.json');
+var config = require('./memdb.json');
 
 var flushdb = function(cb){
 	return Q.fcall(function(){
@@ -38,7 +38,7 @@ var flushdb = function(cb){
 };
 
 var startServer = function(shardId){
-	var confPath = path.join(__dirname, 'memorydb.json');
+	var confPath = path.join(__dirname, 'memdb.json');
 	var serverScript = path.join(__dirname, '../app/server.js');
 	var args = [serverScript, '--conf=' + confPath, '--shard=' + shardId];
 	var serverProcess = child_process.spawn(process.execPath, args);

@@ -12,7 +12,7 @@ var backends = require('./backends');
 var Document = require('./document'); //jshint ignore:line
 var BackendLocker = require('./backendlocker');
 var Slave = require('./slave');
-var logger = require('pomelo-logger').getLogger('memorydb', __filename);
+var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 var STATE = {
 	INITED : 0,

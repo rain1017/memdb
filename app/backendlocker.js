@@ -4,7 +4,7 @@ var Q = require('q');
 var util = require('util');
 var utils = require('./utils');
 var redis = require('redis');
-var logger = require('pomelo-logger').getLogger('memorydb', __filename);
+var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 var DEFAULT_SHARD_HEARTBEAT_TIMEOUT = 180 * 1000;
 

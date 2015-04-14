@@ -5,7 +5,7 @@ var util = require('util');
 var deepcopy = require('deepcopy');
 var AsyncLock = require('async-lock');
 var EventEmitter = require('events').EventEmitter;
-var logger = require('pomelo-logger').getLogger('memorydb', __filename);
+var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 /**
  *

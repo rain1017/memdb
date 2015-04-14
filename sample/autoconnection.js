@@ -1,19 +1,19 @@
 'use strict';
 
-var memorydb = require('../lib');
+var memdb = require('../lib');
 var Q = require('q');
 var should = require('should');
 
-// For distributed system, just run memorydb in each server (Each instance is a shard).
+// For distributed system, just run memdb in each server (Each instance is a shard).
 
 var main = function(){
 
-	// memorydb's config
+	// memdb's config
 	var config = {
 		//shard Id (Must unique and immutable for each server)
 		shard : 'shard1',
 		// Center backend storage, must be same for all shards
-		backend : {engine : 'mongodb', url : 'mongodb://localhost/memorydb-test'},
+		backend : {engine : 'mongodb', url : 'mongodb://localhost/memdb-test'},
 		// Used for backendLock, must be same for all shards
 		redis : {host : '127.0.0.1', port : 6379},
 		// Redis data replication (for current shard)
@@ -24,12 +24,12 @@ var main = function(){
 
 	var autoconn = null;
 	return Q.fcall(function(){
-		// Start memorydb
-		return memorydb.startServer(config);
+		// Start memdb
+		return memdb.startServer(config);
 	})
 	.then(function(){
 		// Get autoConnection
-		autoconn = memorydb.autoConnect();
+		autoconn = memdb.autoConnect();
 
 		// One transaction for each execution scope
 		return autoconn.execute(function(){
@@ -95,8 +95,8 @@ var main = function(){
 		return autoconn.close();
 	})
 	.fin(function(){
-		// Stop memorydb
-		return memorydb.stopServer();
+		// Stop memdb
+		return memdb.stopServer();
 	});
 };
 

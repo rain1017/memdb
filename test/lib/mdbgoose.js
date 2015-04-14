@@ -4,7 +4,7 @@ var Q = require('q');
 var util = require('util');
 var should = require('should');
 var env = require('../env');
-var memorydb = require('../../lib');
+var memdb = require('../../lib');
 var logger = require('pomelo-logger').getLogger('test', __filename);
 
 describe('mdbgoose test', function(){
@@ -12,7 +12,7 @@ describe('mdbgoose test', function(){
 	after(env.flushdb);
 
 	it('mdbgoose', function(cb){
-		var mdbgoose = memorydb.goose;
+		var mdbgoose = memdb.goose;
 		var Schema = mdbgoose.Schema;
 		var types = mdbgoose.SchemaTypes;
 
@@ -126,7 +126,7 @@ describe('mdbgoose test', function(){
 			});
 		})
 		.then(function(){
-			return memorydb.close();
+			return memdb.close();
 		})
 		.fin(function(){
 			return env.stopServer(serverProcess);
@@ -135,7 +135,7 @@ describe('mdbgoose test', function(){
 	});
 
 	it('mdbgoose (in-process mode)', function(cb){
-		var mdbgoose = memorydb.goose;
+		var mdbgoose = memdb.goose;
 		var Schema = mdbgoose.Schema;
 		var types = mdbgoose.SchemaTypes;
 
@@ -153,7 +153,7 @@ describe('mdbgoose test', function(){
 		var Player = mdbgoose.model('player', playerSchema);
 
 		return Q.fcall(function(){
-			return memorydb.startServer(env.dbConfig('s1'));
+			return memdb.startServer(env.dbConfig('s1'));
 		})
 		.then(function(){
 			return mdbgoose.execute(function(){
@@ -175,7 +175,7 @@ describe('mdbgoose test', function(){
 			});
 		})
 		.fin(function(){
-			return memorydb.stopServer();
+			return memdb.stopServer();
 		})
 		.nodeify(cb);
 	});

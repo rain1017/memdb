@@ -5,7 +5,7 @@ var mongodb = require('mongodb');
 
 var MongoBackend = function(opts){
 	opts = opts || {};
-	this._url = opts.url || 'mongodb://localhost/memorydb';
+	this._url = opts.url || 'mongodb://localhost/memdb';
 	this._options = opts.options || {};
 };
 

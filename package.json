@@ -1,16 +1,16 @@
 {
-	"name": "memorydb",
+	"name": "memdb",
 	"description": "distributed transactional in memory database",
 	"version": "0.2.0",
 	"author": "rain1017",
 	"private" : true,
-	"homepage" : "https://github.com/rain1017/memorydb",
+	"homepage" : "https://github.com/rain1017/memdb",
 	"repository" : {
 		"type" : "git",
-		"url" : "https://github.com/rain1017/memorydb.git"
+		"url" : "https://github.com/rain1017/memdb.git"
 	},
 	"bugs" : {
-		"url" : "https://github.com/rain1017/memorydb/issues"
+		"url" : "https://github.com/rain1017/memdb/issues"
 	},
 	"keywords" : [
 		"memory",

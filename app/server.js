@@ -7,7 +7,7 @@ var forever = require('forever');
 var child_process = require('child_process');
 
 var pomeloLogger = require('pomelo-logger');
-var logger = pomeloLogger.getLogger('memorydb', __filename);
+var logger = pomeloLogger.getLogger('memdb', __filename);
 
 var startShard = function(opts){
 	var Database = require('./database');
@@ -108,7 +108,7 @@ if (require.main === module) {
 	if(confPath){
 		searchPaths.push(confPath);
 	}
-	searchPaths = searchPaths.concat(['./memorydb.json', '~/.memorydb.json', '/etc/memorydb.json']);
+	searchPaths = searchPaths.concat(['./memdb.json', '~/.memdb.json', '/etc/memdb.json']);
 	var conf = null;
 	for(var i=0; i<searchPaths.length; i++){
 		if(fs.existsSync(searchPaths[i])){
@@ -128,7 +128,7 @@ if (require.main === module) {
 	// Configure logger
 	var loggerConf = conf.logger || {};
 
-	var base = loggerConf.path || '/var/log/memorydb';
+	var base = loggerConf.path || '/var/log/memdb';
 	pomeloLogger.configure(path.join(__dirname, 'log4js.json'), {shardId : shardId, base : base});
 
 	var level = loggerConf.level || 'INFO';

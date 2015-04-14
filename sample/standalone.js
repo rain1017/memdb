@@ -1,20 +1,20 @@
 'use strict';
 
-var memorydb = require('../lib');
+var memdb = require('../lib');
 var Q = require('q');
 var should = require('should');
 
 /**
- * Start memorydb server manually first
+ * Start memdb server manually first
  *
- * node ../app/server.js --conf=../test/memorydb.json --shard=s1
+ * node ../app/server.js --conf=../test/memdb.json --shard=s1
  */
 
 var main = function(){
 	var autoconn = null;
 	return Q.fcall(function(){
 		// Connect to server, specify host and port
-		return memorydb.autoConnect({host : '127.0.0.1', port : 3000});
+		return memdb.autoConnect({host : '127.0.0.1', port : 3000});
 	})
 	.then(function(ret){
 		autoconn = ret;
