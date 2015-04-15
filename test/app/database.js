@@ -43,13 +43,17 @@ describe('database test', function(){
 			return db.update(connId, 'user', user1._id, {age : 31});
 		})
 		.then(function(){
-			return db.find(connId, 'user', user1._id, 'age')
+			return P.try(function(){
+				return db.find(connId, 'user', user1._id, 'age');
+			})
 			.then(function(ret){
 				ret.age.should.eql(31);
 			});
 		})
 		.then(function(){
-			return db.find(connId, 'user', user2._id)
+			return P.try(function(){
+				return db.find(connId, 'user', user2._id);
+			})
 			.then(function(ret){
 				ret.should.eql(user2);
 			});
@@ -61,7 +65,9 @@ describe('database test', function(){
 			return db.insert(connId, 'news', news1._id, news1);
 		})
 		.then(function(){
-			return db.find(connId, 'user', user2._id)
+			return P.try(function(){
+				return db.find(connId, 'user', user2._id);
+			})
 			.then(function(ret){
 				(ret === null).should.eql(true);
 			});
@@ -70,19 +76,25 @@ describe('database test', function(){
 			return db.rollback(connId);
 		})
 		.then(function(){
-			return db.find(connId, 'user', user1._id)
+			return P.try(function(){
+				return db.find(connId, 'user', user1._id);
+			})
 			.then(function(ret){
 				ret.should.eql(user1);
 			});
 		})
 		.then(function(){
-			return db.find(connId, 'user', user2._id)
+			return P.try(function(){
+				return db.find(connId, 'user', user2._id);
+			})
 			.then(function(ret){
 				ret.should.eql(user2);
 			});
 		})
 		.then(function(){
-			return db.find(connId, 'news', news1._id)
+			return P.try(function(){
+				return db.find(connId, 'news', news1._id);
+			})
 			.then(function(ret){
 				(ret === null).should.eql(true);
 			});
@@ -202,13 +214,17 @@ describe('database test', function(){
 			connId = db2.connect();
 		})
 		.then(function(){
-			return db2.find(connId, 'player', player1._id)
+			return P.try(function(){
+				return db2.find(connId, 'player', player1._id);
+			})
 			.then(function(ret){
 				ret.should.eql(player1);
 			});
 		})
 		.then(function(){
-			return db2.find(connId, 'player', player2._id)
+			return P.try(function(){
+				return db2.find(connId, 'player', player2._id);
+			})
 			.then(function(ret){
 				ret.should.eql(player2);
 			});

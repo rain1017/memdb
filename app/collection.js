@@ -56,10 +56,6 @@ proto.insert = function(connId, id, doc){
 	})
 	.then(function(){
 		return this._finishIndexTasks(id);
-	})
-	.then(function(ret){
-		logger.debug('shard[%s].collection[%s].insert(%s, %s, %j) => %s', this.shard._id, this.name, connId, id, doc, ret);
-		return ret;
 	});
 };
 
@@ -73,22 +69,11 @@ proto.remove = function(connId, id){
 	})
 	.then(function(){
 		return this._finishIndexTasks(id);
-	})
-	.then(function(ret){
-		logger.debug('shard[%s].collection[%s].remove(%s, %s) => %s', this.shard._id, this.name, connId, id, ret);
-		return ret;
 	});
 };
 
 proto.find = function(connId, id, fields){
-	return P.bind(this)
-	.then(function(){
-		return this.shard.find(connId, this._key(id), fields);
-	})
-	.then(function(ret){
-		logger.debug('shard[%s].collection[%s].find(%s, %s, %s) => %j', this.shard._id, this.name, connId, id, fields, ret);
-		return ret;
-	});
+	return this.shard.find(connId, this._key(id), fields);
 };
 
 proto.findForUpdate = function(connId, id, fields){
@@ -111,10 +96,6 @@ proto.update = function(connId, id, doc, opts){
 	})
 	.then(function(){
 		return this._finishIndexTasks(id);
-	})
-	.then(function(ret){
-		logger.debug('shard[%s].collection[%s].update(%s, %s, %j, %j) => %s', this.shard._id, this.name, connId, id, doc, opts, ret);
-		return ret;
 	});
 };
 
@@ -128,7 +109,6 @@ proto.lock = function(connId, id){
 	})
 	.then(function(ret){
 		this.emit('lock', connId, id);
-		logger.debug('shard[%s].collection[%s].lock(%s, %s) => %s', this.shard._id, this.name, connId, id, ret);
 		return ret;
 	});
 };
@@ -152,23 +132,12 @@ proto.findByIndex = function(connId, field, value, fields){
 		})
 		.map(function(id){
 			return this.find(connId, id, fields);
-		})
-		.then(function(ret){
-			logger.debug('shard[%s].collection[%s].findByIndex(%s, %s, %s, %s) => %j', this.shard._id, this.name, connId, field, value, fields, ret);
-			return ret;
 		});
 	});
 };
 
 proto.findCached = function(connId, id){
-	return P.bind(this)
-	.then(function(){
-		return this.shard.findCached(connId, this._key(id));
-	})
-	.then(function(ret){
-		logger.debug('shard[%s].collection[%s].findCached(%s, %s) => %j', this.shard._id, this.name, connId, id, ret);
-		return ret;
-	});
+	return this.shard.findCached(connId, this._key(id));
 };
 
 proto._insertIndex = function(connId, id, field, value){

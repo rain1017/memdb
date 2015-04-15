@@ -20,20 +20,14 @@ describe.skip('performance test', function(){
 	it('write single doc', function(cb){
 		this.timeout(30 * 1000);
 
-		var count = 2000;
+		var count = 5000;
 		var autoconn = null;
 		var player = {_id : 1, name : 'rain', exp : 0};
 
 		var incPlayerExp = function(){
 			return autoconn.execute(function(){
 				var Player = autoconn.collection('player');
-				return P.try(function(){
-					return Player.findForUpdate(player._id);
-				})
-				.then(function(doc){
-					doc.exp++;
-					return Player.update(player._id, doc);
-				});
+				return Player.update(player._id, {exp : 1});
 			})
 			.catch(function(e){
 				logger.error(e);
@@ -84,7 +78,7 @@ describe.skip('performance test', function(){
 	it('write single doc in one transcation', function(cb){
 		this.timeout(30 * 1000);
 
-		var count = 10000;
+		var count = 50000;
 		var autoconn = null;
 
 		var startTick = null;
@@ -170,7 +164,7 @@ describe.skip('performance test', function(){
 	it('move huge docs across shards', function(cb){
 		this.timeout(30 * 1000);
 
-		var count = 1000, requestRate = 200;
+		var count = 1000, requestRate = 300;
 		var db1 = null, db2 = null;
 		var startTick = null, responseTimeTotal = 0;
 
@@ -215,6 +209,9 @@ describe.skip('performance test', function(){
 					.then(function(){
 						responseTimeTotal += Date.now() - start;
 					});
+				})
+				.catch(function(e){
+					logger.warn(e);
 				});
 			});
 		})
@@ -250,7 +247,7 @@ describe.skip('performance test', function(){
 			return P.try(function(){
 				shards = _.range(1, shardCount + 1).map(function(shardId){
 					var config = {
-						_id : shardId,
+						shard : shardId,
 						redis : env.config.redis,
 						backend : env.config.backend,
 						slave : env.config.redis,
@@ -326,7 +323,7 @@ describe.skip('performance test', function(){
 		 */
 		var promise = P.resolve();
 		var counts = [4, 8, 16, 32, 64, 128];
-		var reqRate = 300;
+		var reqRate = 500;
 		var retryDelay = 100;
 		counts.forEach(function(count){
 			promise = promise.then(function(){
