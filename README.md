@@ -364,6 +364,13 @@ return P.try(function(){
 
 ```
 
+## Performance Metric
+
+The following data is tested on Intel Xeon 2.9G, Ubuntu 14.04, Node v0.10.33, using in-process mode
+
+Transaction inside one shard: 2500/sec
+Query (simple update) inside one shard: 50000/sec
+Across shard access to one document: 400/sec
 
 ## License
 (The MIT License)
