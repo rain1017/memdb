@@ -1,6 +1,6 @@
 'use strict';
 
-var Q = require('q');
+var P = require('bluebird');
 var util = require('util');
 var should = require('should');
 var env = require('../env');
@@ -30,7 +30,7 @@ describe('slave test', function(){
 			},
 		};
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			return slave.start();
 		})
 		.then(function(){
@@ -93,7 +93,7 @@ describe('slave test', function(){
 		var key2 = 'player:2';
 		var doc2 = {exist : false, fields : {}};
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			return slave.start();
 		})
 		.then(function(){

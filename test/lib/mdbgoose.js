@@ -1,6 +1,6 @@
 'use strict';
 
-var Q = require('q');
+var P = require('bluebird');
 var util = require('util');
 var should = require('should');
 var env = require('../env');
@@ -31,16 +31,14 @@ describe('mdbgoose test', function(){
 
 		var serverProcess = null;
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			return env.startServer('s1');
 		})
 		.then(function(ret){
 			serverProcess = ret;
 
 			// connect to backend mongodb
-			return Q.nfcall(function(cb){
-				mdbgoose.connect(env.config.backend.url, cb);
-			});
+			return mdbgoose.connectAsync(env.config.backend.url);
 		})
 		.then(function(){
 			return mdbgoose.execute(function(){
@@ -58,11 +56,11 @@ describe('mdbgoose test', function(){
 									fullname: {first: 'first', second: 'second'},
 									extra: {},
 								});
-				return Q.fcall(function(){
-					return player1.saveQ();
+				return P.try(function(){
+					return player1.saveAsync();
 				})
 				.then(function(){
-					return Player.findForUpdateQ('p1');
+					return Player.findForUpdateAsync('p1');
 				})
 				.then(function(player){
 					logger.debug('%j', player);
@@ -74,11 +72,11 @@ describe('mdbgoose test', function(){
 					player.fullname.second = 'changed second';
 					player.extra = {xx1 : 'changed extra'};
 
-					return player.saveQ();
+					return player.saveAsync();
 				})
 				.then(function(){
-					return Q.fcall(function(){
-						return Player.findQ('p1');
+					return P.try(function(){
+						return Player.findAsync('p1');
 					})
 					.then(function(player){
 						logger.debug('%j', player);
@@ -86,11 +84,11 @@ describe('mdbgoose test', function(){
 					});
 				})
 				.then(function(){
-					return player2.saveQ();
+					return player2.saveAsync();
 				})
 				.then(function(){
-					return Q.fcall(function(){
-						return Player.findByIndexQ('areaId', 'a1');
+					return P.try(function(){
+						return Player.findByIndexAsync('areaId', 'a1');
 					})
 					.then(function(players){
 						logger.debug('%j', players);
@@ -101,7 +99,7 @@ describe('mdbgoose test', function(){
 					});
 				})
 				.then(function(){
-					return Player.findCachedQ('p1')
+					return Player.findCachedAsync('p1')
 					.then(function(ret){
 						logger.debug('%j', ret);
 					});
@@ -114,21 +112,21 @@ describe('mdbgoose test', function(){
 		})
 		.then(function(){
 			// Call mongodb directly
-			return Player.findMongoQ();
+			return Player.findMongoAsync();
 		})
 		.then(function(players){
 			logger.debug('%j', players);
 			players.length.should.eql(2);
 
-			return players[0].saveQ()
-			.fail(function(e){
+			return players[0].saveAsync()
+			.catch(function(e){
 				logger.warn(e); // should throw error
 			});
 		})
 		.then(function(){
 			return memdb.close();
 		})
-		.fin(function(){
+		.finally(function(){
 			return env.stopServer(serverProcess);
 		})
 		.nodeify(cb);
@@ -152,7 +150,7 @@ describe('mdbgoose test', function(){
 
 		var Player = mdbgoose.model('player', playerSchema);
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			return memdb.startServer(env.dbConfig('s1'));
 		})
 		.then(function(){
@@ -162,19 +160,19 @@ describe('mdbgoose test', function(){
 									areaId: 'a2',
 									name: 'rain',
 								});
-				return Q.fcall(function(){
-					return player1.saveQ();
+				return P.try(function(){
+					return player1.saveAsync();
 				})
 				.then(function(){
-					return Player.findQ('p1');
+					return Player.findAsync('p1');
 				})
 				.then(function(player){
 					player.name.should.eql('rain');
-					return player.removeQ();
+					return player.removeAsync();
 				});
 			});
 		})
-		.fin(function(){
+		.finally(function(){
 			return memdb.stopServer();
 		})
 		.nodeify(cb);

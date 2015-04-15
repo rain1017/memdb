@@ -1,6 +1,6 @@
 'use strict';
 
-var Q = require('q');
+var P = require('bluebird');
 var util = require('util');
 var EventEmitter = require('events').EventEmitter;
 var Collection = require('./collection');
@@ -93,20 +93,21 @@ proto.findByIndex = function(connId, name, field, value, fields){
 };
 
 proto.commit = function(connId){
-	var self = this;
-	var conn = self._connection(connId);
-	return Q.fcall(function(){
-		return self.shard.commit(connId, conn.getLockedKeys());
+	var conn = this._connection(connId);
+	return P.bind(this)
+	.then(function(){
+		return this.shard.commit(connId, conn.getLockedKeys());
 	})
 	.then(function(){
 		conn.clearLockedKeys();
-		logger.info('shard[%s] connection[%s] commited', self.shard._id, connId);
+		logger.info('shard[%s] connection[%s] commited', this.shard._id, connId);
 	});
 };
 
 proto.rollback = function(connId){
+	var conn = this._connection(connId);
+
 	var self = this;
-	var conn = self._connection(connId);
 	conn.getLockedKeys().forEach(function(key){
 		self.shard.rollback(connId, key);
 	});

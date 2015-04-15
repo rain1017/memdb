@@ -1,6 +1,6 @@
 'use strict';
 
-var Q = require('q');
+var P = require('bluebird');
 var _ = require('lodash');
 var should = require('should');
 var memdb = require('../../lib');
@@ -19,7 +19,7 @@ describe('autoconnection test', function(){
 
 		var autoconn = memdb.autoConnect({host : env.config.shards[shardId].host, port : env.config.shards[shardId].port});
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			return env.startServer(shardId);
 		})
 		.then(function(ret){
@@ -34,11 +34,10 @@ describe('autoconnection test', function(){
 			var count = 8;
 
 			var delay = 0;
-			return Q.all(_.range(count).map(function(){
+			return P.map(_.range(count), function(){
 				delay += 10;
 
-				return Q() // jshint ignore:line
-				.delay(delay)
+				return P.delay(delay)
 				.then(function(){
 					// Simulate non-atomic check and update operation
 					// each 'thread' add 1 to user1.level
@@ -46,7 +45,7 @@ describe('autoconnection test', function(){
 						var User = autoconn.collection('user');
 						var level = null;
 
-						return Q.fcall(function(){
+						return P.try(function(){
 							return User.findForUpdate(user1._id, 'level');
 						})
 						.then(function(ret){
@@ -58,11 +57,11 @@ describe('autoconnection test', function(){
 						});
 					});
 				});
-			}))
+			})
 			.then(function(){
 				return autoconn.execute(function(){
 					var User = autoconn.collection('user');
-					return Q.fcall(function(){
+					return P.try(function(){
 						return User.find(user1._id);
 					})
 					.then(function(ret){
@@ -75,7 +74,7 @@ describe('autoconnection test', function(){
 		})
 		.then(function(){
 			return autoconn.execute(function(){
-				return Q.fcall(function(){
+				return P.try(function(){
 					var User = autoconn.collection('user');
 					return User.insert(user1._id, user1);
 				}).then(function(){
@@ -89,7 +88,7 @@ describe('autoconnection test', function(){
 		})
 		.then(function(){
 			return autoconn.execute(function(){
-				return Q.fcall(function(){
+				return P.try(function(){
 					var User = autoconn.collection('user');
 					return User.find(user1._id);
 				})
@@ -101,7 +100,7 @@ describe('autoconnection test', function(){
 		.then(function(){
 			return memdb.close();
 		})
-		.fin(function(){
+		.finally(function(){
 			return env.stopServer(serverProcess);
 		})
 		.nodeify(cb);

@@ -1,6 +1,6 @@
 'use strict';
 
-var Q = require('q');
+var P = require('bluebird');
 var _ = require('lodash');
 var should = require('should');
 var env = require('../env');
@@ -11,7 +11,7 @@ describe('server test', function(){
 	after(env.flushdb);
 
 	it('start/stop server', function(cb){
-		return Q.fcall(function(){
+		return P.try(function(){
 			return env.startServer('s1');
 		})
 		.then(function(serverProcess){

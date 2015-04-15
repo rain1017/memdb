@@ -1,6 +1,6 @@
 'use strict';
 
-var Q = require('q');
+var P = require('bluebird');
 var _ = require('lodash');
 var should = require('should');
 var assert = require('assert');
@@ -25,7 +25,7 @@ describe('document test', function(){
 			logger.debug(field, oldValue, newValue);
 		});
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			// Lock for write
 			return doc.lock('c1');
 		})
@@ -58,7 +58,7 @@ describe('document test', function(){
 			logger.debug(field, oldValue, newValue);
 		});
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			assert(doc.find('c1') === null);
 			// Lock for write
 			return doc.lock('c1');
@@ -86,7 +86,7 @@ describe('document test', function(){
 			logger.debug(field, oldValue, newValue);
 		});
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			// should throw when write without lock
 			should(doc.remove.bind(doc, 'c1')).throw();
 
@@ -158,7 +158,7 @@ describe('document test', function(){
 			logger.debug(field, oldValue, newValue);
 		});
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			return doc.lock('c1');
 		})
 		.then(function(){
@@ -211,10 +211,9 @@ describe('document test', function(){
 
 		var concurrency = 4;
 		// Simulate non-atomic check and update
-		return Q.all(_.range(concurrency).map(function(connId){
+		return P.map(_.range(concurrency), function(connId){
 			var value = null;
-			return Q() //jshint ignore:line
-			.delay(_.random(10))
+			return P.delay(_.random(10))
 			.then(function(){
 				logger.trace('%s start lock', connId);
 				return doc.lock(connId);
@@ -230,7 +229,7 @@ describe('document test', function(){
 				doc.commit(connId);
 				logger.trace('%s commited', connId);
 			});
-		}))
+		})
 		.then(function(){
 			//Result should equal to concurrency
 			doc.find(null).should.eql({k : concurrency});
@@ -242,7 +241,7 @@ describe('document test', function(){
 		var value = {a : {}};
 		var doc = new Document({doc : value});
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			return doc.lock('c1');
 		})
 		.then(function(){

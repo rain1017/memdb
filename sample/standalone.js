@@ -1,7 +1,7 @@
 'use strict';
 
 var memdb = require('../lib');
-var Q = require('q');
+var P = require('bluebird');
 var should = require('should');
 
 /**
@@ -12,7 +12,7 @@ var should = require('should');
 
 var main = function(){
 	var autoconn = null;
-	return Q.fcall(function(){
+	return P.try(function(){
 		// Connect to server, specify host and port
 		return memdb.autoConnect({host : '127.0.0.1', port : 3000});
 	})
@@ -21,7 +21,7 @@ var main = function(){
 
 		return autoconn.execute(function(){
 			var Player = autoconn.collection('player');
-			return Q.fcall(function(){
+			return P.try(function(){
 				return Player.insert(1, {name : 'rain'});
 			})
 			.then(function(){
@@ -40,13 +40,13 @@ var main = function(){
 };
 
 if (require.main === module) {
-	return Q.fcall(function(){
+	return P.try(function(){
 		return main();
 	})
 	.catch(function(e){
 		console.error(e);
 	})
-	.fin(function(){
+	.finally(function(){
 		process.exit();
 	});
 }

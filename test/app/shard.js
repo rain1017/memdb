@@ -1,6 +1,6 @@
 'use strict';
 
-var Q = require('q');
+var P = require('bluebird');
 var _ = require('lodash');
 var should = require('should');
 var env = require('../env');
@@ -15,12 +15,12 @@ describe('shard test', function(){
 		var shard = new Shard(env.dbConfig('s1'));
 		var connId = 'c1', key = 'user:1', doc = {_id : '1', name : 'rain', age : 30};
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			return shard.start();
 		})
 		.then(function(){
 			// pre create collection for performance
-			return Q.ninvoke(shard.backend.connection, 'createCollection', 'user');
+			return shard.backend.connection.createCollectionAsync('user');
 		})
 		.then(function(){
 			// should auto load
@@ -102,17 +102,17 @@ describe('shard test', function(){
 		var shard2 = new Shard(env.dbConfig('s2'));
 
 		var key = 'user:1', doc = {_id : '1', name : 'rain', age : 30};
-		return Q.fcall(function(){
-			return Q.all([shard1.start(), shard2.start()]);
+		return P.try(function(){
+			return P.all([shard1.start(), shard2.start()]);
 		})
 		.then(function(){
 			// pre create collection for performance
-			return Q.ninvoke(shard1.backend.connection, 'createCollection', 'user');
+			return shard1.backend.connection.createCollectionAsync('user');
 		})
 		.then(function(){
-			return Q.all([
+			return P.all([
 				// shard1:c1
-				Q.fcall(function(){
+				P.try(function(){
 					// load by shard1
 					return shard1.lock('c1', key);
 				})
@@ -128,8 +128,7 @@ describe('shard test', function(){
 				}),
 
 				// shard2:c1
-				Q() // jshint ignore:line
-				.delay(20) // shard1 should load first
+				P.delay(20) // shard1 should load first
 				.then(function(){
 					// This will block until shard1 unload the key
 					return shard2.find('c1', key);
@@ -144,8 +143,7 @@ describe('shard test', function(){
 				}),
 
 				// shard1:c2
-				Q() // jshint ignore:line
-				.delay(50)
+				P.delay(50)
 				.then(function(){
 					// since shard1 is unloading, lock will block until unloaded
 					// and then will load again (after shard2 unload)
@@ -158,7 +156,7 @@ describe('shard test', function(){
 			]);
 		})
 		.then(function(){
-			return Q.all([shard1.stop(), shard2.stop()]);
+			return P.all([shard1.stop(), shard2.stop()]);
 		})
 		.nodeify(cb);
 	});
@@ -169,7 +167,7 @@ describe('shard test', function(){
 		var shard = new Shard(config);
 
 		var key = 'user:1';
-		return Q.fcall(function(){
+		return P.try(function(){
 			return shard.start();
 		})
 		.then(function(){
@@ -185,7 +183,7 @@ describe('shard test', function(){
 
 	it('globalEvent register/unregister', function(cb){
 		var shard = new Shard(env.dbConfig('s1'));
-		return Q.fcall(function(){
+		return P.try(function(){
 			return shard.start();
 		})
 		.then(function(){
@@ -209,7 +207,7 @@ describe('shard test', function(){
 		var shard = new Shard(config);
 
 		var key = 'user:1', doc = {_id : '1', name : 'rain'};
-		return Q.fcall(function(){
+		return P.try(function(){
 			return shard.start();
 		})
 		.then(function(){
@@ -230,7 +228,7 @@ describe('shard test', function(){
 		.delay(500) // doc unloaded and cache timed out
 		.then(function(){
 			// read from backend
-			return Q.fcall(function(){
+			return P.try(function(){
 				return shard.findCached('c1', key);
 			})
 			.then(function(ret){
@@ -239,7 +237,7 @@ describe('shard test', function(){
 		})
 		.then(function(){
 			// get from cache
-			return Q.fcall(function(){
+			return P.try(function(){
 				return shard.findCached('c1', key);
 			})
 			.then(function(ret){

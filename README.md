@@ -94,7 +94,7 @@ Memorydb support two running mode: in-process and standalone.
 
 ```
 var memdb = require('memdb');
-var Q = require('q');
+var P = require('bluebird');
 var should = require('should');
 
 // memdb's config
@@ -113,7 +113,7 @@ var player = {_id : 'p1', name : 'rain', level : 1};
 
 var conn = null;
 
-return Q.fcall(function(){
+return P.try(function(){
 	// Start memdb
 	return memdb.startServer(config);
 })
@@ -178,7 +178,7 @@ return Q.fcall(function(){
 	// Close connection
 	return conn.close();
 })
-.fin(function(){
+.finally(function(){
 	// Stop memdb
 	return memdb.stopServer();
 });
@@ -191,21 +191,15 @@ return Q.fcall(function(){
 
 ```
 var memdb = require('memdb');
-var Q = require('q');
+var P = require('bluebird');
 var should = require('should');
 
 var doc = {_id : 1, name : 'rain', level : 1};
 
 var autoconn = null;
 
-return Q.fcall(function(){
+return P.try(function(){
 	// Start memdb
-	var config = {	
-		shard : 'shard1',	
-		backend : {engine : 'mongodb', url : 'mongodb://localhost/memdb-test'},	
-		redis : {host : '127.0.0.1', port : 6379},	
-		slave : {host : '127.0.0.1', port : 6379},
-	};	
 	return memdb.startServer(config);
 })
 .then(function(){
@@ -216,7 +210,7 @@ return Q.fcall(function(){
 	return autoconn.execute(function(){
 		// Get collection
 		var User = autoconn.collection('user');
-		return Q.fcall(function(){
+		return P.try(function(){
 			// Insert a doc
 			return User.insert(doc._id, doc);
 		})
@@ -234,7 +228,7 @@ return Q.fcall(function(){
 	return autoconn.execute(function(){
 		// Get collection
 		var User = autoconn.collection('user');
-		return Q.fcall(function(){
+		return P.try(function(){
 			// Update one field
 			return User.update(doc._id, {level : 2});
 		})
@@ -258,7 +252,7 @@ return Q.fcall(function(){
 	return autoconn.execute(function(){
 		// Get collection
 		var User = autoconn.collection('user');
-		return Q.fcall(function(){
+		return P.try(function(){
 			// doc should be rolled back
 			return User.find(doc._id, 'level')
 			.then(function(ret){
@@ -275,7 +269,7 @@ return Q.fcall(function(){
 	// Close autoConnection
 	return autoconn.close();
 })
-.fin(function(){
+.finally(function(){
 	// Stop memdb
 	return memdb.stopServer();
 });
@@ -285,7 +279,7 @@ return Q.fcall(function(){
 ### Mdbgoose
 ```
 var memdb = require('memdb');
-var Q = require('q');
+var P = require('bluebird');
 var should = require('should');
 
 var mdbgoose = memdb.goose;
@@ -300,36 +294,30 @@ var playerSchema = new Schema({
 
 var Player = mdbgoose.model('player', playerSchema);
 
-return Q.fcall(function(){
-	var config = {	
-		shard : 'shard1',	
-		backend : {engine : 'mongodb', url : 'mongodb://localhost/memdb-test'},
-		redis : {host : '127.0.0.1', port : 6379},
-		slave : {host : '127.0.0.1', port : 6379},
-	};
+return P.try(function(){
 	return memdb.startServer(config);
 })
 .then(function(){
 	return mdbgoose.execute(function(){
-		return Q.fcall(function(){
+		return P.try(function(){
 			var player = new Player({
 				_id : 'p1',
 				name: 'rain',
 				fullname : {firt : 'Yu', last : 'Xia'},
 				extra : {},
 			});
-			return player.saveQ();
+			return player.saveAsync();
 		})
 		.then(function(){
-			return Player.findQ('p1');
+			return Player.findAsync('p1');
 		})
 		.then(function(player){
 			player.name.should.eql('rain');
-			return player.removeQ();
+			return player.removeAsync();
 		});
 	});
 })
-.fin(function(){
+.finally(function(){
 	return memdb.stopServer();
 });
 ```
@@ -344,11 +332,11 @@ return Q.fcall(function(){
  */
 
 var memdb = require('../lib');
-var Q = require('q');
+var P = require('bluebird');
 var should = require('should');
 
 var autoconn = null;
-return Q.fcall(function(){
+return P.try(function(){
 	// Connect to server, specify host and port
 	return memdb.autoConnect({host : '127.0.0.1', port : 3000});
 })
@@ -357,7 +345,7 @@ return Q.fcall(function(){
 
 	return autoconn.execute(function(){
 		var Player = autoconn.collection('player');
-		return Q.fcall(function(){
+		return P.try(function(){
 			return Player.insert(1, {name : 'rain'});
 		})
 		.then(function(){

@@ -1,6 +1,6 @@
 'use strict';
 
-var Q = require('q');
+var P = require('bluebird');
 var util = require('util');
 var deepcopy = require('deepcopy');
 var AsyncLock = require('async-lock');
@@ -27,6 +27,7 @@ var Document = function(opts){ //jshint ignore:line
 
 	this.connectionId = null; // Connection that hold the document lock
 	this._lock = new AsyncLock({
+								Promise : P,
 								timeout : 1000000 * 1000, // Never timeout
 								});
 	this.releaseCallback = null;
@@ -252,7 +253,7 @@ proto.lock = function(connectionId){
 		throw new Error('connectionId is null');
 	}
 
-	var deferred = Q.defer();
+	var deferred = P.defer();
 	if(self.isLocked(connectionId)){
 		deferred.resolve();
 	}

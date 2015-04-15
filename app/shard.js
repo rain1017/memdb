@@ -1,7 +1,7 @@
 'use strict';
 
 var _ = require('lodash');
-var Q = require('q');
+var P = require('bluebird');
 var util = require('util');
 var redis = require('redis');
 var uuid = require('node-uuid');
@@ -118,7 +118,11 @@ var Shard = function(opts){
 	// Newly commited docs (for incremental _save) {key : true}
 	this.commitedKeys = {};
 	// locker for tasks on the same doc
-	this.taskLock = new AsyncLock({maxPending : this.config.maxPendingTasks, timeout : this.config.taskLockTimeout});
+	this.taskLock = new AsyncLock({
+								maxPending : this.config.maxPendingTasks,
+								timeout : this.config.taskLockTimeout,
+								Promise : P,
+							});
 
 	this.heartbeatInterval = null;
 	this.persistentInterval = null;
@@ -151,12 +155,12 @@ var Shard = function(opts){
 			.catch(function(e){
 				logger.error(e.stack);
 			})
-			.fin(function(){
+			.finally(function(){
 				delete self.requestingKeys[key];
 			});
 		}
 		catch(err){
-			logger.error(err);
+			logger.error(err.stack);
 		}
 	};
 	this.globalEvent.on('request:' + this._id, this.onRequestKey);
@@ -175,34 +179,35 @@ proto.start = function(){
 	this._ensureState(STATE.INITED);
 	this.state = STATE.STARTING;
 
-	var self = this;
-	return Q.fcall(function(){
+	return P.bind(this)
+	.then(function(){
 		logger.debug('backend start');
-		return self.backend.start();
+		return this.backend.start();
 	})
 	.then(function(){
-		if(!self.config.disableSlave){
-			return self.slave.start();
+		if(!this.config.disableSlave){
+			return this.slave.start();
 		}
 	})
 	.then(function(){
-		if(!self.config.disableSlave){
-			return self._restoreFromSlave();
+		if(!this.config.disableSlave){
+			return this._restoreFromSlave();
 		}
 	})
 	.then(function(){
-		return self._heartbeat();
+		return this._heartbeat();
 	})
 	.then(function(){
-		self.heartbeatInterval = setInterval(self._heartbeat.bind(self), self.config.heartbeatInterval);
+		this.heartbeatInterval = setInterval(this._heartbeat.bind(this), this.config.heartbeatInterval);
 
-		self.persistentInterval = setInterval(function(){
+		var self = this;
+		this.persistentInterval = setInterval(function(){
 			return self.persistentAll();
-		}, self.config.persistentInterval);
+		}, this.config.persistentInterval);
 
-		self.state = STATE.RUNNING;
-		self.emit('start');
-		logger.info('shard[%s] started', self._id);
+		this.state = STATE.RUNNING;
+		this.emit('start');
+		logger.info('shard[%s] started', this._id);
 	});
 };
 
@@ -218,55 +223,65 @@ proto.stop = function(){
 	this.globalEvent.removeAllListeners('request:' + this._id);
 	this.globalEvent.quit();
 
-	var self = this;
-	return Q.fcall(function(){
+	return P.bind(this)
+	.then(function(){
 		// Unload All
-		return Q.all(Object.keys(self.docs).map(function(key){
-			return self.taskLock.acquire(key, function(){
+		return P.bind(this)
+		.then(function(){
+			return Object.keys(this.docs);
+		})
+		.map(function(key){
+			var self = this;
+			return this.taskLock.acquire(key, function(){
 				if(self.docs[key]){
 					self.docs[key]._unlock(); //force release existing lock
 					return self._unload(key);
 				}
 			})
 			.catch(function(e){
-				logger.error(e);
+				logger.error(e.stack);
 			});
-		}));
+		});
 	})
 	.then(function(){
-		if(!self.config.disableSlave){
-			return self.slave.stop();
+		if(!this.config.disableSlave){
+			return this.slave.stop();
 		}
 	})
 	.then(function(){
-		return self.backend.stop();
+		return this.backend.stop();
 	})
 	.then(function(){
-		return self.backendLocker.shardStop(self._id);
+		return this.backendLocker.shardStop(this._id);
 	})
 	.then(function(){
-		self.state = STATE.STOPED;
-		self.emit('stop');
-		logger.info('shard[%s] stoped', self._id);
+		this.state = STATE.STOPED;
+		this.emit('stop');
+		logger.info('shard[%s] stoped', this._id);
 	});
 };
 
 proto.find = function(connectionId, key, fields){
 	this._ensureState(STATE.RUNNING);
-	var self = this;
-	if(self.docs[key]){
-		var ret = self.docs[key].find(connectionId, fields);
-		logger.debug('shard[%s].find(%s, %s, %s) => %j', self._id, connectionId, key, fields, ret);
+
+	if(this.docs[key]){
+		var ret = this.docs[key].find(connectionId, fields);
+		logger.debug('shard[%s].find(%s, %s, %s) => %j', this._id, connectionId, key, fields, ret);
 		return ret;
 	}
 
-	return self.taskLock.acquire(key, function(){
-		return Q.fcall(function(){
-			return self._load(key);
-		}).then(function(){
-			return self.docs[key].find(connectionId, fields);
-		}).then(function(ret){
-			logger.debug('shard[%s].find(%s, %s, %s) => %j', self._id, connectionId, key, fields, ret);
+	var self = this;
+	return this.taskLock.acquire(key, function(){
+
+		return P.bind(self)
+		.then(function(){
+			return this._load(key);
+		})
+		.then(function(){
+			return this.docs[key].find(connectionId, fields);
+		})
+		.then(function(ret){
+			logger.debug('shard[%s].find(%s, %s, %s) => %j', this._id, connectionId, key, fields, ret);
 			return ret;
 		});
 	});
@@ -303,19 +318,22 @@ proto.rollback = function(connectionId, key){
 
 proto.lock = function(connectionId, key){
 	this._ensureState(STATE.RUNNING);
-	var self = this;
-	if(self.isLocked(connectionId, key)){
+	if(this.isLocked(connectionId, key)){
 		return;
 	}
 
 	// New lock will be blocked even if doc is loaded while _unloading
-	return self.taskLock.acquire(key, function(){
-		return Q.fcall(function(){
-			return self._load(key);
-		}).then(function(){
-			return self.docs[key].lock(connectionId);
-		}).then(function(ret){
-			logger.debug('shard[%s].lock(%s, %s) => %s', self._id, connectionId, key, ret);
+	var self = this;
+	return this.taskLock.acquire(key, function(){
+		return P.bind(self)
+		.then(function(){
+			return this._load(key);
+		})
+		.then(function(){
+			return this.docs[key].lock(connectionId);
+		})
+		.then(function(ret){
+			logger.debug('shard[%s].lock(%s, %s) => %s', this._id, connectionId, key, ret);
 			return ret;
 		});
 	});
@@ -323,7 +341,7 @@ proto.lock = function(connectionId, key){
 
 proto.commit = function(connectionId, keys){
 	this._ensureState(STATE.RUNNING);
-	var self = this;
+
 	if(!Array.isArray(keys)){
 		keys = [keys];
 	}
@@ -331,23 +349,26 @@ proto.commit = function(connectionId, keys){
 		return;
 	}
 
-	return Q.fcall(function(){
-		if(self.config.disableSlave){
+	return P.bind(this)
+	.then(function(){
+		if(this.config.disableSlave){
 			return;
 		}
 		// Sync commited data to slave
 		var changes = {};
+		var self = this;
 		keys.forEach(function(key){
 			changes[key] = self._doc(key).getChange(connectionId);
 		});
-		return self.slave.commit(changes);
+		return this.slave.commit(changes);
 	})
 	.then(function(){
 		// Real Commit
+		var self = this;
 		keys.forEach(function(key){
 			self._doc(key).commit(connectionId);
 		});
-		logger.debug('shard[%s].commit(%s, %j)', self._id, connectionId, keys);
+		logger.debug('shard[%s].commit(%s, %j)', this._id, connectionId, keys);
 	});
 };
 
@@ -369,26 +390,27 @@ proto.findCached = function(connectionId, key){
 		return ret;
 	}
 
-	var self = this;
-	return Q.fcall(function(){
-		if(!!self.docs[key]){
-			return self.docs[key].find(connectionId);
+	return P.bind(this)
+	.then(function(){
+		if(!!this.docs[key]){
+			return this.docs[key].find(connectionId);
 		}
 		else{
-			var res = self._resolveKey(key);
-			return self.backend.get(res.name, res.id);
+			var res = this._resolveKey(key);
+			return this.backend.get(res.name, res.id);
 		}
 	})
 	.then(function(doc){
-		if(!self.cachedDocs.hasOwnProperty(key)){
-			self.cachedDocs[key] = doc;
+		if(!this.cachedDocs.hasOwnProperty(key)){
+			this.cachedDocs[key] = doc;
+			var self = this;
 			setTimeout(function(){
 				delete self.cachedDocs[key];
 				logger.trace('shard[%s] remove cached doc %s', self._id, key);
-			}, self.config.docCacheTimeout);
+			}, this.config.docCacheTimeout);
 		}
-		var ret = self.cachedDocs[key];
-		logger.debug('shard[%s].findCached(%s) => %j', self._id, key, ret);
+		var ret = this.cachedDocs[key];
+		logger.debug('shard[%s].findCached(%s) => %j', this._id, key, ret);
 		return ret;
 	});
 };
@@ -397,37 +419,37 @@ proto.findCached = function(connectionId, key){
  * Not concurrency safe and must called with lock
  */
 proto._load = function(key){
-	var self = this;
-	if(self.docs[key]){
+	if(this.docs[key]){
 		return;
 	}
 
-	logger.debug('shard[%s] start load %s', self._id, key);
+	logger.debug('shard[%s] start load %s', this._id, key);
 
 	var doc = null;
 	// Not using taskLock here since load is always called in other task
-	return Q.fcall(function(){
+	return P.bind(this)
+	.then(function(){
 		// get backend lock
-		return self._lockBackend(key);
+		return this._lockBackend(key);
 	})
 	.then(function(){
-		var res = self._resolveKey(key);
-		return self.backend.get(res.name, res.id);
+		var res = this._resolveKey(key);
+		return this.backend.get(res.name, res.id);
 	})
 	.then(function(ret){
 		var dct = ret || {};
 		var exist = !!ret;
 		doc = new Document({exist : exist, doc: dct});
 
-		if(!self.config.disableSlave){
+		if(!this.config.disableSlave){
 			// Sync data to slave
-			return self.slave.insert(key, dct, exist);
+			return this.slave.insert(key, dct, exist);
 		}
 	})
 	.then(function(){
-		self._addDoc(key, doc);
+		this._addDoc(key, doc);
 
-		logger.info('shard[%s] loaded %s', self._id, key);
+		logger.info('shard[%s] loaded %s', this._id, key);
 	});
 };
 
@@ -442,7 +464,7 @@ proto._addDoc = function(key, doc){
 			logger.warn(e);
 		});
 	};
-	var idleTimeout = setTimeout(onIdleTimeout, self.config.docIdleTimeout);
+	var idleTimeout = setTimeout(onIdleTimeout, this.config.docIdleTimeout);
 
 	doc.on('commit', function(){
 		try{
@@ -454,49 +476,49 @@ proto._addDoc = function(key, doc){
 			idleTimeout = setTimeout(onIdleTimeout, self.config.docIdleTimeout);
 		}
 		catch(err){
-			logger.error(err);
+			logger.error(err.stack);
 		}
 	});
 
-	var res = self._resolveKey(key);
+	var res = this._resolveKey(key);
 	doc.on('updateUncommited', function(connectionId, field, oldValue, newValue){
 		self.emit('docUpdateUncommited:' + res.name, connectionId, res.id, field, oldValue, newValue);
 	});
 
 	// Loaded at this instant
-	self.docs[key] = doc;
+	this.docs[key] = doc;
 };
 
 /**
  * Not concurrency safe and must called with lock
  */
 proto._unload = function(key){
-	var self = this;
-	if(!self.docs[key]){
+	if(!this.docs[key]){
 		return;
 	}
 
-	logger.debug('shard[%s] start unload %s', self._id, key);
+	logger.debug('shard[%s] start unload %s', this._id, key);
 
-	var doc = self.docs[key];
+	var doc = this.docs[key];
 
-	return Q.fcall(function(){
+	return P.bind(this)
+	.then(function(){
 		// lock the doc with a non-exist connectionId
 		// in order to wait all existing lock release
 
-		logger.trace('shard[%s] wait for %s commit', self._id, key);
+		logger.trace('shard[%s] wait for %s commit', this._id, key);
 		return doc.lock(uuid.v4());
 	})
 	.then(function(){
 		// The doc is read only now
-		logger.trace('shard[%s] wait for %s commit done', self._id, key);
+		logger.trace('shard[%s] wait for %s commit done', this._id, key);
 
-		return self.persistent(key);
+		return this.persistent(key);
 	})
 	.then(function(){
-		if(!self.config.disableSlave){
+		if(!this.config.disableSlave){
 			// sync data to slave
-			return self.slave.remove(key);
+			return this.slave.remove(key);
 		}
 	})
 	.then(function(){
@@ -504,37 +526,40 @@ proto._unload = function(key){
 		doc.removeAllListeners('updateUncommited');
 
 		// _unloaded at this instant
-		delete self.docs[key];
+		delete this.docs[key];
 
-		return Q.fcall(function(){
+		return P.bind(this)
+		.then(function(){
 			// Release backend lock
-			return self._unlockBackend(key);
+			return this._unlockBackend(key);
 		})
 		.then(function(){
-			logger.info('shard[%s] unloaded %s', self._id, key);
+			logger.info('shard[%s] unloaded %s', this._id, key);
 		})
-		.delay(self.config.backendLockRetryInterval); // Can't load again immediately, prevent 'locking hungry' in other shards
+		.delay(this.config.backendLockRetryInterval); // Can't load again immediately, prevent 'locking hungry' in other shards
 	});
 };
 
 proto._lockBackend = function(key){
-	var self = this;
-
-	return Q.fcall(function(){
-		logger.trace('shard[%s] try lock backend %s', self._id, key);
-		return self.backendLocker.tryLock(key, self._id);
-	}).then(function(success){
+	return P.bind(this)
+	.then(function(){
+		logger.trace('shard[%s] try lock backend %s', this._id, key);
+		return this.backendLocker.tryLock(key, this._id);
+	})
+	.then(function(success){
 		if(success){
-			logger.debug('shard[%s] locked backend %s', self._id, key);
+			logger.debug('shard[%s] locked backend %s', this._id, key);
 			return;
 		}
 
 		var startTick = Date.now();
 
 		// Wait and try
+		var self = this;
 		var tryLock = function(wait){
-			return Q.fcall(function(){
-				return self.backendLocker.getHolderId(key);
+			return P.bind(self)
+			.then(function(){
+				return this.backendLocker.getHolderId(key);
 			})
 			.then(function(shardId){
 				if(shardId === null){
@@ -542,40 +567,38 @@ proto._lockBackend = function(key){
 					return;
 				}
 				// request the holder for the key
-				return Q.fcall(function(){
-					// Emit request key event
-					self.globalEvent.emit('request:' + shardId, key);
-					logger.trace('shard[%s] request shard[%s] for key %s', self._id, shardId, key);
-				});
+				// Emit request key event
+				this.globalEvent.emit('request:' + shardId, key);
+				logger.trace('shard[%s] request shard[%s] for key %s', this._id, shardId, key);
 			})
 			.delay(wait / 2 + _.random(wait))
 			.then(function(){
-				logger.trace('shard[%s] try lock backend %s', self._id, key);
-				return self.backendLocker.tryLock(key, self._id);
+				logger.trace('shard[%s] try lock backend %s', this._id, key);
+				return this.backendLocker.tryLock(key, this._id);
 			})
 			.then(function(success){
 				if(success){
-					logger.debug('shard[%s] locked backend %s', self._id, key);
+					logger.debug('shard[%s] locked backend %s', this._id, key);
 					return;
 				}
 
-				if(Date.now() - startTick >= self.config.backendLockTimeout){
+				if(Date.now() - startTick >= this.config.backendLockTimeout){
 					throw new Error('lock backend doc ' + key + ' timed out');
 				}
 				return tryLock(wait);
 			});
 		};
-		return tryLock(self.config.backendLockRetryInterval);
+		return tryLock(this.config.backendLockRetryInterval);
 	});
 };
 
 proto._unlockBackend = function(key){
-	var self = this;
-	return Q.fcall(function(){
-		return self.backendLocker.unlock(key);
+	return P.bind(this)
+	.then(function(){
+		return this.backendLocker.unlock(key);
 	})
 	.then(function(){
-		logger.debug('shard[%s] unlocked backend %s', self._id, key);
+		logger.debug('shard[%s] unlocked backend %s', this._id, key);
 	});
 };
 
@@ -583,26 +606,24 @@ proto._unlockBackend = function(key){
  * Persistent one doc (if changed) to backend
  */
 proto.persistent = function(key){
-	var self = this;
-	if(!self.commitedKeys.hasOwnProperty(key)){
+	if(!this.commitedKeys.hasOwnProperty(key)){
 		return;
 	}
-	var doc = self._doc(key).find();
+	var doc = this._doc(key).find();
 	// Doc may changed again during persistent, so delete the flag now.
-	delete self.commitedKeys[key];
+	delete this.commitedKeys[key];
 
-	return Q.fcall(function(){
-		return Q.fcall(function(){
-			var res = self._resolveKey(key);
-			return self.backend.set(res.name, res.id, doc);
-		})
-		.then(function(){
-			logger.info('shard[%s] persistented %s', self._id, key);
-		}, function(e){
-			// Persistent failed, reset the changed flag
-			self.commitedKeys[key] = true;
-			logger.error('shard[%s] persistent %s error - %s', self._id, key, e.message);
-		});
+	return P.bind(this)
+	.then(function(){
+		var res = this._resolveKey(key);
+		return this.backend.set(res.name, res.id, doc);
+	})
+	.then(function(){
+		logger.info('shard[%s] persistented %s', this._id, key);
+	}, function(e){
+		// Persistent failed, reset the changed flag
+		this.commitedKeys[key] = true;
+		logger.error('shard[%s] persistent %s error - %s', this._id, key, e.message);
 	});
 };
 
@@ -610,51 +631,53 @@ proto.persistent = function(key){
  * Persistent changed docs to backend
  */
 proto.persistentAll = function(){
-	var self = this;
-	logger.info('shard[%s] start persistent all', self._id);
-	return Q.all(Object.keys(self.commitedKeys).map(function(key){
-		return self.taskLock.acquire(key, function(){
+	logger.info('shard[%s] start persistent all', this._id);
+	return P.bind(this)
+	.then(function(){
+		return Object.keys(this.commitedKeys);
+	})
+	.map(function(key){
+		var self = this;
+		return this.taskLock.acquire(key, function(){
 			return self.persistent(key);
 		})
 		.catch(function(e){
-			logger.error(e);
+			logger.error(e.stack);
 		});
-	}))
+	})
 	.then(function(){
-		logger.info('shard[%s] finish persistent all', self._id);
+		logger.info('shard[%s] finish persistent all', this._id);
 	});
 };
 
 proto._heartbeat = function(){
-	var self = this;
-	return Q.fcall(function(){
-		return self.backendLocker.shardHeartbeat(self._id);
-	});
+	return this.backendLocker.shardHeartbeat(this._id);
 };
 
 proto._restoreFromSlave = function(){
 	this._ensureState(STATE.STARTING);
-	var self = this;
 
-	return Q.fcall(function(){
-		return self.slave.getAllKeys();
+	return P.bind(this)
+	.then(function(){
+		return this.slave.getAllKeys();
 	})
 	.then(function(keys){
 		if(keys.length === 0){
 			return;
 		}
-		logger.warn('Shard[%s] not stopped properly, will restore data from slave', self._id);
+		logger.warn('Shard[%s] not stopped properly, will restore data from slave', this._id);
 
-		return Q.fcall(function(){
-			return self.slave.findMulti(keys);
+		return P.bind(this)
+		.then(function(){
+			return this.slave.findMulti(keys);
 		})
 		.then(function(items){
 			for(var key in items){
 				var item = items[key];
 				var doc = new Document({exist : item.exist, doc: item.fields});
-				self._addDoc(key, doc);
+				this._addDoc(key, doc);
 				// Set all keys as unsaved
-				self.commitedKeys[key] = true;
+				this.commitedKeys[key] = true;
 			}
 			logger.warn('restored %s keys from slave', keys.length);
 		});

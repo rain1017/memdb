@@ -1,6 +1,6 @@
 'use strict';
 
-var Q = require('q');
+var P = require('bluebird');
 var should = require('should');
 var logger = require('pomelo-logger').getLogger('test', __filename);
 var BackendLocker = require('../../app/backendlocker');
@@ -15,7 +15,7 @@ describe('backendlocker test', function(){
 							});
 
 		var docId = 'doc1', shardId = 'shard1';
-		return Q.fcall(function(){
+		return P.try(function(){
 			return locker.unlockAll();
 		})
 		.then(function(){
@@ -61,8 +61,8 @@ describe('backendlocker test', function(){
 				//expected
 			});
 		})
-		.fin(function(){
-			return Q.fcall(function(){
+		.finally(function(){
+			return P.try(function(){
 				return locker.unlockAll();
 			}).then(function(){
 				locker.close();

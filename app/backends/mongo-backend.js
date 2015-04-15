@@ -1,7 +1,7 @@
 'use strict';
 
-var Q = global.MEMORYDB_Q || require('q');
-var mongodb = require('mongodb');
+var P = require('bluebird');
+var mongodb = P.promisifyAll(require('mongodb'));
 
 var MongoBackend = function(opts){
 	opts = opts || {};
@@ -12,67 +12,57 @@ var MongoBackend = function(opts){
 var proto = MongoBackend.prototype;
 
 proto.start = function(){
-	var self = this;
-	return Q.nfcall(function(cb){
-		mongodb.MongoClient.connect(self._url, self._options, cb);
-	}).then(function(ret){
-		self.conn = ret;
+	return P.bind(this)
+	.then(function(){
+		return P.promisify(mongodb.MongoClient.connect)(this._url, this._options);
+	})
+	.then(function(ret){
+		this.conn = ret;
 
-		Object.defineProperty(self, 'connection', {
+		Object.defineProperty(this, 'connection', {
 			get : function(){
-				return self.conn;
+				return ret;
 			}
 		});
 	});
 };
 
 proto.stop = function(){
-	var self = this;
-	return Q.nfcall(function(cb){
-		self.conn.close(cb);
-	});
+	return this.conn.closeAsync();
 };
 
 proto.get = function(name, id){
-	var self = this;
-	return Q.nfcall(function(cb){
-		self.conn.collection(name).findOne({_id : id}, cb);
-	});
+	return this.conn.collection(name).findOneAsync({_id : id});
 };
 
 proto.set = function(name, id, doc){
-	var self = this;
 	if(doc !== null && doc !== undefined){
 		doc._id = id;
-		return Q.nfcall(function(cb){
-			self.conn.collection(name).update({_id : id}, doc, {upsert : true}, cb);
-		});
+		return this.conn.collection(name).updateAsync({_id : id}, doc, {upsert : true});
 	}
 	else{
-		return Q.nfcall(function(cb){
-			self.conn.collection(name).remove({_id : id}, cb);
-		});
+		return this.conn.collection(name).removeAsync({_id : id});
 	}
 };
 
 // items : [{name, id, doc}]
 proto.setMulti = function(items){
-	var self = this;
-	return Q.all(items.map(function(item){
-		return Q.fcall(function(){
-			return self.set(item.name, item.id, item.doc);
-		});
-	}));
+	return P.bind(this)
+	.then(function(){
+		return items;
+	})
+	.map(function(item){
+		return this.set(item.name, item.id, item.doc);
+	});
 };
 
 // drop table or database
 proto.drop = function(name){
-	var self = this;
 	if(!!name){
-		return Q.ninvoke(self.conn.collection(name), 'drop');
+		return this.conn.collection(name).dropAsync();
 	}
 	else{
-		return Q.ninvoke(self.conn, 'dropDatabase');
+		return this.conn.dropDatabaseAsync();
 	}
 };
 

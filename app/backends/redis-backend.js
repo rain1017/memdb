@@ -1,8 +1,7 @@
 'use strict';
 
-var Q = global.MEMORYDB_Q || require('q');
-var redis = require('redis');
-var utils = require('../utils');
+var P = require('bluebird');
+var redis = P.promisifyAll(require('redis'));
 
 var RedisBackend = function(opts){
 	opts = opts || {};
@@ -30,10 +29,11 @@ proto.stop = function(){
 };
 
 proto.get = function(name, id){
-	var self = this;
-	return Q.nfcall(function(cb){
-		return self.client.hmget(self.prefix + name, id, utils.normalizecb(cb));
-	}).then(function(ret){
+	return P.bind(this)
+	.then(function(){
+		return this.client.hmgetAsync(this.prefix + name, id);
+	})
+	.then(function(ret){
 		ret = ret[0];
 		return JSON.parse(ret);
 	});
@@ -41,23 +41,19 @@ proto.get = function(name, id){
 
 // delete when doc is null
 proto.set = function(name, id, doc){
-	var self = this;
 	if(doc !== null && doc !== undefined){
-		return Q.nfcall(function(cb){
-			return self.client.hmset(self.prefix + name, id, JSON.stringify(doc), utils.normalizecb(cb));
-		});
+		return this.client.hmsetAsync(this.prefix + name, id, JSON.stringify(doc));
 	}
 	else{
-		return Q.nfcall(function(cb){
-			return self.client.hdel(self.prefix + name, id, utils.normalizecb(cb));
-		});
+		return this.client.hdelAsync(this.prefix + name, id);
 	}
 };
 
 // items : [{name, id, doc}]
 proto.setMulti = function(items){
+	var multi = this.client.multi();
+
 	var self = this;
-	var multi = self.client.multi();
 	items.forEach(function(item){
 		if(item.doc !== null && item.doc !== undefined){
 			multi = multi.hmset(self.prefix + item.name, item.id, JSON.stringify(item.doc));
@@ -66,23 +62,16 @@ proto.setMulti = function(items){
 			multi = multi.hdel(self.prefix + item.name, item.id);
 		}
 	});
-	return Q.nfcall(function(cb){
-		return multi.exec(utils.normalizecb(cb));
-	});
+	return multi.execAsync();
 };
 
 // drop table or database
 proto.drop = function(name){
-	var self = this;
 	if(!!name){
-		return Q.nfcall(function(cb){
-			self.client.del(self.prefix + name, utils.normalizecb(cb));
-		});
+		this.client.delAsync(this.prefix + name);
 	}
 	else{
-		return Q.nfcall(function(cb){
-			self.client.flushdb(utils.normalizecb(cb));
-		});
+		this.client.flushdbAsync();
 	}
 };
 

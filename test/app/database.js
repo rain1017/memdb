@@ -1,6 +1,6 @@
 'use strict';
 
-var Q = require('q');
+var P = require('bluebird');
 var _ = require('lodash');
 var should = require('should');
 var env = require('../env');
@@ -18,7 +18,7 @@ describe('database test', function(){
 		var user2 = {_id : 2, name : 'tina', age : 24};
 		var news1 = {_id : 1, text : 'hello'};
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			return db.start();
 		})
 		.then(function(){
@@ -108,7 +108,7 @@ describe('database test', function(){
 
 		var connId = null;
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			return db.start();
 		})
 		.then(function(){
@@ -174,7 +174,7 @@ describe('database test', function(){
 		var player1 = {_id : 'p1', name : 'rain', age: 30};
 		var player2 = {_id : 'p2', name : 'snow', age: 25};
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			db1 = new Database(env.dbConfig('s1'));
 			return db1.start();
 		})
@@ -220,7 +220,7 @@ describe('database test', function(){
 		.then(function(){
 			return db2.stop();
 		})
-		.fin(function(){
+		.finally(function(){
 			// clean up
 			db1.shard.state = 2;
 			return db1.stop(true);

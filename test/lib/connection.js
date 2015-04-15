@@ -1,6 +1,6 @@
 'use strict';
 
-var Q = require('q');
+var P = require('bluebird');
 var _ = require('lodash');
 var should = require('should');
 var env = require('../env');
@@ -18,7 +18,7 @@ describe('connection test', function(){
 		var user2 = {_id : 2, name : 'tina', age : 24};
 		var news1 = {_id : 1, text : 'hello'};
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			return env.startServer('s1');
 		})
 		.then(function(ret){
@@ -99,7 +99,7 @@ describe('connection test', function(){
 		.then(function(){
 			return conn.close();
 		})
-		.fin(function(){
+		.finally(function(){
 			return env.stopServer(serverProcess);
 		})
 		.nodeify(cb);
@@ -109,7 +109,7 @@ describe('connection test', function(){
 		var serverProcess = null, conn = null;
 		var Player = null;
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			return env.startServer('s1');
 		}).then(function(ret){
 			serverProcess = ret;
@@ -169,7 +169,7 @@ describe('connection test', function(){
 		.then(function(){
 			return conn.close();
 		})
-		.fin(function(){
+		.finally(function(){
 			return env.stopServer(serverProcess);
 		})
 		.nodeify(cb);
@@ -178,7 +178,7 @@ describe('connection test', function(){
 	it('findCached', function(cb){
 		var serverProcess = null, conn = null;
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			return env.startServer('s1');
 		}).then(function(ret){
 			serverProcess = ret;
@@ -204,7 +204,7 @@ describe('connection test', function(){
 		.then(function(){
 			return conn.close();
 		})
-		.fin(function(){
+		.finally(function(){
 			return env.stopServer(serverProcess);
 		})
 		.nodeify(cb);

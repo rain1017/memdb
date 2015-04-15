@@ -1,6 +1,6 @@
 'use strict';
 
-var Q = require('q');
+var P = require('bluebird');
 var should = require('should');
 var backends = require('../../app/backends');
 var env = require('../env');
@@ -13,7 +13,7 @@ describe('backends test', function(){
 		var item1 = {name : 'test', id : 1, doc : {_id : 1, k : 1}};
 		var item2 = {name : 'test2', id : 1, doc : {_id : 1, k2 : 1}};
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			return backend.start();
 		})
 		.then(function(){
@@ -56,7 +56,7 @@ describe('backends test', function(){
 		.then(function(){
 			return backend.drop();
 		})
-		.fin(function(){
+		.finally(function(){
 			return backend.stop();
 		});
 	};
@@ -67,9 +67,7 @@ describe('backends test', function(){
 			url : env.config.backend.url,
 		};
 		var backend = backends.create(opts);
-		return Q.fcall(function(){
-			return testFunc(backend);
-		})
+		return testFunc(backend)
 		.nodeify(cb);
 	});
 
@@ -80,9 +78,7 @@ describe('backends test', function(){
 			port : env.config.redis.port,
 		};
 		var backend = backends.create(opts);
-		return Q.fcall(function(){
-			return testFunc(backend);
-		})
+		return testFunc(backend)
 		.nodeify(cb);
 	});
 });

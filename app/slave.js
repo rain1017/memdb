@@ -1,7 +1,7 @@
 'use strict';
 
-var redis = require('redis');
-var Q = require('q');
+var P = require('bluebird');
+var redis = P.promisifyAll(require('redis'));
 var utils = require('./utils');
 var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
@@ -38,9 +38,7 @@ proto.insert = function(key, fields, exist){
 		multi = multi.hmset(fieldsKey, dct);
 	}
 	multi = multi.set(existKey, exist ? 1 : 0);
-	return Q.nfcall(function(cb){
-		multi.exec(utils.normalizecb(cb));
-	});
+	return multi.execAsync();
 };
 
 proto.remove = function(key){
@@ -49,9 +47,7 @@ proto.remove = function(key){
 	var existKey = this._existKey(key);
 	multi = multi.del(fieldsKey);
 	multi = multi.del(existKey);
-	return Q.nfcall(function(cb){
-		multi.exec(utils.normalizecb(cb));
-	});
+	return multi.execAsync();
 };
 
 proto.findMulti = function(keys){
@@ -64,8 +60,9 @@ proto.findMulti = function(keys){
 		multi = multi.get(existKey);
 	});
 
-	return Q.nfcall(function(cb){
-		multi.exec(utils.normalizecb(cb));
+	return P.bind(this)
+	.then(function(){
+		return multi.execAsync();
 	})
 	.then(function(results){
 		// results.length === keys.length * 2
@@ -93,11 +90,12 @@ proto.findMulti = function(keys){
 };
 
 proto.getAllKeys = function(){
-	var self = this;
-	return Q.nfcall(function(cb){
-		self.client.keys(self._allKeysPattern(), utils.normalizecb(cb));
+	return P.bind(this)
+	.then(function(){
+		return this.client.keysAsync(this._allKeysPattern());
 	})
 	.then(function(existKeys){
+		var self = this;
 		return existKeys.map(function(existKey){
 			return self._extractKey(existKey);
 		});
@@ -128,25 +126,21 @@ proto.commit = function(changes){
 		}
 	}
 
-	return Q.nfcall(function(cb){
-		multi.exec(utils.normalizecb(cb));
-	});
+	return multi.execAsync();
 };
 
 // Clear all data in this shard
 proto.clear = function(){
-	var self = this;
-	return Q.nfcall(function(cb){
-		self.client.keys(self._allPrefix() + '*', utils.normalizecb(cb));
+	return P.bind(this)
+	.then(function(){
+		return this.client.keysAsync(this._allPrefix() + '*');
 	})
 	.then(function(keys){
-		var multi = self.client.multi();
+		var multi = this.client.multi();
 		keys.forEach(function(key){
 			multi = multi.del(key);
 		});
-		return Q.nfcall(function(cb){
-			multi.exec(utils.normalizecb(cb));
-		});
+		return multi.execAsync();
 	});
 };
 

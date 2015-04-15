@@ -1,7 +1,7 @@
 'use strict';
 
 var memdb = require('../lib');
-var Q = require('q');
+var P = require('bluebird');
 var should = require('should');
 
 // For distributed system, just run memdb in each server (Each instance is a shard).
@@ -24,7 +24,7 @@ var main = function(){
 
 	var conn = null;
 
-	return Q.fcall(function(){
+	return P.try(function(){
 		// Start memdb
 		return memdb.startServer(config);
 	})
@@ -89,17 +89,17 @@ var main = function(){
 		// Close connection
 		return conn.close();
 	})
-	.fin(function(){
+	.finally(function(){
 		// Stop memdb
 		return memdb.stopServer();
 	});
 };
 
 if (require.main === module) {
-	return Q.fcall(function(){
+	return P.try(function(){
 		return main();
 	})
-	.fin(function(){
+	.finally(function(){
 		process.exit();
 	});
 }

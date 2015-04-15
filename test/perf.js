@@ -1,27 +1,19 @@
 'use strict';
 
-var Q = require('q');
+var P = require('bluebird');
 var _ = require('lodash');
 var should = require('should');
 var env = require('./env');
 var memdb = require('../lib');
 var Database = require('../app/database');
 var AutoConnection = require('../lib/autoconnection');
-
-var pomeloLogger = require('pomelo-logger');
 var logger = require('pomelo-logger').getLogger('test', __filename);
 
 describe.skip('performance test', function(){
 	beforeEach(function(cb){
-		Q.longStackSupport = false;
-		pomeloLogger.setGlobalLogLevel(pomeloLogger.levels.WARN);
-
 		env.flushdb(cb);
 	});
 	after(function(cb){
-		Q.longStackSupport = true;
-		pomeloLogger.setGlobalLogLevel(pomeloLogger.levels.ALL);
-
 		env.flushdb(cb);
 	});
 
@@ -35,9 +27,7 @@ describe.skip('performance test', function(){
 		var incPlayerExp = function(){
 			return autoconn.execute(function(){
 				var Player = autoconn.collection('player');
-				return Q.fcall(function(){
-					// player.exp = _.random(60);
-					// return Player.update(player._id, player);
+				return P.try(function(){
 					return Player.findForUpdate(player._id);
 				})
 				.then(function(doc){
@@ -52,7 +42,7 @@ describe.skip('performance test', function(){
 
 		var startTick = null;
 		var rate = null;
-		return Q.fcall(function(){
+		return P.try(function(){
 			return memdb.startServer(env.dbConfig('s1'));
 		})
 		.then(function(){
@@ -65,11 +55,9 @@ describe.skip('performance test', function(){
 		})
 		.then(function(){
 			startTick = Date.now();
-			var promise = Q(); // jshint ignore:line
-			for(var i=0; i<count; i++){
-				promise = promise.then(incPlayerExp);
-			}
-			return promise;
+			return P.reduce(_.range(count), function(sofar, value){
+				return incPlayerExp();
+			}, 0);
 		})
 		.then(function(){
 			rate = count * 1000 / (Date.now() - startTick);
@@ -77,7 +65,7 @@ describe.skip('performance test', function(){
 
 			return autoconn.execute(function(){
 				var Player = autoconn.collection('player');
-				return Q.fcall(function(){
+				return P.try(function(){
 					return Player.find(player._id);
 				})
 				.then(function(ret){
@@ -87,7 +75,7 @@ describe.skip('performance test', function(){
 				});
 			});
 		})
-		.fin(function(){
+		.finally(function(){
 			return memdb.stopServer();
 		})
 		.nodeify(cb);
@@ -101,7 +89,7 @@ describe.skip('performance test', function(){
 
 		var startTick = null;
 		var rate = null;
-		return Q.fcall(function(){
+		return P.try(function(){
 			return memdb.startServer(env.dbConfig('s1'));
 		})
 		.then(function(){
@@ -110,7 +98,7 @@ describe.skip('performance test', function(){
 			startTick = Date.now();
 			return autoconn.execute(function(){
 				var Player = autoconn.collection('player');
-				var promise = Q(); // jshint ignore:line
+				var promise = P.resolve();
 				_.range(count).forEach(function(i){
 					var doc = {_id : 1, name : 'rain', exp : i};
 					promise = promise.then(function(){
@@ -123,9 +111,9 @@ describe.skip('performance test', function(){
 		.then(function(){
 			rate = count * 1000 / (Date.now() - startTick);
 		})
-		.fin(function(){
+		.finally(function(){
 			return memdb.stopServer()
-			.fin(function(){
+			.finally(function(){
 				logger.warn('Rate: %s', rate);
 			});
 		})
@@ -135,13 +123,12 @@ describe.skip('performance test', function(){
 	it('write huge docs', function(cb){
 		this.timeout(30 * 1000);
 
-		//TODO: Unload rate decreased when count > 3000
-		var count = 1000;
+		var count = 10000;
 		var autoconn = null;
 
 		var startTick = null;
 		var rate = null;
-		return Q.fcall(function(){
+		return P.try(function(){
 			var config = env.dbConfig('s1');
 			//Disable auto persistent
 			config.persistentInterval = 3600 * 1000;
@@ -153,7 +140,7 @@ describe.skip('performance test', function(){
 			startTick = Date.now();
 			return autoconn.execute(function(){
 				var Player = autoconn.collection('player');
-				var promise = Q(); // jshint ignore:line
+				var promise = P.resolve(); // jshint ignore:line
 				_.range(count).forEach(function(id){
 					var doc = {_id : id, name : 'rain', exp : id};
 					promise = promise.then(function(){
@@ -167,7 +154,7 @@ describe.skip('performance test', function(){
 			rate = count * 1000 / (Date.now() - startTick);
 			logger.warn('Load Rate: %s', rate);
 			logger.warn('%j', process.memoryUsage());
-			//heapdump.writeSnapshot('/tmp/mdb.heapsnapshot');
+			require('heapdump').writeSnapshot('/tmp/mdb.heapsnapshot');
 		})
 		.then(function(){
 			startTick = Date.now();
@@ -187,7 +174,7 @@ describe.skip('performance test', function(){
 		var db1 = null, db2 = null;
 		var startTick = null, responseTimeTotal = 0;
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			var config1 = env.dbConfig('s1');
 			config1.persistentInterval = 3600 * 100;
 
@@ -197,13 +184,13 @@ describe.skip('performance test', function(){
 			db1 = new Database(config1);
 			db2 = new Database(config2);
 
-			return Q.all([db1.start(), db2.start()]);
+			return P.all([db1.start(), db2.start()]);
 		})
 		.then(function(){
 			var autoconn = new AutoConnection({db : db1});
 			return autoconn.execute(function(){
 				var Player = autoconn.collection('player');
-				var promise = Q(); // jshint ignore:line
+				var promise = P.resolve();
 				_.range(count).forEach(function(id){
 					var doc = {_id : id, name : 'rain', exp : id};
 					promise = promise.then(function(){
@@ -217,28 +204,24 @@ describe.skip('performance test', function(){
 			startTick = Date.now();
 			var autoconn = new AutoConnection({db : db2});
 
-			return Q.fcall(function(){
-				return Q.all(_.range(count).map(function(id){
-					return Q() // jshint ignore:line
-					.delay(_.random(count * 1000 / requestRate))
+			return P.map(_.range(count), function(id){
+				return P.delay(_.random(count * 1000 / requestRate))
+				.then(function(){
+					var start = null;
+					return autoconn.execute(function(){
+						start = Date.now();
+						return autoconn.collection('player').remove(id);
+					})
 					.then(function(){
-						var start = null;
-						return autoconn.execute(function(){
-							start = Date.now();
-							return autoconn.collection('player').remove(id);
-						})
-						.then(function(){
-							responseTimeTotal += Date.now() - start;
-						});
+						responseTimeTotal += Date.now() - start;
 					});
-
-				}));
+				});
 			});
 		})
 		.then(function(){
 			var rate = count * 1000 / (Date.now() - startTick);
 			logger.warn('Rate: %s, Response Time: %s', rate, responseTimeTotal / count);
-			return Q.all([db1.stop(), db2.stop()]);
+			return P.all([db1.stop(), db2.stop()]);
 		})
 		.nodeify(cb);
 	});
@@ -264,7 +247,7 @@ describe.skip('performance test', function(){
 			var startTick = null;
 			var responseTimeTotal = 0;
 
-			return Q.fcall(function(){
+			return P.try(function(){
 				shards = _.range(1, shardCount + 1).map(function(shardId){
 					var config = {
 						_id : shardId,
@@ -276,9 +259,9 @@ describe.skip('performance test', function(){
 					return new Database(config);
 				});
 
-				return Q.all(shards.map(function(shard){
+				return P.map(shards, function(shard){
 					return shard.start();
-				}));
+				});
 			})
 			.then(function(){
 				var conns = shards.map(function(shard){
@@ -290,9 +273,8 @@ describe.skip('performance test', function(){
 				var delay = 0;
 				startTick = Date.now();
 
-				return Q.all(_.range(requestCount).map(function(requestId){
-					return Q() //jshint ignore:line
-					.delay(_.random(requestCount * 1000 / requestRate))
+				return P.map(_.range(requestCount), function(requestId){
+					return P.delay(_.random(requestCount * 1000 / requestRate))
 					.then(function(){
 						var conn = _.sample(conns);
 						logger.info('start request %s on shard %s', requestId, conn.db.shard._id);
@@ -300,7 +282,7 @@ describe.skip('performance test', function(){
 						var start = Date.now();
 						return conn.execute(function(){
 							var Player = conn.collection('player');
-							return Q.fcall(function(){
+							return P.try(function(){
 								return Player.findForUpdate(doc._id);
 							})
 							.then(function(ret){
@@ -313,21 +295,21 @@ describe.skip('performance test', function(){
 						.catch(function(e){
 							logger.warn(e);
 						})
-						.fin(function(){
+						.finally(function(){
 							responseTimeTotal += Date.now() - start;
 							logger.info('done request %s on shard %s', requestId, conn.db.shard._id);
 						});
 					});
-				}));
+				});
 			})
 			.then(function(){
 				var rate = requestCount * 1000 / (Date.now() - startTick);
 				logger.warn('Rate: %s, Response Time: %s', rate, responseTimeTotal / requestCount);
 			})
 			.then(function(){
-				return Q.all(shards.map(function(shard){
+				return P.map(shards, function(shard){
 					return shard.stop();
-				}));
+				});
 			});
 		};
 
@@ -342,7 +324,7 @@ describe.skip('performance test', function(){
 		 * 64 		100 	250
 		 * 128 		200 	200
 		 */
-		var promise = Q(); //jshint ignore:line
+		var promise = P.resolve();
 		var counts = [4, 8, 16, 32, 64, 128];
 		var reqRate = 300;
 		var retryDelay = 100;

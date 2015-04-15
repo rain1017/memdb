@@ -1,32 +1,38 @@
 'use strict';
 
+var P = require('bluebird');
 var child_process = require('child_process');
 var path = require('path');
-var redis = require('redis');
-var mongodb = require('mongodb');
-var logger = require('pomelo-logger').getLogger('test', __filename);
-var Q = require('q');
-Q.longStackSupport = true;
+var redis = P.promisifyAll(require('redis'));
+var mongodb = P.promisifyAll(require('mongodb'));
+var pomeloLogger = require('pomelo-logger');
+var logger = pomeloLogger.getLogger('test', __filename);
 
 var config = require('./memdb.json');
 
+if(config.promise && config.promise.longStackTraces){
+	P.longStackTraces();
+}
+
+if(config.logger && config.logger.level){
+	pomeloLogger.setGlobalLogLevel(pomeloLogger.levels[config.logger.level]);
+}
+
 var flushdb = function(cb){
-	return Q.fcall(function(){
-		return Q.ninvoke(mongodb.MongoClient, 'connect', config.backend.url, config.backend.options);
+	return P.try(function(){
+		return P.promisify(mongodb.MongoClient.connect)(config.backend.url, config.backend.options);
 	})
 	.then(function(db){
-		return Q.fcall(function(){
-			return Q.ninvoke(db, 'dropDatabase');
+		return P.try(function(){
+			return db.dropDatabaseAsync();
 		})
 		.then(function(){
-			return Q.ninvoke(db, 'close');
+			return db.closeAsync();
 		});
 	})
 	.then(function(){
 		var client = redis.createClient(config.redis.port, config.redis.host);
-		return Q.nfcall(function(cb){
-			client.flushdb(cb);
-		})
+		return client.flushdbAsync()
 		.then(function(){
 			client.end();
 		});
@@ -47,8 +53,7 @@ var startServer = function(shardId){
 	serverProcess.stdout.pipe(process.stdout);
 	serverProcess.stderr.pipe(process.stderr);
 
-	return Q() //jshint ignore:line
-	.delay(1000) // wait for server start
+	return P.delay(1000) // wait for server start
 	.then(function(){
 		return serverProcess;
 	});
@@ -58,7 +63,7 @@ var stopServer = function(serverProcess){
 	if(!serverProcess){
 		return;
 	}
-	var deferred = Q.defer();
+	var deferred = P.defer();
 	serverProcess.on('exit', function(code, signal){
 		if(code === 0){
 			deferred.resolve();

@@ -1,7 +1,7 @@
 'use strict';
 
 var memdb = require('../lib');
-var Q = require('q');
+var P = require('bluebird');
 var should = require('should');
 
 var mdbgoose = memdb.goose;
@@ -11,7 +11,7 @@ var playerSchema = new Schema({
 	_id : String,
 	name : String,
 	fullname : {first: String, last: String},
-	extra : mdbgoose.SchemaTypes.mixed,
+	extra : mdbgoose.SchemaTypes.Mixed,
 }, {collection : 'player', versionKey: false});
 
 var Player = mdbgoose.model('player', playerSchema);
@@ -29,39 +29,39 @@ var main = function(){
 		slave : {host : '127.0.0.1', port : 6379},
 	};
 
-	return Q.fcall(function(){
+	return P.try(function(){
 		return memdb.startServer(config);
 	})
 	.then(function(){
 		return mdbgoose.execute(function(){
-			return Q.fcall(function(){
+			return P.try(function(){
 				var player = new Player({
 					_id : 'p1',
 					name: 'rain',
 					fullname : {firt : 'Yu', last : 'Xia'},
 					extra : {},
 				});
-				return player.saveQ();
+				return player.saveAsync();
 			})
 			.then(function(){
-				return Player.findQ('p1');
+				return Player.findAsync('p1');
 			})
 			.then(function(player){
 				player.name.should.eql('rain');
-				return player.removeQ();
+				return player.removeAsync();
 			});
 		});
 	})
-	.fin(function(){
+	.finally(function(){
 		return memdb.stopServer();
 	});
 };
 
 if (require.main === module) {
-	return Q.fcall(function(){
+	return P.try(function(){
 		return main();
 	})
-	.fin(function(){
+	.finally(function(){
 		process.exit();
 	});
 }

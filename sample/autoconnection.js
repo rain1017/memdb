@@ -1,7 +1,7 @@
 'use strict';
 
 var memdb = require('../lib');
-var Q = require('q');
+var P = require('bluebird');
 var should = require('should');
 
 // For distributed system, just run memdb in each server (Each instance is a shard).
@@ -23,7 +23,7 @@ var main = function(){
 	var doc = {_id : 1, name : 'rain', level : 1};
 
 	var autoconn = null;
-	return Q.fcall(function(){
+	return P.try(function(){
 		// Start memdb
 		return memdb.startServer(config);
 	})
@@ -35,7 +35,7 @@ var main = function(){
 		return autoconn.execute(function(){
 			// Get collection
 			var User = autoconn.collection('user');
-			return Q.fcall(function(){
+			return P.try(function(){
 				// Insert a doc
 				return User.insert(doc._id, doc);
 			})
@@ -53,7 +53,7 @@ var main = function(){
 		return autoconn.execute(function(){
 			// Get collection
 			var User = autoconn.collection('user');
-			return Q.fcall(function(){
+			return P.try(function(){
 				// Update one field
 				return User.update(doc._id, {level : 2});
 			})
@@ -77,7 +77,7 @@ var main = function(){
 		return autoconn.execute(function(){
 			// Get collection
 			var User = autoconn.collection('user');
-			return Q.fcall(function(){
+			return P.try(function(){
 				// doc should be rolled back
 				return User.find(doc._id, 'level')
 				.then(function(ret){
@@ -94,17 +94,17 @@ var main = function(){
 		// Close autoConnection
 		return autoconn.close();
 	})
-	.fin(function(){
+	.finally(function(){
 		// Stop memdb
 		return memdb.stopServer();
 	});
 };
 
 if (require.main === module) {
-	return Q.fcall(function(){
+	return P.try(function(){
 		return main();
 	})
-	.fin(function(){
+	.finally(function(){
 		process.exit();
 	});
 }

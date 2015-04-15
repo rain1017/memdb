@@ -1,5 +1,5 @@
 'use strict';
-var Q = require('q');
+var P = require('bluebird');
 var minimist = require('minimist');
 var path = require('path');
 var fs = require('fs');
@@ -26,7 +26,7 @@ var startShard = function(opts){
 			logger.info('[%s] %s => %j', connId, remoteAddr, msg);
 			var resp = {seq : msg.seq};
 
-			Q.fcall(function(){
+			P.try(function(){
 				var method = msg.method;
 				var args = [connId].concat(msg.args);
 				return db[method].apply(db, args);
@@ -65,7 +65,7 @@ var startShard = function(opts){
 		}
 		_isShutingDown = true;
 
-		return Q.fcall(function(){
+		return P.try(function(){
 			server.close();
 
 			return db.stop();
@@ -73,7 +73,7 @@ var startShard = function(opts){
 		.catch(function(e){
 			logger.error(e.stack);
 		})
-		.fin(function(){
+		.finally(function(){
 			logger.warn('server closed');
 			setTimeout(function(){
 				process.exit(0);
@@ -123,7 +123,9 @@ if (require.main === module) {
 
 	var shardId = argv.s || argv.shard || null;
 
-	Q.longStackSupport = conf.q ? !!conf.q.longStackSupport : false;
+	if(conf.promise && conf.promise.longStackTraces){
+		P.longStackTraces();
+	}
 
 	// Configure logger
 	var loggerConf = conf.logger || {};

@@ -13,8 +13,8 @@
 		"path" : "/tmp",
 		"level" : "DEBUG"
 	},
-	"q" : {
-		"longStackSupport" : true
+	"promise" : {
+		"longStackTraces" : true
 	},
 	"collections" : {
 		"player" : {
