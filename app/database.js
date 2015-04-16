@@ -141,6 +141,7 @@ proto._collection = function(name){
 proto._connection = function(id){
 	var conn = this.connections[id];
 	if(!conn){
+		//TODO: This line is triggerred once in autoconnection during test, there may be a bug
 		throw new Error('connection ' + id + ' not exist');
 	}
 	return conn;

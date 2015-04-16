@@ -45,7 +45,6 @@ var DEFAULT_BACKEND_LOCK_RETRY_INTERVAL = 100;
 // timeout for each async task for specific key
 var DEFAULT_TASKLOCK_TIMEOUT = 10 * 1000;
 
-
 /**
  * opts.redis - {host : '127.0.0.1', port : 6379} (for backendLocker)
  * opts.backend - (for data persistent)

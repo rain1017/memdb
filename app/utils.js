@@ -12,4 +12,14 @@ exports.normalizecb = function(cb){
 	};
 };
 
+exports.setPromiseConcurrency = function(P, concurrency){
+	var map = P.prototype.map;
+	P.prototype.map = function(fn, options){
+		if(!options || !options.concurrency){
+			options = {concurrency : concurrency};
+		}
+		return map.call(this, fn, options);
+	};
+};
+
 module.exports = exports;
