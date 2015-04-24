@@ -32,6 +32,7 @@ var flushdb = function(cb){
 	})
 	.then(function(){
 		var client = redis.createClient(config.redis.port, config.redis.host);
+		client.select(config.redis.db);
 		return client.flushdbAsync()
 		.then(function(){
 			client.end();

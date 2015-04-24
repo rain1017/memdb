@@ -7,6 +7,7 @@ var RedisBackend = function(opts){
 	opts = opts || {};
 	this._host = opts.host || '127.0.0.1';
 	this._port = opts.port || 6379;
+	this._db = opts.db || 0;
 	this._options = opts.options || {};
 	this.prefix = opts.prefix || '';
 };
@@ -15,6 +16,7 @@ var proto = RedisBackend.prototype;
 
 proto.start = function(){
 	this.client = redis.createClient(this._port, this._host, this._options);
+	this.client.select(this._db);
 
 	var self = this;
 	Object.defineProperty(self, 'connection', {

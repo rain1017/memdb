@@ -81,6 +81,7 @@ var Shard = function(opts){
 		redis : {
 			host : opts.redis.host || '127.0.0.1',
 			port : opts.redis.port || 6379,
+			db : opts.redis.db || 0,
 			options : opts.redis.options || {},
 		},
 		backend : opts.backend || {},
@@ -103,6 +104,7 @@ var Shard = function(opts){
 	this.backendLocker = new BackendLocker({
 								host : this.config.redis.host,
 								port : this.config.redis.port,
+								db : this.config.redis.db,
 								options : this.config.redis.options,
 								shardHeartbeatTimeout : this.config.heartbeatTimeout,
 							});
@@ -129,6 +131,8 @@ var Shard = function(opts){
 	// For sending messages between shards
 	var pubClient = redis.createClient(this.config.redis.port, this.config.redis.host, this.config.redis.options);
 	var subClient = redis.createClient(this.config.redis.port, this.config.redis.host, this.config.redis.options);
+	pubClient.select(this.config.redis.db);
+	subClient.select(this.config.redis.db);
 	this.globalEvent = new GlobalEventEmitter({pub : pubClient, sub: subClient});
 
 	// Request for unlock backend key
