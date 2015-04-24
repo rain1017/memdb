@@ -76,6 +76,7 @@ describe('backends test', function(){
 			engine : 'redis',
 			host : env.config.redis.host,
 			port : env.config.redis.port,
+			db : env.config.redis.db,
 		};
 		var backend = backends.create(opts);
 		return testFunc(backend)

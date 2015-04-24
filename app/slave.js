@@ -11,7 +11,9 @@ var Slave = function(shard, opts){
 
 	var host = opts.host || '127.0.0.1';
 	var port = opts.port || 6379;
+	var db = opts.db || 0;
 	this.client = redis.createClient(port, host);
+	this.client.select(db);
 };
 
 var proto = Slave.prototype;
