@@ -49,7 +49,9 @@ describe('shard test', function(){
 			shard._isLoaded(key).should.eql(false);
 
 			// auto load again
-			return shard.find(connId, key)
+			return P.try(function(){
+				return shard.find(connId, key);
+			})
 			.then(function(ret){
 				// should read saved data
 				ret.should.eql(doc);
@@ -84,7 +86,9 @@ describe('shard test', function(){
 		.delay(100)
 		.then(function(){
 			// load again
-			return shard.find(connId, key)
+			return P.try(function(){
+				return shard.find(connId, key);
+			})
 			.then(function(ret){
 				(ret === null).should.be.true; // jshint ignore:line
 			});

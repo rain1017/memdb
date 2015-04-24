@@ -2,6 +2,7 @@
 
 var P = require('bluebird');
 var _ = require('lodash');
+var clone = require('clone');
 var should = require('should');
 var env = require('./env');
 var memdb = require('../lib');
@@ -15,6 +16,67 @@ describe.skip('performance test', function(){
 	});
 	after(function(cb){
 		env.flushdb(cb);
+	});
+
+	it('clone', function(cb){
+		var data = [];
+		_.range(1).forEach(function(index){
+			var dct = {};
+			_.range(100).forEach(function(key){
+				dct[key] = key;
+			});
+			data.push(dct);
+		});
+		console.log(JSON.stringify(data).length);
+
+		var count = 10000;
+		var copy = null;
+		var start = Date.now();
+		for(var i=0; i<count; i++){
+			//copy = JSON.parse(JSON.stringify(data));
+			copy = clone(data);
+		}
+		console.log(1000 * count / (Date.now() - start));
+		cb();
+	});
+
+	it('json/bson test', function(cb){
+		var bson = require('bson');
+		var BSON = bson.native().BSON;
+		// All bson types
+		var bsonTypes = [bson.Long, bson.ObjectID, bson.Binary, bson.Code, bson.DBRef, bson.Symbol, bson.Double, bson.Timestamp, bson.MaxKey, bson.MinKey];
+		// BSON parser
+		var bsonParser = new BSON(bsonTypes);
+
+		var obj = {str : 'value', number : 1.2, array : [1, 2, 'hello'], dt : new Date()};
+
+		var count = 100000;
+		var start = Date.now();
+		var encoded = null;
+		for(var i=0; i<count; i++){
+			encoded = JSON.stringify(obj);
+		}
+		console.log('json encode: ' , 1000 * count / (Date.now() - start));
+
+		start = Date.now();
+		for(i=0; i<count; i++){
+			JSON.parse(encoded);
+		}
+		console.log('json decode: ' , 1000 * count / (Date.now() - start));
+
+		start = Date.now();
+		for(i=0; i<count; i++){
+			encoded = bsonParser.serialize(obj);
+		}
+		console.log('bson encode: ' , 1000 * count / (Date.now() - start));
+
+		start = Date.now();
+		for(i=0; i<count; i++){
+			bsonParser.deserialize(encoded);
+		}
+		console.log('bson decode: ' , 1000 * count / (Date.now() - start));
+
+		cb();
 	});
 
 	it('write single doc', function(cb){
@@ -265,8 +327,6 @@ describe.skip('performance test', function(){
 					return new AutoConnection({db : shard});
 				});
 
-				var doc = {_id : 1, name : 'rain', exp : 0};
-
 				var delay = 0;
 				startTick = Date.now();
 
@@ -279,15 +339,7 @@ describe.skip('performance test', function(){
 						var start = Date.now();
 						return conn.execute(function(){
 							var Player = conn.collection('player');
-							return P.try(function(){
-								return Player.findForUpdate(doc._id);
-							})
-							.then(function(ret){
-								if(!ret){
-									return Player.insert(doc._id, doc);
-								}
-								return Player.update(ret._id, {exp : ret.exp + 1});
-							});
+							return Player.update(1, {$inc : {exp : 1}}, {upsert : true});
 						})
 						.catch(function(e){
 							logger.warn(e);

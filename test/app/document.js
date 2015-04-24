@@ -15,13 +15,14 @@ describe('document test', function(){
 		doc.find('c1').should.eql(value);
 		// Get specified fields
 		doc.find('c1', 'k1').should.eql({k1 : 1});
+		doc.find('c1', {'k1' : true}).should.eql({k1 : 1});
+		doc.find('c1', {'k1' : false}).should.eql({k2 : 1});
 	});
 
 	it('update', function(cb){
-		var value = {k1 : 1, k2 : 1};
-		var doc = new Document({doc : value});
+		var doc = new Document({doc : null, watchedFields : ['k1']});
 
-		doc.on('updateUncommited', function(field, oldValue, newValue){
+		doc.on('updateUncommited', function(connId, field, oldValue, newValue){
 			logger.debug(field, oldValue, newValue);
 		});
 
@@ -30,21 +31,50 @@ describe('document test', function(){
 			return doc.lock('c1');
 		})
 		.then(function(){
-			// Update a field
-			doc.update('c1', {k1 : 2});
-			doc.find('c1').should.eql({k1 : 2, k2 : 1});
-			doc.find('c1', 'k1').should.eql({k1 : 2});
-			// Remove a field
-			doc.update('c1', {k2 : undefined});
-			doc.find('c1').should.eql({k1 : 2});
-			doc.find('c1', 'k2').should.eql({});
-			// Add a field
-			doc.update('c1', {k3 : 1});
-			doc.find('c1').should.eql({k1 : 2, k3: 1});
-			doc.find('c1', 'k3').should.eql({k3 : 1});
-			// Replace the whole doc
-			doc.update('c1', {k1 : 1}, {replace : true});
+			//upsert
+			should(doc.update.bind(doc, 'c1', {k1 : 1})).throw();
+
+			doc.update('c1', {k1 : 1}, {upsert : true});
 			doc.find('c1').should.eql({k1 : 1});
+
+			//replace doc
+			doc.update('c1', {k1 : 2, k2 : 2});
+			doc.find('c1').should.eql({k1 : 2, k2 : 2});
+
+			//$set $unset
+			doc.update('c1', {k1 : 1});
+			doc.update('c1', {$set : {k1 : 2, k2 : 2}});
+			doc.find('c1').should.eql({k1 : 2, k2 : 2});
+			doc.update('c1', {$unset : {k2 : true}});
+			doc.find('c1').should.eql({k1 : 2});
+			doc.update('c1', {$set : {'k2.k3' : 3}});
+			doc.find('c1').should.eql({k1 : 2, k2 : {k3 : 3}});
+
+			//$inc
+			doc.update('c1', {k1 : 1});
+			doc.update('c1', {$inc : {k1 : 2}});
+			doc.find('c1').should.eql({k1 : 3});
+
+			//$push $pushAll $pop $addToSet $pull
+			doc.update('c1', {});
+			doc.update('c1', {$push : {k1 : 1}});
+			doc.update('c1', {$push : {k1 : 2}});
+			doc.find('c1').should.eql({k1 : [1, 2]});
+			doc.update('c1', {$pop : {k1 : 1}});
+			doc.find('c1').should.eql({k1 : [1]});
+			doc.update('c1', {$addToSet: {k1 : 1}});
+			doc.update('c1', {$addToSet: {k1 : 1}});
+			doc.update('c1', {$addToSet: {k1 : 2}});
+			doc.find('c1').should.eql({k1 : [1, 2]});
+			doc.update('c1', {$pull : {k1 : 2}});
+			doc.find('c1').should.eql({k1 : [1]});
+			doc.update('c1', {$pushAll : {k1 : [2, 3]}});
+			doc.find('c1').should.eql({k1 : [1, 2, 3]});
+
+			//multiple modifiers
+			doc.update('c1', {k1 : 0, k2 : 1, k3 : [1]});
+			doc.update('c1', {$set : {k1 : 1}, $inc : {k2 : 1}, $push : {k3 : 2}});
+			doc.find('c1').should.eql({k1 : 1, k2 : 2, k3 : [1, 2]});
 		})
 		.nodeify(cb);
 	});
@@ -53,10 +83,6 @@ describe('document test', function(){
 		var value = {k1 : 1};
 		// Init with non-exist doc
 		var doc = new Document({exist : false});
-
-		doc.on('updateUncommited', function(field, oldValue, newValue){
-			logger.debug(field, oldValue, newValue);
-		});
 
 		return P.try(function(){
 			assert(doc.find('c1') === null);
@@ -80,9 +106,9 @@ describe('document test', function(){
 
 	it('commit/rollback/lock/unlock', function(cb){
 		var value = {k1 : 1};
-		var doc = new Document({doc : value});
+		var doc = new Document({doc : value, watchedFields : ['k1']});
 
-		doc.on('updateUncommited', function(field, oldValue, newValue){
+		doc.on('updateUncommited', function(connId, field, oldValue, newValue){
 			logger.debug(field, oldValue, newValue);
 		});
 
@@ -152,9 +178,9 @@ describe('document test', function(){
 
 	it('read from other connections', function(cb){
 		var value = {k1 : 1, k2 : 1};
-		var doc = new Document({doc : value});
+		var doc = new Document({doc : value, watchedFields : ['k1', 'k2']});
 
-		doc.on('updateUncommited', function(field, oldValue, newValue){
+		doc.on('updateUncommited', function(connId, field, oldValue, newValue){
 			logger.debug(field, oldValue, newValue);
 		});
 
@@ -203,9 +229,9 @@ describe('document test', function(){
 	});
 
 	it('concurrency', function(cb){
-		var doc = new Document({doc : {k : 0}});
+		var doc = new Document({doc : {k : 0}, watchedFields : ['k']});
 
-		doc.on('updateUncommited', function(field, oldValue, newValue){
+		doc.on('updateUncommited', function(connId, field, oldValue, newValue){
 			logger.debug(field, oldValue, newValue);
 		});
 
@@ -233,20 +259,6 @@ describe('document test', function(){
 		.then(function(){
 			//Result should equal to concurrency
 			doc.find(null).should.eql({k : concurrency});
-		})
-		.nodeify(cb);
-	});
-
-	it('update nested set', function(cb){
-		var value = {a : {}};
-		var doc = new Document({doc : value});
-
-		return P.try(function(){
-			return doc.lock('c1');
-		})
-		.then(function(){
-			doc.update('c1', {'a.b.c' : 2});
-			doc.find('c1').should.eql({a : {b : {c : 2}}});
 		})
 		.nodeify(cb);
 	});

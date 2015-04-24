@@ -11,71 +11,55 @@ describe('slave test', function(){
 	beforeEach(env.flushdb);
 	after(env.flushdb);
 
-	it('insert/remove', function(cb){
+	it('set/del', function(cb){
 		var shard = {_id : 's1'};
 		var slave = new Slave(shard, env.config.shards.s1.slave);
 
 		var key1 = 'player:1';
-		var doc1 = {exist : true, fields : {name : 'rain', age : 30}};
+		var doc1 = {name : 'rain', age : 30};
 		var key2 = 'player:2';
-		var doc2 = {exist : false, fields : {}};
+		var doc2 = null;
 		var changes = {
-			'player:1' : {
-				exist : undefined,
-				fields : {name : 'snow', age : undefined}
-			},
-			'player:2' : {
-				exist : true,
-				fields : {name : 'tina'},
-			},
+			'player:1' : {name : 'snow', age : undefined},
+			'player:2' : {name : 'tina'},
 		};
 
 		return P.try(function(){
 			return slave.start();
 		})
 		.then(function(){
-			return slave.insert(key1, doc1.fields, doc1.exist);
+			return slave.set(key1, doc1);
 		})
 		.then(function(){
-			return slave.insert(key2, doc2.fields, doc2.exist);
+			return slave.set(key2, doc2);
 		})
 		.then(function(){
 			return slave.findMulti([key1, key2])
 			.then(function(docs){
-				logger.debug(util.inspect(docs));
 				docs[key1].should.eql(doc1);
-				docs[key2].should.eql(doc2);
-			});
-		})
-		.then(function(){
-			return slave.commit(changes);
-		})
-		.then(function(){
-			return slave.findMulti([key1, key2])
-			.then(function(docs){
-				logger.debug(util.inspect(docs));
-				docs[key1].should.eql({
-					exist : true,
-					fields : {name : 'snow'},
-				});
-				docs[key2].should.eql({
-					exist : true,
-					fields : {name : 'tina'},
-				});
-			});
-		})
-		.then(function(){
-			return slave.remove(key2);
-		})
-		.then(function(){
-			return slave.remove(key1);
-		})
-		.then(function(){
-			return slave.findMulti([key1, key2])
-			.then(function(docs){
-				logger.debug(util.inspect(docs));
-				(docs[key1] === null).should.eql(true);
 				(docs[key2] === null).should.eql(true);
+			});
+		})
+		.then(function(){
+			return slave.setMulti(changes);
+		})
+		.then(function(){
+			return slave.findMulti([key1, key2])
+			.then(function(docs){
+				docs[key1].should.eql({name : 'snow'});
+				docs[key2].should.eql({name : 'tina'});
+			});
+		})
+		.then(function(){
+			return slave.del(key2);
+		})
+		.then(function(){
+			return slave.del(key1);
+		})
+		.then(function(){
+			return slave.findMulti([key1, key2])
+			.then(function(docs){
+				Object.keys(docs).length.should.eql(0);
 			});
 		})
 		.then(function(){
@@ -89,23 +73,22 @@ describe('slave test', function(){
 		var slave = new Slave(shard, env.config.shards.s1.slave);
 
 		var key1 = 'player:1';
-		var doc1 = {exist : true, fields : {name : 'rain', age : 30}};
+		var doc1 = {name : 'rain', age : 30};
 		var key2 = 'player:2';
-		var doc2 = {exist : false, fields : {}};
+		var doc2 = null;
 
 		return P.try(function(){
 			return slave.start();
 		})
 		.then(function(){
-			return slave.insert(key1, doc1.fields, doc1.exist);
+			return slave.set(key1, doc1);
 		})
 		.then(function(){
-			return slave.insert(key2, doc2.fields, doc2.exist);
+			return slave.set(key2, doc2);
 		})
 		.then(function(){
 			return slave.getAllKeys()
 			.then(function(keys){
-				logger.debug(util.inspect(keys));
 				keys.length.should.eql(2);
 			});
 		})
@@ -115,7 +98,6 @@ describe('slave test', function(){
 		.then(function(){
 			return slave.getAllKeys()
 			.then(function(keys){
-				logger.debug(util.inspect(keys));
 				keys.length.should.eql(0);
 			});
 		})

@@ -2,9 +2,11 @@
 
 var P = require('bluebird');
 var util = require('util');
-var deepcopy = require('deepcopy');
+var utils = require('./utils');
+var clone = require('clone');
 var AsyncLock = require('async-lock');
 var EventEmitter = require('events').EventEmitter;
+var modifier = require('./modifier');
 var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 /**
@@ -20,10 +22,15 @@ var logger = require('pomelo-logger').getLogger('memdb', __filename);
 var Document = function(opts){ //jshint ignore:line
 	opts = opts || {};
 
-	this.commited = opts.doc || {}; // {field : value}
-	this.changed = {}; // {field : value}, value = undefined means field is removed
-	this.commitedExist = opts.exist !== undefined ? !!opts.exist : true; // Whether this document is exist
-	this.changedExist = undefined;
+	var doc = opts.doc || null;
+	if(typeof(doc) !== 'object'){
+		throw new Error('doc must be object');
+	}
+
+	this.commited = doc;
+	this.changed = undefined; // undefined means no change (while null means removed)
+
+	this.watchedFields = opts.watchedFields || []; // fire event on change
 
 	this.connectionId = null; // Connection that hold the document lock
 	this._lock = new AsyncLock({
@@ -41,210 +48,115 @@ var proto = Document.prototype;
 
 /**
  * connectionId - current connection
- * fields - 'field1 field2'
  */
 proto.find = function(connectionId, fields){
-	var self = this;
+	var doc = this.isLocked(connectionId) ? this.changed : this.commited;
 
-	if(!self.exists(connectionId)){
+	if(doc === null){
 		return null;
 	}
 
-	var doc = {};
+	if(!fields){
+		return clone(doc);
+	}
 
-	if(fields){
-		fields.split(' ').forEach(function(field){
-			// Lock holder should see the newest uncommited change
-			if(self.isLocked(connectionId) && self.changed.hasOwnProperty(field)){
-				if(self.changed[field] !== undefined){
-					doc[field] = deepcopy(self.changed[field]);
-				}
+	var includeFields = [], excludeFields = [];
+
+	if(typeof(fields) === 'string'){
+		includeFields = fields.split(' ');
+	}
+	else if(typeof(fields) === 'object'){
+		for(var field in fields){
+			if(!!fields[field]){
+				includeFields.push(field);
 			}
-			// Other connections should only see the commited value
-			else if(self.commited.hasOwnProperty(field)){
-				doc[field] = deepcopy(self.commited[field]);
+			else{
+				excludeFields.push(field);
+			}
+		}
+		if(includeFields.length > 0 && excludeFields.length > 0){
+			throw new Error('Can not specify both include and exclude fields');
+		}
+	}
+
+	var ret = {};
+	if(includeFields.length > 0){
+		includeFields.forEach(function(field){
+			if(doc.hasOwnProperty(field)){
+				ret[field] = clone(doc[field]);
 			}
 		});
-		return doc;
 	}
-	else{
-		// Lock holder should see the newest uncommited change
-		if(self.isLocked(connectionId)){
-			for(var field in self.commited){
-				if(self.changed.hasOwnProperty(field)){
-					// Modified field
-					if(self.changed[field] !== undefined){
-						doc[field] = deepcopy(self.changed[field]);
-					}
-				}
-				else{
-					doc[field] = deepcopy(self.commited[field]);
-				}
-			}
-			for(field in self.changed){
-				// Newly added field
-				if(!self.commited.hasOwnProperty(field)){
-					if(self.changed[field] !== undefined){
-						doc[field] = deepcopy(self.changed[field]);
-					}
-				}
-			}
-		}
-		// Other connections should only see the commited value
-		else{
-			doc = deepcopy(self.commited);
-		}
-		return doc;
+	else if(excludeFields.length > 0){
+		ret = clone(doc);
+		excludeFields.forEach(function(field){
+			delete ret[field];
+		});
 	}
+
+	return ret;
 };
 
-/**
- * doc - {key : value}, value = undefined means remove the key
- * opts.replace - replace the whole doc instead of update fields
- * opts.upsert - insert if not exist
- */
+proto.exists = function(connectionId){
+	return this.isLocked(connectionId) ? this.changed !== null: this.commited !== null;
+};
+
+proto.insert = function(connectionId, doc){
+	this.modify(connectionId, '$insert',  doc);
+};
+
+proto.remove = function(connectionId){
+	this.modify(connectionId, '$remove');
+};
+
 proto.update = function(connectionId, doc, opts){
 	opts = opts || {};
 	doc = doc || {};
 
-	this.ensureLocked(connectionId);
+	if(this.changed === null && opts.upsert){
+		this.modify(connectionId, '$insert', {});
+	}
 
-	if(!this.exists(connectionId)){
-		if(opts.upsert){
-			return this.insert(connectionId, doc);
-		}
-		else{
-			throw new Error('doc not exist');
+	var isModify = false;
+	for(var field in doc){
+		if(field.slice(0, 1) === '$'){
+			isModify = true;
+			break;
 		}
 	}
 
-	var field = null, oldValue = null, newValue = null;
-
-	if(opts.replace){
-		var oldChanged = this.changed;
-		this.changed = deepcopy(doc);
-
-		for(field in doc){
-			oldValue = oldChanged.hasOwnProperty(field) ? oldChanged[field] : this.commited[field];
-			newValue = this.changed[field];
-			if(oldValue !== newValue){
-				this.emit('updateUncommited', connectionId, field, oldValue, newValue);
-			}
-		}
-
-		// Replace the whole doc, set removed for absent field
-		for(field in this.commited){
-			if(!this.changed.hasOwnProperty(field)){
-				oldValue = this.commited[field];
-
-				this.changed[field] = undefined;
-
-				newValue = this.changed[field];
-				if(oldValue !== newValue){
-					this.emit('updateUncommited', connectionId, field, oldValue, newValue);
-				}
-			}
-		}
+	if(!isModify){
+		this.modify(connectionId, '$replace', doc);
 	}
 	else{
-		var normalizedDoc = {};
-
-		// Convert fields which contain dots like 'a.b.c'
-		for(var fieldPath in doc){
-			if(fieldPath.indexOf('.') === -1){
-				normalizedDoc[fieldPath] = doc[fieldPath];
-				continue;
-			}
-
-			var fields = fieldPath.split('.');
-			field = fields[0];
-
-			if(!normalizedDoc.hasOwnProperty(field)){
-				var originValue = this.changed.hasOwnProperty(field) ? this.changed[field] : this.commited[field];
-				normalizedDoc[field] = deepcopy(originValue);
-			}
-			if(typeof(normalizedDoc[field]) !== 'object'){
-				normalizedDoc[field] = {};
-			}
-			var current = normalizedDoc[field];
-			for(var i = 1; i < fields.length - 1; i++){
-				var f = fields[i];
-				if(typeof(current[f]) !== 'object'){
-					current[f] = {};
-				}
-				current = current[f];
-			}
-			current[fields[fields.length - 1]] = doc[fieldPath];
-		}
-
-		// Normal update logic
-		for(field in normalizedDoc){ //jshint ignore:line
-
-			oldValue = this.changed.hasOwnProperty(field) ? this.changed[field] : this.commited[field];
-
-			this.changed[field] = deepcopy(normalizedDoc[field]);
-
-			newValue = this.changed[field];
-			if(oldValue !== newValue){
-				this.emit('updateUncommited', connectionId, field, oldValue, newValue);
-			}
+		for(var cmd in doc){
+			this.modify(connectionId, cmd, doc[cmd]);
 		}
 	}
 };
 
-proto.insert = function(connectionId, doc){
-	doc = doc || {};
-
+proto.modify = function(connectionId, cmd, param){
 	this.ensureLocked(connectionId);
 
-	if(this.exists(connectionId)){
-		throw new Error('doc already exists');
+	var oldValues = {};
+	var self = this;
+	this.watchedFields.forEach(function(field){
+		oldValues[field] = self.changed ? JSON.stringify(self.changed[field]) : undefined;
+	});
+
+	var modifyFunc = modifier[cmd];
+	if(typeof(modifyFunc) !== 'function'){
+		throw new Error('invalid modifier - ' + cmd);
 	}
 
-	this.changedExist = true;
-	this.update(connectionId, doc, {replace : true});
-};
+	this.changed = modifyFunc(this.changed, param);
 
-proto.remove = function(connectionId){
-	this.ensureLocked(connectionId);
-
-	if(!this.exists(connectionId)){
-		throw new Error('doc not exist');
-	}
-
-	var field = null, oldValue = null;
-
-	for(field in this.commited){
-		oldValue = this.changed.hasOwnProperty(field) ? this.changed[field] : this.commited[field];
-		if(oldValue !== undefined){
-			this.emit('updateUncommited', connectionId, field, oldValue, undefined);
+	this.watchedFields.forEach(function(field){
+		var value = self.changed ? JSON.stringify(self.changed[field]) : undefined;
+		if(oldValues[field] !== value){
+			self.emit('updateUncommited', connectionId, field, oldValues[field], value);
 		}
-	}
-	for(field in this.changed){
-		if(this.commited.hasOwnProperty(field)){
-			continue;
-		}
-		oldValue = this.changed[field];
-		if(oldValue !== undefined){
-			this.emit('updateUncommited', connectionId, field, oldValue, undefined);
-		}
-	}
-
-	this.changedExist = false;
-};
-
-proto.exists = function(connectionId){
-	if(connectionId !== this.connectionId){
-		return this.commitedExist;
-	}
-	else{
-		if(this.changedExist === undefined){
-			return this.commitedExist;
-		}
-		else{
-			return this.changedExist;
-		}
-	}
+	});
 };
 
 proto.lock = function(connectionId){
@@ -258,14 +170,10 @@ proto.lock = function(connectionId){
 		deferred.resolve();
 	}
 	else{
-		// var savedDomain = process.domain;
 		self._lock.acquire('', function(release){
-			// process.domain = savedDomain;
-
 			self.connectionId = connectionId;
 			self.releaseCallback = release;
-			self.changed = {};
-			self.changedExist = undefined;
+			self.changed = clone(self.commited);
 
 			deferred.resolve();
 		});
@@ -283,29 +191,15 @@ proto._unlock = function(){
 	process.nextTick(releaseCallback);
 };
 
+proto._getChanged = function(){
+	return this.changed !== undefined ? this.changed : this.commited;
+};
+
 proto.commit = function(connectionId){
 	this.ensureLocked(connectionId);
 
-	if(this.changedExist !== undefined){
-		this.commitedExist = this.changedExist;
-	}
-
-	if(this.commitedExist === false){
-		this.commited = {};
-	}
-	else{
-		for(var field in this.changed){
-			if(this.changed[field] === undefined){
-				delete this.commited[field];
-			}
-			else{
-				this.commited[field] = this.changed[field];
-			}
-		}
-	}
-
-	this.changed = {};
-	this.changedExist = undefined;
+	this.commited = this.changed;
+	this.changed = undefined;
 
 	this._unlock();
 	this.emit('commit');
@@ -314,8 +208,7 @@ proto.commit = function(connectionId){
 proto.rollback = function(connectionId){
 	this.ensureLocked(connectionId);
 
-	this.changed = {};
-	this.changedExist = undefined;
+	this.changed = undefined;
 
 	this._unlock();
 	this.emit('rollback');
@@ -329,11 +222,6 @@ proto.ensureLocked = function(connectionId){
 
 proto.isLocked = function(connectionId){
 	return this.connectionId === connectionId && connectionId !== null && connectionId !== undefined;
-};
-
-proto.getChange = function(connectionId){
-	this.ensureLocked(connectionId);
-	return {fields : this.changed, exist : this.changedExist};
 };
 
 module.exports = Document;

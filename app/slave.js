@@ -24,29 +24,20 @@ proto.stop = function(){
 	this.client.end();
 };
 
-proto.insert = function(key, fields, exist){
-	var multi = this.client.multi();
-
-	var fieldsKey = this._fieldsKey(key);
-	var existKey = this._existKey(key);
-
-	if(Object.keys(fields).length > 0){
-		var dct = {};
-		for(var field in fields){
-			dct[field] = JSON.stringify(fields[field]);
-		}
-		multi = multi.hmset(fieldsKey, dct);
-	}
-	multi = multi.set(existKey, exist ? 1 : 0);
-	return multi.execAsync();
+proto.set = function(key, doc){
+	return this.client.setAsync(this._redisKey(key), JSON.stringify(doc));
 };
 
-proto.remove = function(key){
+proto.del = function(key){
+	return this.client.delAsync(this._redisKey(key));
+};
+
+proto.setMulti = function(docs){
 	var multi = this.client.multi();
-	var fieldsKey = this._fieldsKey(key);
-	var existKey = this._existKey(key);
-	multi = multi.del(fieldsKey);
-	multi = multi.del(existKey);
+	for(var key in docs){
+		var doc = docs[key];
+		multi = multi.set(this._redisKey(key), JSON.stringify(doc));
+	}
 	return multi.execAsync();
 };
 
@@ -54,10 +45,7 @@ proto.findMulti = function(keys){
 	var self = this;
 	var multi = this.client.multi();
 	keys.forEach(function(key){
-		var fieldsKey = self._fieldsKey(key);
-		var existKey = self._existKey(key);
-		multi = multi.hgetall(fieldsKey);
-		multi = multi.get(existKey);
+		multi = multi.get(self._redisKey(key));
 	});
 
 	return P.bind(this)
@@ -65,24 +53,11 @@ proto.findMulti = function(keys){
 		return multi.execAsync();
 	})
 	.then(function(results){
-		// results.length === keys.length * 2
 		var docs = {};
 		for(var i in keys){
 			var key = keys[i];
-			var exist = results[i * 2 + 1];
-			if(exist === null){
-				docs[key] = null; // the doc not in redis
-			}
-			else{
-				var dct = {};
-				var fields = results[i * 2] || {};
-				for(var field in fields){
-					dct[field] = JSON.parse(fields[field]);
-				}
-				docs[keys[i]] = {
-					fields : dct,
-					exist : exist === '0' ? false : true,
-				};
+			if(!!results[i]){
+				docs[key] = JSON.parse(results[i]);
 			}
 		}
 		return docs;
@@ -92,48 +67,21 @@ proto.findMulti = function(keys){
 proto.getAllKeys = function(){
 	return P.bind(this)
 	.then(function(){
-		return this.client.keysAsync(this._allKeysPattern());
+		return this.client.keysAsync(this._redisPrefix() + '*');
 	})
-	.then(function(existKeys){
+	.then(function(keys){
 		var self = this;
-		return existKeys.map(function(existKey){
-			return self._extractKey(existKey);
+		return keys.map(function(key){
+			return self._extractKey(key);
 		});
 	});
-};
-
-/**
- * changes - {key : change}
- *		change - {fields : {field : value}, exist : 1}
- */
-proto.commit = function(changes){
-	var multi = this.client.multi();
-	for(var key in changes){
-		var fieldsKey = this._fieldsKey(key);
-		var existKey = this._existKey(key);
-		var change = changes[key];
-		for(var field in change.fields){
-			var value = change.fields[field];
-			if(value !== undefined){
-				multi = multi.hmset(fieldsKey, field, JSON.stringify(value));
-			}
-			else{
-				multi = multi.hdel(fieldsKey, field);
-			}
-			if(change.exist !== undefined){
-				multi = multi.set(existKey, change.exist ? 1 : 0);
-			}
-		}
-	}
-
-	return multi.execAsync();
 };
 
 // Clear all data in this shard
 proto.clear = function(){
 	return P.bind(this)
 	.then(function(){
-		return this.client.keysAsync(this._allPrefix() + '*');
+		return this.client.keysAsync(this._redisPrefix() + '*');
 	})
 	.then(function(keys){
 		var multi = this.client.multi();
@@ -147,29 +95,20 @@ proto.clear = function(){
 /**
  * Redis format
  *
- * bak:shardId:f:key -> {field : value} //doc.fields
- * bak:shardId:e:key -> 1 or 0 //doc.exist
+ * bak:shardId:key -> JSON.stringify(doc)
  */
 
-proto._fieldsKey = function(key){
-	return 'bak:' + this.shard._id + ':f:' + key;
-};
-
-proto._existKey = function(key){
-	return 'bak:' + this.shard._id + ':e:' + key;
-};
-
-proto._allKeysPattern = function(){
-	return 'bak:' + this.shard._id + ':e:*';
-};
-
-proto._allPrefix = function(){
+proto._redisPrefix = function(){
 	return 'bak:' + this.shard._id + ':';
+};
+
+proto._redisKey = function(key){
+	return this._redisPrefix() + key;
 };
 
 proto._extractKey = function(existKey){
 	var words = existKey.split(':');
-	return words.slice(3, words.length).join(':');
+	return words.slice(2, words.length).join(':');
 };
 
 module.exports = Slave;

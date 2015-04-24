@@ -98,6 +98,8 @@ var Shard = function(opts){
 
 		// only for test, DO NOT disable slave in production
 		disableSlave : opts.disableSlave || false,
+
+		collections : opts.collections || {},
 	};
 
 	this.backendLocker = new BackendLocker({
@@ -353,13 +355,13 @@ proto.commit = function(connectionId, keys){
 		if(this.config.disableSlave){
 			return;
 		}
-		// Sync commited data to slave
-		var changes = {};
+		// Sync data to slave
+		var docs = {};
 		var self = this;
 		keys.forEach(function(key){
-			changes[key] = self._doc(key).getChange(connectionId);
+			docs[key] = self._doc(key)._getChanged();
 		});
-		return this.slave.commit(changes);
+		return this.slave.setMulti(docs);
 	})
 	.then(function(){
 		// Real Commit
@@ -436,13 +438,11 @@ proto._load = function(key){
 		return this.backend.get(res.name, res.id);
 	})
 	.then(function(ret){
-		var dct = ret || {};
-		var exist = !!ret;
-		doc = new Document({exist : exist, doc: dct});
+		doc = new Document({doc: ret, watchedFields: this._getWatchedFields(key)});
 
 		if(!this.config.disableSlave){
 			// Sync data to slave
-			return this.slave.insert(key, dct, exist);
+			return this.slave.set(key, ret);
 		}
 	})
 	.then(function(){
@@ -517,7 +517,7 @@ proto._unload = function(key){
 	.then(function(){
 		if(!this.config.disableSlave){
 			// sync data to slave
-			return this.slave.remove(key);
+			return this.slave.del(key);
 		}
 	})
 	.then(function(){
@@ -673,7 +673,7 @@ proto._restoreFromSlave = function(){
 		.then(function(items){
 			for(var key in items){
 				var item = items[key];
-				var doc = new Document({exist : item.exist, doc: item.fields});
+				var doc = new Document({doc: item, watchedFields: this._getWatchedFields(key)});
 				this._addDoc(key, doc);
 				// Set all keys as unsaved
 				this.commitedKeys[key] = true;
@@ -701,6 +701,12 @@ proto._resolveKey = function(key){
 		throw new Error('invalid key: ' + key);
 	}
 	return {name : key.slice(0, i), id : key.slice(i+1)};
+};
+
+proto._getWatchedFields = function(key){
+	var res = this._resolveKey(key);
+	var coll = this.config.collections[res.name];
+	return coll ? coll.indexes || []: [];
 };
 
 proto._ensureState = function(state){

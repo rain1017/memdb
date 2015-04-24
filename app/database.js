@@ -1,6 +1,9 @@
 'use strict';
 
 var P = require('bluebird');
+var utils = require('./utils');
+utils.setPromiseConcurrency(P, 1024);
+
 var util = require('util');
 var EventEmitter = require('events').EventEmitter;
 var Collection = require('./collection');

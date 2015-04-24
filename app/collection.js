@@ -117,18 +117,15 @@ proto.findByIndex = function(connId, field, value, fields){
 	var indexCollection = this.db._collection(this._indexCollectionName(field));
 	return P.bind(this)
 	.then(function(){
-		return indexCollection.find(connId, value);
+		var v = JSON.stringify(value);
+		return indexCollection.find(connId, v);
 	})
-	.then(function(ids){
-		if(!ids){
-			ids = {};
-		}
-		//TODO: this is a bug
-		delete ids._id;
+	.then(function(doc){
+		var ids = doc ? Object.keys(doc.ids) : [];
 
 		return P.bind(this)
 		.then(function(){
-			return Object.keys(ids);
+			return ids;
 		})
 		.map(function(id){
 			return this.find(connId, id, fields);
@@ -140,29 +137,39 @@ proto.findCached = function(connId, id){
 	return this.shard.findCached(connId, this._key(id));
 };
 
+// value is json encoded
 proto._insertIndex = function(connId, id, field, value){
-	if(id === '_id'){
-		//TODO: this is a bug
-		throw new Error('index key "_id" not supported');
-	}
+	//TODO: id cannot contain '.' or start with '$'
 
 	var indexCollection = this.db._collection(this._indexCollectionName(field));
-	var doc = {};
-	doc[id] = true;
-	return indexCollection.update(connId, value, doc, {upsert : true});
+	var param = {
+		$set : {},
+		$inc : {count : 1},
+	};
+	param.$set['ids.' + id] = 1;
+
+	return indexCollection.update(connId, value, param, {upsert : true});
 };
 
 proto._removeIndex = function(connId, id, field, value){
-	if(id === '_id'){
-		//TODO: this is a bug
-		throw new Error('index key "_id" not supported');
-	}
-
 	var indexCollection = this.db._collection(this._indexCollectionName(field));
-	//TODO: Remove doc which is {}
-	var doc = {};
-	doc[id] = undefined;
-	return indexCollection.update(connId, value, doc);
+
+	return P.try(function(){
+		var param = {
+			$unset : {},
+			$inc: {count : -1}
+		};
+		param.$unset['ids.' + id] = 1;
+		return indexCollection.update(connId, value, param);
+	})
+	.then(function(){
+		return indexCollection.find(connId, value, 'count');
+	})
+	.then(function(ret){
+		if(ret.count === 0){
+			return indexCollection.remove(connId, value);
+		}
+	});
 };
 
 proto._finishIndexTasks = function(id){
@@ -180,7 +187,7 @@ proto._finishIndexTasks = function(id){
 };
 
 proto._indexCollectionName = function(field){
-	return '__index_' + this.name + '_' + field;
+	return '__i_' + this.name + '_' + field;
 };
 
 proto._key = function(id){

@@ -24,6 +24,7 @@ describe('mdbgoose test', function(){
 			areaId : String,
 			name : String,
 			fullname : {first: String, second: String},
+			items : [types.Mixed],
 			extra : types.Mixed,
 		}, {collection : 'player', versionKey: false});
 
@@ -47,15 +48,19 @@ describe('mdbgoose test', function(){
 									areaId: 'a2',
 									name: 'rain',
 									fullname: {first: 'first', second: 'second'},
+									items : [{name : 'item1', type : 1}],
 									extra: {xx: 'extra val'},
 								});
+
 				var player2 = new Player({
 									_id : 'p2',
 									areaId: 'a1',
 									name: 'snow',
 									fullname: {first: 'first', second: 'second'},
+									items : [{name : 'item1', type : 1}],
 									extra: {},
 								});
+
 				return P.try(function(){
 					return player1.saveAsync();
 				})
@@ -70,6 +75,7 @@ describe('mdbgoose test', function(){
 					player.areaId = 'a1';
 					player.fullname.first = 'changed first';
 					player.fullname.second = 'changed second';
+					player.items.push({name : 'item2', type : 2});
 					player.extra = {xx1 : 'changed extra'};
 
 					return player.saveAsync();
@@ -81,6 +87,7 @@ describe('mdbgoose test', function(){
 					.then(function(player){
 						logger.debug('%j', player);
 						player.name.should.eql('snow');
+						player.items.length.should.eql(2);
 					});
 				})
 				.then(function(){
