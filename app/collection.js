@@ -54,10 +54,6 @@ proto.insert = function(connId, id, doc){
 	}
 	id = this._checkId(id);
 
-	if(id.indexOf('.') !== -1 || id.charAt(0) === '$'){
-		throw new Error('id cannot contain "." or start with "$"');
-	}
-
 	return P.bind(this)
 	.then(function(){
 		return this.lock(connId, id);
@@ -149,18 +145,14 @@ proto.findByIndex = function(connId, field, value, fields){
 	var indexCollection = this.db._collection(this._indexCollectionName(field));
 	return P.bind(this)
 	.then(function(){
-		var valueB64 = new Buffer(JSON.stringify(value)).toString('base64');
-		return indexCollection.find(connId, valueB64);
+		return indexCollection.find(connId, JSON.stringify(value));
 	})
 	.then(function(doc){
 		var ids = doc ? Object.keys(doc.ids) : [];
-
-		return P.bind(this)
-		.then(function(){
-			return ids;
-		})
-		.map(function(id){
-			return this.find(connId, id, fields);
+		var self = this;
+		return P.map(ids, function(id64){
+			var id = new Buffer(id64, 'base64').toString();
+			return self.find(connId, id, fields);
 		});
 	});
 };
@@ -178,17 +170,19 @@ proto._insertIndex = function(connId, id, field, value){
 		$set : {},
 		$inc : {count : 1},
 	};
-	param.$set['ids.' + id] = 1;
+	var id64 = new Buffer(id).toString('base64');
+	param.$set['ids.' + id64] = 1;
 
-	var valueB64 = new Buffer(value).toString('base64');
+	logger.warn('insertIndex %j', param);
+
 	return P.try(function(){
-		return indexCollection.find(connId, valueB64, 'count');
+		return indexCollection.find(connId, value, 'count');
 	})
 	.then(function(ret){
 		if(!!ret && ret.count >= MAX_INDEX_COLLISION){
 			throw new Error('Too many duplicate values on same index');
 		}
-		return indexCollection.update(connId, valueB64, param, {upsert : true});
+		return indexCollection.update(connId, value, param, {upsert : true});
 	});
 };
 
@@ -196,21 +190,21 @@ proto._insertIndex = function(connId, id, field, value){
 proto._removeIndex = function(connId, id, field, value){
 	var indexCollection = this.db._collection(this._indexCollectionName(field));
 
-	var valueB64 = new Buffer(value).toString('base64');
 	return P.try(function(){
 		var param = {
 			$unset : {},
 			$inc: {count : -1}
 		};
-		param.$unset['ids.' + id] = 1;
-		return indexCollection.update(connId, valueB64, param);
+		var id64 = new Buffer(id).toString('base64');
+		param.$unset['ids.' + id64] = 1;
+		return indexCollection.update(connId, value, param);
 	})
 	.then(function(){
-		return indexCollection.find(connId, valueB64, 'count');
+		return indexCollection.find(connId, value, 'count');
 	})
 	.then(function(ret){
 		if(ret.count === 0){
-			return indexCollection.remove(connId, valueB64);
+			return indexCollection.remove(connId, value);
 		}
 	});
 };
