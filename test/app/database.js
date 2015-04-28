@@ -14,9 +14,9 @@ describe('database test', function(){
 	it('find/update/insert/remove/commit/rollback', function(cb){
 		var db = new Database(env.dbConfig('s1'));
 		var connId = null;
-		var user1 = {_id : 1, name : 'rain', age : 30};
-		var user2 = {_id : 2, name : 'tina', age : 24};
-		var news1 = {_id : 1, text : 'hello'};
+		var user1 = {_id : '1', name : 'rain', age : 30};
+		var user2 = {_id : '2', name : 'tina', age : 24};
+		var news1 = {_id : '1', text : 'hello'};
 
 		return P.try(function(){
 			return db.start();
@@ -172,6 +172,10 @@ describe('database test', function(){
 				players.length.should.eql(1);
 				players[0].areaId.should.eql(2);
 			});
+		})
+		.then(function(){
+			// should remove index
+			return db.update(connId, 'player', 2, {areaId : null});
 		})
 		.then(function(){
 			db.disconnect(connId);

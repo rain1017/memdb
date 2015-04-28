@@ -12,18 +12,17 @@ describe('connection test', function(){
 	after(env.flushdb);
 
 	it('find/update/insert/remove/commit/rollback', function(cb){
-		var serverProcess = null, conn = null;
+		var conn = null;
 		var User = null, News = null;
-		var user1 = {_id : 1, name : 'rain', age : 30};
-		var user2 = {_id : 2, name : 'tina', age : 24};
-		var news1 = {_id : 1, text : 'hello'};
+		var user1 = {_id : '1', name : 'rain', age : 30};
+		var user2 = {_id : '2', name : 'tina', age : 24};
+		var news1 = {_id : '1', text : 'hello'};
 
 		return P.try(function(){
-			return env.startServer('s1');
+			return memdb.startServer(env.dbConfig('s1'));
 		})
-		.then(function(ret){
-			serverProcess = ret;
-			return memdb.connect({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
+		.then(function(){
+			return memdb.connect();
 		})
 		.then(function(ret){
 			conn = ret;
@@ -40,7 +39,7 @@ describe('connection test', function(){
 			return conn.commit();
 		})
 		.then(function(){
-			return User.update(user1._id, {age : 31});
+			return User.update(user1._id, {$set : {age : 31}});
 		})
 		.then(function(){
 			return User.find(user1._id, 'age')
@@ -100,20 +99,20 @@ describe('connection test', function(){
 			return conn.close();
 		})
 		.finally(function(){
-			return env.stopServer(serverProcess);
+			return memdb.stopServer();
 		})
 		.nodeify(cb);
 	});
 
 	it('index test', function(cb){
-		var serverProcess = null, conn = null;
+		var conn = null;
 		var Player = null;
 
 		return P.try(function(){
-			return env.startServer('s1');
-		}).then(function(ret){
-			serverProcess = ret;
-			return memdb.connect({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
+			return memdb.startServer(env.dbConfig('s1'));
+		})
+		.then(function(){
+			return memdb.connect();
 		})
 		.then(function(ret){
 			conn = ret;
@@ -141,7 +140,7 @@ describe('connection test', function(){
 			});
 		})
 		.then(function(){
-			return Player.update(2, {areaId : 2});
+			return Player.update(2, {$set : {areaId : 2}});
 		})
 		.then(function(){
 			return Player.findByIndex('areaId', 1)
@@ -170,20 +169,59 @@ describe('connection test', function(){
 			return conn.close();
 		})
 		.finally(function(){
-			return env.stopServer(serverProcess);
+			return memdb.stopServer();
+		})
+		.nodeify(cb);
+	});
+
+	it('error handling', function(cb){
+		var conn = null;
+		var Player = null;
+
+		return P.try(function(){
+			return memdb.startServer(env.dbConfig('s1'));
+		})
+		.then(function(){
+			return memdb.connect();
+		})
+		.then(function(ret){
+			conn = ret;
+			Player = conn.collection('player');
+			return Player.insert(1, {areaId : 1});
+		})
+		.then(function(){
+			return conn.commit();
+		})
+		.then(function(){
+			return Player.update(1, {$set : {areaId : ['invalid index value']}});
+		})
+		.catch(function(err){
+			//Should throw error and rolledback
+			return Player.find(1);
+		})
+		.then(function(ret){
+			ret.areaId.should.eql(1);
+		})
+		.then(function(){
+			return Player.remove(1);
+		})
+		.then(function(){
+			return conn.commit();
+		})
+		.finally(function(){
+			return memdb.stopServer();
 		})
 		.nodeify(cb);
 	});
 
 	it('findCached', function(cb){
-		var serverProcess = null, conn = null;
+		var conn = null;
 
 		return P.try(function(){
-			return env.startServer('s1');
-		}).then(function(ret){
-			serverProcess = ret;
-
-			return memdb.connect({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
+			return memdb.startServer(env.dbConfig('s1'));
+		})
+		.then(function(){
+			return memdb.connect();
 		})
 		.then(function(ret){
 			conn = ret;
@@ -205,7 +243,7 @@ describe('connection test', function(){
 			return conn.close();
 		})
 		.finally(function(){
-			return env.stopServer(serverProcess);
+			return memdb.stopServer();
 		})
 		.nodeify(cb);
 	});

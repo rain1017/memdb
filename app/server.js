@@ -27,9 +27,7 @@ var startShard = function(opts){
 			var resp = {seq : msg.seq};
 
 			P.try(function(){
-				var method = msg.method;
-				var args = [connId].concat(msg.args);
-				return db[method].apply(db, args);
+				return db.execute(connId, msg.method, msg.args);
 			})
 			.then(function(ret){
 				resp.err = null;

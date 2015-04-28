@@ -4,7 +4,6 @@ var _ = require('lodash');
 var P = require('bluebird');
 var util = require('util');
 var redis = require('redis');
-var uuid = require('node-uuid');
 var AsyncLock = require('async-lock');
 var GlobalEventEmitter = require('global-events').EventEmitter;
 var EventEmitter = require('events').EventEmitter;
@@ -12,6 +11,7 @@ var backends = require('./backends');
 var Document = require('./document'); //jshint ignore:line
 var BackendLocker = require('./backendlocker');
 var Slave = require('./slave');
+var utils = require('./utils');
 var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 var STATE = {
@@ -62,7 +62,7 @@ var DEFAULT_TASKLOCK_TIMEOUT = 10 * 1000;
  * opts.slave - {host : '127.0.0.1', port : 6379} (redis slave for data replication)
  *
  * Events:
- * docUpdateUncommited:CollectionName - (connectionId, docId, field, oldValue, newValue)
+ * docUpdateIndex:CollectionName - (connectionId, docId, field, oldValue, newValue)
  */
 var Shard = function(opts){
 	EventEmitter.call(this);
@@ -270,9 +270,7 @@ proto.find = function(connectionId, key, fields){
 	this._ensureState(STATE.RUNNING);
 
 	if(this.docs[key]){
-		var ret = this.docs[key].find(connectionId, fields);
-		logger.debug('shard[%s].find(%s, %s, %s) => %j', this._id, connectionId, key, fields, ret);
-		return ret;
+		return this.docs[key].find(connectionId, fields);
 	}
 
 	var self = this;
@@ -284,10 +282,6 @@ proto.find = function(connectionId, key, fields){
 		})
 		.then(function(){
 			return this.docs[key].find(connectionId, fields);
-		})
-		.then(function(ret){
-			logger.debug('shard[%s].find(%s, %s, %s) => %j', this._id, connectionId, key, fields, ret);
-			return ret;
 		});
 	});
 };
@@ -295,30 +289,22 @@ proto.find = function(connectionId, key, fields){
 proto.update = function(connectionId, key, doc, opts){
 	this._ensureState(STATE.RUNNING);
 	// Since lock is called before, so doc is loaded for sure
-	var ret = this._doc(key).update(connectionId, doc, opts);
-	logger.debug('shard[%s].update(%s, %s, %j, %j) => %s', this._id, connectionId, key, doc, opts, ret);
-	return ret;
+	return this._doc(key).update(connectionId, doc, opts);
 };
 
 proto.insert = function(connectionId, key, doc){
 	this._ensureState(STATE.RUNNING);
-	var ret = this._doc(key).insert(connectionId, doc);
-	logger.debug('shard[%s].insert(%s, %s, %j) => %s', this._id, connectionId, key, doc, ret);
-	return ret;
+	return this._doc(key).insert(connectionId, doc);
 };
 
 proto.remove = function(connectionId, key){
 	this._ensureState(STATE.RUNNING);
-	var ret = this._doc(key).remove(connectionId);
-	logger.debug('shard[%s].remove(%s, %s) => %s', this._id, connectionId, key, ret);
-	return ret;
+	return this._doc(key).remove(connectionId);
 };
 
 proto.rollback = function(connectionId, key){
 	this._ensureState(STATE.RUNNING);
-	var ret = this._doc(key).rollback(connectionId);
-	logger.debug('shard[%s].rollback(%s, %s) => %s', this._id, connectionId, key, ret);
-	return ret;
+	return this._doc(key).rollback(connectionId);
 };
 
 proto.lock = function(connectionId, key){
@@ -336,10 +322,6 @@ proto.lock = function(connectionId, key){
 		})
 		.then(function(){
 			return this.docs[key].lock(connectionId);
-		})
-		.then(function(ret){
-			logger.debug('shard[%s].lock(%s, %s) => %s', this._id, connectionId, key, ret);
-			return ret;
 		});
 	});
 };
@@ -373,7 +355,6 @@ proto.commit = function(connectionId, keys){
 		keys.forEach(function(key){
 			self._doc(key).commit(connectionId);
 		});
-		logger.debug('shard[%s].commit(%s, %j)', this._id, connectionId, keys);
 	});
 };
 
@@ -390,9 +371,7 @@ proto.isLocked = function(connectionId, key){
 proto.findCached = function(connectionId, key){
 	this._ensureState(STATE.RUNNING);
 	if(this.cachedDocs.hasOwnProperty(key)){ //The doc can be null
-		var ret = this.cachedDocs[key];
-		logger.debug('shard[%s].findCached(%s) => %j (hit cache)', this._id, key, ret);
-		return ret;
+		return this.cachedDocs[key];
 	}
 
 	return P.bind(this)
@@ -414,9 +393,7 @@ proto.findCached = function(connectionId, key){
 				logger.trace('shard[%s] remove cached doc %s', self._id, key);
 			}, this.config.docCacheTimeout);
 		}
-		var ret = this.cachedDocs[key];
-		logger.debug('shard[%s].findCached(%s) => %j', this._id, key, ret);
-		return ret;
+		return this.cachedDocs[key];
 	});
 };
 /**
@@ -442,8 +419,7 @@ proto._load = function(key){
 		return this.backend.get(res.name, res.id);
 	})
 	.then(function(ret){
-		doc = new Document({doc: ret, watchedFields: this._getWatchedFields(key)});
-
+		doc = this._createDoc(key, ret);
 		if(!this.config.disableSlave){
 			// Sync data to slave
 			return this.slave.set(key, ret);
@@ -484,8 +460,8 @@ proto._addDoc = function(key, doc){
 	});
 
 	var res = this._resolveKey(key);
-	doc.on('updateUncommited', function(connectionId, field, oldValue, newValue){
-		self.emit('docUpdateUncommited:' + res.name, connectionId, res.id, field, oldValue, newValue);
+	doc.on('updateIndex', function(connectionId, field, oldValue, newValue){
+		self.emit('docUpdateIndex:' + res.name, connectionId, res.id, field, oldValue, newValue);
 	});
 
 	// Loaded at this instant
@@ -510,7 +486,7 @@ proto._unload = function(key){
 		// in order to wait all existing lock release
 
 		logger.trace('shard[%s] wait for %s commit', this._id, key);
-		return doc.lock(uuid.v4());
+		return doc.lock(utils.uuid());
 	})
 	.then(function(){
 		// The doc is read only now
@@ -526,7 +502,7 @@ proto._unload = function(key){
 	})
 	.then(function(){
 		doc.removeAllListeners('commit');
-		doc.removeAllListeners('updateUncommited');
+		doc.removeAllListeners('updateIndex');
 
 		// _unloaded at this instant
 		delete this.docs[key];
@@ -677,7 +653,7 @@ proto._restoreFromSlave = function(){
 		.then(function(items){
 			for(var key in items){
 				var item = items[key];
-				var doc = new Document({doc: item, watchedFields: this._getWatchedFields(key)});
+				var doc = this._createDoc(key, item);
 				this._addDoc(key, doc);
 				// Set all keys as unsaved
 				this.commitedKeys[key] = true;
@@ -707,10 +683,13 @@ proto._resolveKey = function(key){
 	return {name : key.slice(0, i), id : key.slice(i+1)};
 };
 
-proto._getWatchedFields = function(key){
+
+proto._createDoc = function(key, doc){
 	var res = this._resolveKey(key);
 	var coll = this.config.collections[res.name];
-	return coll ? coll.indexes || []: [];
+	var indexes = coll ? coll.indexes || []: [];
+
+	return new Document({_id : res.id, doc: doc, indexes: indexes});
 };
 
 proto._ensureState = function(state){

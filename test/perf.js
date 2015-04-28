@@ -3,6 +3,7 @@
 var P = require('bluebird');
 var _ = require('lodash');
 var clone = require('clone');
+var utils = require('../app/utils');
 var should = require('should');
 var env = require('./env');
 var memdb = require('../lib');
@@ -19,22 +20,25 @@ describe.skip('performance test', function(){
 	});
 
 	it('clone', function(cb){
+		this.timeout(30000);
+
 		var data = [];
 		_.range(1).forEach(function(index){
 			var dct = {};
-			_.range(100).forEach(function(key){
+			_.range(10000).forEach(function(key){
 				dct[key] = key;
 			});
 			data.push(dct);
 		});
 		console.log(JSON.stringify(data).length);
 
-		var count = 10000;
+		var count = 500;
 		var copy = null;
 		var start = Date.now();
 		for(var i=0; i<count; i++){
-			//copy = JSON.parse(JSON.stringify(data));
-			copy = clone(data);
+			//copy = utils.cloneEx(data);
+			copy = JSON.parse(JSON.stringify(data));
+			//copy = clone(data);
 		}
 		console.log(1000 * count / (Date.now() - start));
 		cb();
@@ -82,14 +86,14 @@ describe.skip('performance test', function(){
 	it('write single doc', function(cb){
 		this.timeout(30 * 1000);
 
-		var count = 5000;
+		var count = 10000;
 		var autoconn = null;
 		var player = {_id : 1, name : 'rain', exp : 0};
 
 		var incPlayerExp = function(){
 			return autoconn.execute(function(){
 				var Player = autoconn.collection('player');
-				return Player.update(player._id, {exp : 1});
+				return Player.update(player._id, {$inc : {exp : 1}});
 			})
 			.catch(function(e){
 				logger.error(e);
@@ -140,7 +144,7 @@ describe.skip('performance test', function(){
 	it('write single doc in one transcation', function(cb){
 		this.timeout(30 * 1000);
 
-		var count = 50000;
+		var count = 100000;
 		var autoconn = null;
 
 		var startTick = null;
@@ -154,14 +158,10 @@ describe.skip('performance test', function(){
 			startTick = Date.now();
 			return autoconn.execute(function(){
 				var Player = autoconn.collection('player');
-				var promise = P.resolve();
-				_.range(count).forEach(function(i){
-					var doc = {_id : 1, name : 'rain', exp : i};
-					promise = promise.then(function(){
-						return Player.update(doc._id, doc, {upsert : true});
-					});
-				});
-				return promise;
+
+				return P.reduce(_.range(count), function(sofar, value){
+					return Player.update(1, {$inc : {exp : 1}}, {upsert : true});
+				}, 0);
 			});
 		})
 		.then(function(){

@@ -37,7 +37,6 @@ proto.get = function(name, id){
 
 proto.set = function(name, id, doc){
 	if(doc !== null && doc !== undefined){
-		doc._id = id;
 		return this.conn.collection(name).updateAsync({_id : id}, doc, {upsert : true});
 	}
 	else{

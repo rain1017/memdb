@@ -12,19 +12,15 @@ describe('autoconnection test', function(){
 	after(env.flushdb);
 
 	it('concurrent execute', function(cb){
-		var serverProcess = null;
 		var shardId = Object.keys(env.config.shards)[0];
-
-		var user1 = {_id : 1, name : 'rain', level : 0};
-
-		var autoconn = memdb.autoConnect({host : env.config.shards[shardId].host, port : env.config.shards[shardId].port});
+		var user1 = {_id : '1', name : 'rain', level : 0};
+		var autoconn = null;
 
 		return P.try(function(){
-			return env.startServer(shardId);
+			return memdb.startServer(env.dbConfig(shardId));
 		})
-		.then(function(ret){
-			serverProcess = ret;
-
+		.then(function(){
+			autoconn = memdb.autoConnect();
 			return autoconn.execute(function(){
 				var User = autoconn.collection('user');
 				return User.insert(user1._id, user1);
@@ -101,7 +97,7 @@ describe('autoconnection test', function(){
 			return memdb.close();
 		})
 		.finally(function(){
-			return env.stopServer(serverProcess);
+			return memdb.stopServer();
 		})
 		.nodeify(cb);
 	});

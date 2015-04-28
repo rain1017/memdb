@@ -42,7 +42,7 @@ proto.stop = function(force){
 proto.connect = function(){
 	var conn = new Connection({_id : this.connectionAutoId++});
 	this.connections[conn._id] = conn;
-	logger.info('shard[%s] connection[%s] created', this.shard._id, conn._id);
+	logger.info('shard[%s].connection[%s] created', this.shard._id, conn._id);
 	return conn._id;
 };
 
@@ -52,8 +52,28 @@ proto.disconnect = function(connId){
 		this.rollback(connId);
 	}
 	delete this.connections[connId];
-	logger.info('shard[%s] connection[%s] closed', this.shard._id, connId);
+	logger.info('shard[%s].connection[%s] closed', this.shard._id, connId);
 };
+
+proto.execute = function(connId, method, args){
+	var self = this;
+	return P.try(function(){
+		var func = self[method];
+		if(typeof(func) !== 'function'){
+			throw new Error('unsupported method - ' + method);
+		}
+		return func.apply(self, [connId].concat(args));
+	})
+	.then(function(ret){
+		logger.info('shard[%s].connection[%s].%s(%j) => %j', self.shard._id, connId, method, args, ret);
+		return ret;
+	}, function(err){
+		logger.warn('shard[%s].connection[%s].%s(%j) => %s', self.shard._id, connId, method, args, err.message);
+		self.rollback(connId);
+		throw err;
+	});
+};
+
 
 proto.insert = function(connId, name, id, doc){
 	var conn = this._connection(connId);
@@ -103,20 +123,18 @@ proto.commit = function(connId){
 	})
 	.then(function(){
 		conn.clearLockedKeys();
-		logger.info('shard[%s] connection[%s] commited', this.shard._id, connId);
+		logger.info('shard[%s].connection[%s] commited', this.shard._id, connId);
 	});
 };
 
 proto.rollback = function(connId){
 	var conn = this._connection(connId);
-
 	var self = this;
 	conn.getLockedKeys().forEach(function(key){
 		self.shard.rollback(connId, key);
 	});
 	conn.clearLockedKeys();
-
-	logger.info('shard[%s] connection[%s] rolledback', this.shard._id, connId);
+	logger.info('shard[%s].connection[%s] rolledback', this.shard._id, connId);
 };
 
 proto.persistentAll = function(){
@@ -144,7 +162,6 @@ proto._collection = function(name){
 proto._connection = function(id){
 	var conn = this.connections[id];
 	if(!conn){
-		//TODO: This line is triggerred once in autoconnection during test, there may be a bug
 		throw new Error('connection ' + id + ' not exist');
 	}
 	return conn;

@@ -1,5 +1,7 @@
 'use strict';
 
+var _ = require('lodash');
+
 var exports = {};
 
 // Make sure err is instanceof Error
@@ -66,6 +68,30 @@ exports.deleteObjPath = function(obj, path){
 	if(current !== undefined){
 		delete current[finalField];
 	}
+};
+
+exports.clone = function(obj){
+	return JSON.parse(JSON.stringify(obj));
+};
+
+exports.cloneEx = function(obj){
+	if(obj === null || obj === undefined || typeof(obj) === 'number' || typeof(obj) === 'string' || typeof(obj) === 'boolean'){
+		return obj;
+	}
+	if(typeof(obj) === 'object'){
+		var copy = Array.isArray(obj) ? new Array(obj.length) : {};
+		for(var key in obj){
+			copy[key] = exports.clone(obj[key]);
+		}
+		return copy;
+	}
+	throw new Error('unsupported type of obj: ' + obj);
+};
+
+exports.uuid = function(){
+	// return a short uuid, based on current tick and a random number
+	// result uuid like '2mnh1r3wb'
+	return ((Date.now() - 1422720000000) * 1000 + _.random(1000)).toString(36);
 };
 
 module.exports = exports;

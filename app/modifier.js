@@ -1,7 +1,6 @@
 'use strict';
 
 var utils = require('./utils');
-var clone = require('clone');
 
 module.exports = {
 	$insert : function(doc, param){
@@ -9,14 +8,14 @@ module.exports = {
 		if(doc !== null){
 			throw new Error('doc already exists');
 		}
-		return clone(param);
+		return utils.clone(param);
 	},
 	$replace : function(doc, param){
 		param = param || {};
 		if(doc === null){
 			throw new Error('doc not exist');
 		}
-		return clone(param);
+		return utils.clone(param);
 	},
 	$remove : function(doc, param){
 		if(doc === null){
@@ -29,7 +28,7 @@ module.exports = {
 			throw new Error('doc not exist');
 		}
 		for(var path in param){
-			utils.setObjPath(doc, path, clone(param[path]));
+			utils.setObjPath(doc, path, utils.clone(param[path]));
 		}
 		return doc;
 	},
@@ -74,7 +73,7 @@ module.exports = {
 			if(!Array.isArray(arr)){
 				throw new Error('not an array');
 			}
-			arr.push(clone(param[path]));
+			arr.push(utils.clone(param[path]));
 		}
 		return doc;
 	},
@@ -96,7 +95,7 @@ module.exports = {
 				items = [items];
 			}
 			for(var i in items){
-				arr.push(clone(items[i]));
+				arr.push(utils.clone(items[i]));
 			}
 		}
 		return doc;
@@ -123,7 +122,7 @@ module.exports = {
 				}
 			}
 			if(!exist){
-				arr.push(clone(value));
+				arr.push(utils.clone(value));
 			}
 		}
 		return doc;

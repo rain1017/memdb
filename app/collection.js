@@ -2,9 +2,11 @@
 
 var P = require('bluebird');
 var util = require('util');
+var utils = require('./utils');
 var EventEmitter = require('events').EventEmitter;
-var util = require('util');
 var logger = require('pomelo-logger').getLogger('memdb', __filename);
+
+var MAX_INDEX_COLLISION = 10000;
 
 /**
  * opts.indexes - [field, field]
@@ -25,15 +27,15 @@ var Collection = function(opts){
 
 	this.pendingIndexTasks = {}; //{id, [Promise]}
 
-	this.shard.on('docUpdateUncommited:' + this.name, function(connId, id, field, oldValue, newValue){
+	this.shard.on('docUpdateIndex:' + this.name, function(connId, id, field, oldValue, newValue){
 		if(!!self.indexes[field]){
 			if(!self.pendingIndexTasks[id]){
 				self.pendingIndexTasks[id] = [];
 			}
-			if(oldValue !== undefined){
+			if(oldValue !== null){
 				self.pendingIndexTasks[id].push(self._removeIndex(connId, id, field, oldValue));
 			}
-			if(newValue !== undefined){
+			if(newValue !== null){
 				self.pendingIndexTasks[id].push(self._insertIndex(connId, id, field, newValue));
 			}
 		}
@@ -47,6 +49,15 @@ util.inherits(Collection, EventEmitter);
 var proto = Collection.prototype;
 
 proto.insert = function(connId, id, doc){
+	if(id === null || id === undefined){
+		id = utils.uuid();
+	}
+	id = this._checkId(id);
+
+	if(id.indexOf('.') !== -1 || id.charAt(0) === '$'){
+		throw new Error('id cannot contain "." or start with "$"');
+	}
+
 	return P.bind(this)
 	.then(function(){
 		return this.lock(connId, id);
@@ -56,10 +67,15 @@ proto.insert = function(connId, id, doc){
 	})
 	.then(function(){
 		return this._finishIndexTasks(id);
+	})
+	.then(function(){
+		return id;
 	});
 };
 
 proto.remove = function(connId, id){
+	id = this._checkId(id);
+
 	return P.bind(this)
 	.then(function(){
 		return this.lock(connId, id);
@@ -73,10 +89,14 @@ proto.remove = function(connId, id){
 };
 
 proto.find = function(connId, id, fields){
+	id = this._checkId(id);
+
 	return this.shard.find(connId, this._key(id), fields);
 };
 
 proto.findForUpdate = function(connId, id, fields){
+	id = this._checkId(id);
+
 	return P.bind(this)
 	.then(function(){
 		return this.lock(connId, id);
@@ -87,19 +107,23 @@ proto.findForUpdate = function(connId, id, fields){
 };
 
 proto.update = function(connId, id, doc, opts){
-	return P.bind(this)
-	.then(function(){
-		return this.lock(connId, id);
+	id = this._checkId(id);
+
+	var self = this;
+	return P.try(function(){
+		return self.lock(connId, id);
 	})
 	.then(function(){
-		return this.shard.update(connId, this._key(id), doc, opts);
+		return self.shard.update(connId, self._key(id), doc, opts);
 	})
 	.then(function(){
-		return this._finishIndexTasks(id);
+		return self._finishIndexTasks(id);
 	});
 };
 
 proto.lock = function(connId, id){
+	id = this._checkId(id);
+
 	if(this.shard.isLocked(connId, this._key(id))){
 		return;
 	}
@@ -113,12 +137,20 @@ proto.lock = function(connId, id){
 	});
 };
 
+// value is object
 proto.findByIndex = function(connId, field, value, fields){
+	if(typeof(field) !== 'string'){
+		throw new Error('field must be string');
+	}
+	if(value === null || value === undefined){
+		throw new Error('value can not be null or undefined');
+	}
+
 	var indexCollection = this.db._collection(this._indexCollectionName(field));
 	return P.bind(this)
 	.then(function(){
-		var v = JSON.stringify(value);
-		return indexCollection.find(connId, v);
+		var valueB64 = new Buffer(JSON.stringify(value)).toString('base64');
+		return indexCollection.find(connId, valueB64);
 	})
 	.then(function(doc){
 		var ids = doc ? Object.keys(doc.ids) : [];
@@ -134,13 +166,13 @@ proto.findByIndex = function(connId, field, value, fields){
 };
 
 proto.findCached = function(connId, id){
+	id = this._checkId(id);
+
 	return this.shard.findCached(connId, this._key(id));
 };
 
 // value is json encoded
 proto._insertIndex = function(connId, id, field, value){
-	//TODO: id cannot contain '.' or start with '$'
-
 	var indexCollection = this.db._collection(this._indexCollectionName(field));
 	var param = {
 		$set : {},
@@ -148,26 +180,37 @@ proto._insertIndex = function(connId, id, field, value){
 	};
 	param.$set['ids.' + id] = 1;
 
-	return indexCollection.update(connId, value, param, {upsert : true});
+	var valueB64 = new Buffer(value).toString('base64');
+	return P.try(function(){
+		return indexCollection.find(connId, valueB64, 'count');
+	})
+	.then(function(ret){
+		if(!!ret && ret.count >= MAX_INDEX_COLLISION){
+			throw new Error('Too many duplicate values on same index');
+		}
+		return indexCollection.update(connId, valueB64, param, {upsert : true});
+	});
 };
 
+// value is json encoded
 proto._removeIndex = function(connId, id, field, value){
 	var indexCollection = this.db._collection(this._indexCollectionName(field));
 
+	var valueB64 = new Buffer(value).toString('base64');
 	return P.try(function(){
 		var param = {
 			$unset : {},
 			$inc: {count : -1}
 		};
 		param.$unset['ids.' + id] = 1;
-		return indexCollection.update(connId, value, param);
+		return indexCollection.update(connId, valueB64, param);
 	})
 	.then(function(){
-		return indexCollection.find(connId, value, 'count');
+		return indexCollection.find(connId, valueB64, 'count');
 	})
 	.then(function(ret){
 		if(ret.count === 0){
-			return indexCollection.remove(connId, value);
+			return indexCollection.remove(connId, valueB64);
 		}
 	});
 };
@@ -192,6 +235,16 @@ proto._indexCollectionName = function(field){
 
 proto._key = function(id){
 	return this.name + ':' + id;
+};
+
+proto._checkId = function(id){
+	if(typeof(id) === 'number'){
+		return id.toString();
+	}
+	else if(typeof(id) === 'string'){
+		return id;
+	}
+	throw new Error('id must be number or string');
 };
 
 module.exports = Collection;

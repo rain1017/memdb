@@ -3,7 +3,6 @@
 var P = require('bluebird');
 var util = require('util');
 var utils = require('./utils');
-var clone = require('clone');
 var AsyncLock = require('async-lock');
 var EventEmitter = require('events').EventEmitter;
 var modifier = require('./modifier');
@@ -16,7 +15,7 @@ var logger = require('pomelo-logger').getLogger('memdb', __filename);
  *
  * Events:
  *
- * updateUncommited - (connectionId, field, oldValue, newValue)
+ * updateIndex - (connectionId, field, oldValue, newValue)
  * Used for internal index update (won't fire on commit or rollback)
  */
 var Document = function(opts){ //jshint ignore:line
@@ -27,10 +26,11 @@ var Document = function(opts){ //jshint ignore:line
 		throw new Error('doc must be object');
 	}
 
+	this._id = opts._id;
 	this.commited = doc;
 	this.changed = undefined; // undefined means no change (while null means removed)
 
-	this.watchedFields = opts.watchedFields || []; // fire event on change
+	this.indexes = opts.indexes || []; // fire event on index change
 
 	this.connectionId = null; // Connection that hold the document lock
 	this._lock = new AsyncLock({
@@ -57,7 +57,7 @@ proto.find = function(connectionId, fields){
 	}
 
 	if(!fields){
-		return clone(doc);
+		return utils.clone(doc);
 	}
 
 	var includeFields = [], excludeFields = [];
@@ -83,12 +83,12 @@ proto.find = function(connectionId, fields){
 	if(includeFields.length > 0){
 		includeFields.forEach(function(field){
 			if(doc.hasOwnProperty(field)){
-				ret[field] = clone(doc[field]);
+				ret[field] = utils.clone(doc[field]);
 			}
 		});
 	}
 	else if(excludeFields.length > 0){
-		ret = clone(doc);
+		ret = utils.clone(doc);
 		excludeFields.forEach(function(field){
 			delete ret[field];
 		});
@@ -140,8 +140,9 @@ proto.modify = function(connectionId, cmd, param){
 
 	var oldValues = {};
 	var self = this;
-	this.watchedFields.forEach(function(field){
-		oldValues[field] = self.changed ? JSON.stringify(self.changed[field]) : undefined;
+
+	this.indexes.forEach(function(field){
+		oldValues[field] = self._getIndexValue(!!self.changed ? self.changed[field] : undefined);
 	});
 
 	var modifyFunc = modifier[cmd];
@@ -151,10 +152,15 @@ proto.modify = function(connectionId, cmd, param){
 
 	this.changed = modifyFunc(this.changed, param);
 
-	this.watchedFields.forEach(function(field){
-		var value = self.changed ? JSON.stringify(self.changed[field]) : undefined;
+	// id is immutable
+	if(!!this.changed){
+		this.changed._id = this._id;
+	}
+
+	this.indexes.forEach(function(field){
+		var value = self._getIndexValue(!!self.changed ? self.changed[field] : undefined);
 		if(oldValues[field] !== value){
-			self.emit('updateUncommited', connectionId, field, oldValues[field], value);
+			self.emit('updateIndex', connectionId, field, oldValues[field], value);
 		}
 	});
 };
@@ -173,7 +179,7 @@ proto.lock = function(connectionId){
 		self._lock.acquire('', function(release){
 			self.connectionId = connectionId;
 			self.releaseCallback = release;
-			self.changed = clone(self.commited);
+			self.changed = utils.clone(self.commited);
 
 			deferred.resolve();
 		});
@@ -222,6 +228,18 @@ proto.ensureLocked = function(connectionId){
 
 proto.isLocked = function(connectionId){
 	return this.connectionId === connectionId && connectionId !== null && connectionId !== undefined;
+};
+
+proto._getIndexValue = function(obj){
+	if(obj === null || obj === undefined){
+		return null;
+	}
+
+	if(typeof(obj) === 'number' || typeof(obj) === 'string' || typeof(obj) === 'boolean'){
+		return JSON.stringify(obj);
+	}
+
+	throw new Error('Indexed field can not have value other than number, string, boolean, null or undefined');
 };
 
 module.exports = Document;
