@@ -139,7 +139,7 @@ return P.try(function(){
 })
 .then(function(){
 	// Update a field
-	return conn.collection('player').update(player._id, {level : 2});
+	return conn.collection('player').update(player._id, {$set : {level : 2}});
 })
 .then(function(){
 	// Find the doc (only return specified field)
@@ -194,7 +194,7 @@ var memdb = require('memdb');
 var P = require('bluebird');
 var should = require('should');
 
-var doc = {_id : 1, name : 'rain', level : 1};
+var doc = {_id : '1', name : 'rain', level : 1};
 
 var autoconn = null;
 
@@ -230,7 +230,7 @@ return P.try(function(){
 		var User = autoconn.collection('user');
 		return P.try(function(){
 			// Update one field
-			return User.update(doc._id, {level : 2});
+			return User.update(doc._id, {$set : {level : 2}});
 		})
 		.then(function(){
 			// Find specified field

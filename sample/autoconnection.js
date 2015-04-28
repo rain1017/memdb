@@ -20,7 +20,7 @@ var main = function(){
 		slave : {host : '127.0.0.1', port : 6379},
 	};
 
-	var doc = {_id : 1, name : 'rain', level : 1};
+	var doc = {_id : '1', name : 'rain', level : 1};
 
 	var autoconn = null;
 	return P.try(function(){
@@ -55,7 +55,7 @@ var main = function(){
 			var User = autoconn.collection('user');
 			return P.try(function(){
 				// Update one field
-				return User.update(doc._id, {level : 2});
+				return User.update(doc._id, {$set : {level : 2}});
 			})
 			.then(function(){
 				// Find specified field
