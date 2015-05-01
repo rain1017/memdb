@@ -12,14 +12,26 @@
 	},
 	"logger" : {
 		"path" : "/tmp",
-		"level" : "DEBUG"
+		"level" : "TRACE"
 	},
 	"promise" : {
 		"longStackTraces" : true
 	},
 	"collections" : {
 		"player" : {
-			"indexes" : ["areaId"]
+			"indexes" : [
+				{
+					"keys" : ["areaId"],
+					"unique" : false,
+					"valueIgnore" : {
+						"areaId" : ["", -1, null]
+					}
+				},
+				{
+					"keys" : ["deviceType", "deviceId"],
+					"unique" : true
+				}
+			]
 		}
 	},
 	"shards" : {

@@ -16,13 +16,30 @@ var logger = require('pomelo-logger').getLogger('memdb', __filename);
  * 		definition.indexes - [field, field]
  */
 var Database = function(opts){
-	opts = opts || {};
+	// clone since we want to modify it
+	opts = utils.clone(opts) || {};
+
 	this.shard = new Shard(opts);
 	this.collections = {};
 	this.connections = {};
 	this.connectionAutoId = 1;
 
+	// check and compile index config
 	opts.collections = opts.collections || {};
+	Object.keys(opts.collections).forEach(function(name){
+		var collection = opts.collections[name];
+		var compiledIndexes = {};
+
+		(collection.indexes || []).forEach(function(index){
+			var indexKey = JSON.stringify(index.keys.sort());
+			if(compiledIndexes[indexKey]){
+				throw new Error('duplicate index keys');
+			}
+			compiledIndexes[indexKey] = index;
+			delete index.keys;
+		});
+		collection.indexes = compiledIndexes;
+	});
 
 	this.config = opts;
 };
@@ -74,46 +91,19 @@ proto.execute = function(connId, method, args){
 	});
 };
 
+var _collMethods = ['insert', 'insertById',
+					'find', 'findOne', 'findById', 'findForUpdate', 'findOneForUpdate', 'findByIdForUpdate',  'findByIdCached',
+					'update', 'updateById', 'remove', 'removeById', 'lockById'];
 
-proto.insert = function(connId, name, id, doc){
-	var conn = this._connection(connId);
-	return this._collection(name).insert(connId, id, doc);
-};
-
-proto.remove = function(connId, name, id){
-	var conn = this._connection(connId);
-	return this._collection(name).remove(connId, id);
-};
-
-proto.find = function(connId, name, id, fields){
-	var conn = this._connection(connId);
-	return this._collection(name).find(connId, id, fields);
-};
-
-proto.findForUpdate = function(connId, name, id, fields){
-	var conn = this._connection(connId);
-	return this._collection(name).findForUpdate(connId, id, fields);
-};
-
-proto.findCached = function(connId, name, id){
-	var conn = this._connection(connId);
-	return this._collection(name).findCached(connId, id);
-};
-
-proto.update = function(connId, name, id, doc, opts){
-	var conn = this._connection(connId);
-	return this._collection(name).update(connId, id, doc, opts);
-};
-
-proto.lock = function(connId, name, id){
-	var conn = this._connection(connId);
-	return this._collection(name).lock(connId, id);
-};
-
-proto.findByIndex = function(connId, name, field, value, fields){
-	var conn = this._connection(connId);
-	return this._collection(name).findByIndex(connId, field, value, fields);
-};
+_collMethods.forEach(function(method){
+	proto[method] = function(connId, name){
+		var conn = this._connection(connId);
+		var collection = this._collection(name);
+		var args = [].slice.call(arguments);
+		args.splice(1, 1); //remove 'name' argument
+		return collection[method].apply(collection, args);
+	};
+});
 
 proto.commit = function(connId){
 	var conn = this._connection(connId);

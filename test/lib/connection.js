@@ -30,37 +30,34 @@ describe('connection test', function(){
 			News = conn.collection('news');
 		})
 		.then(function(){
-			return User.insert(user1._id, user1);
+			return User.insert([user1, user2]);
 		})
-		.then(function(){
-			return User.insert(user2._id, user2);
-		})
-		.then(function(){
+		.then(function(ret){
 			return conn.commit();
 		})
 		.then(function(){
-			return User.update(user1._id, {$set : {age : 31}});
+			return User.updateById(user1._id, {$set : {age : 31}});
 		})
 		.then(function(){
-			return User.find(user1._id, 'age')
+			return User.findById(user1._id, 'age')
 			.then(function(ret){
 				ret.age.should.eql(31);
 			});
 		})
 		.then(function(){
-			return User.find(user2._id)
+			return User.findById(user2._id)
 			.then(function(ret){
 				ret.should.eql(user2);
 			});
 		})
 		.then(function(){
-			return User.remove(user2._id);
+			return User.removeById(user2._id);
 		})
 		.then(function(){
-			return News.insert(news1._id, news1);
+			return News.insert(news1);
 		})
 		.then(function(){
-			return User.find(user2._id)
+			return User.findById(user2._id)
 			.then(function(ret){
 				(ret === null).should.eql(true);
 			});
@@ -69,28 +66,28 @@ describe('connection test', function(){
 			return conn.rollback();
 		})
 		.then(function(){
-			return User.find(user1._id)
+			return User.findOne({_id : user1._id})
 			.then(function(ret){
 				ret.should.eql(user1);
 			});
 		})
 		.then(function(){
-			return User.find(user2._id)
+			return User.findOne({_id : user2._id})
 			.then(function(ret){
 				ret.should.eql(user2);
 			});
 		})
 		.then(function(){
-			return News.find(news1._id)
+			return News.findOne({_id : news1._id})
 			.then(function(ret){
 				(ret === null).should.eql(true);
 			});
 		})
 		.then(function(){
-			return User.remove(user1._id);
+			return User.removeById(user1._id);
 		})
 		.then(function(){
-			return User.remove(user2._id);
+			return User.removeById(user2._id);
 		})
 		.then(function(){
 			return conn.commit();
@@ -119,19 +116,16 @@ describe('connection test', function(){
 			Player = conn.collection('player');
 		})
 		.then(function(){
-			return Player.findByIndex('areaId', 1)
+			return Player.find({areaId : 1})
 			.then(function(players){
 				players.length.should.eql(0);
 			});
 		})
 		.then(function(){
-			return Player.insert(1, {areaId : 1});
+			return Player.insert([{_id : '1', areaId : 1}, {_id : '2', areaId : 1}]);
 		})
 		.then(function(){
-			return Player.insert(2, {areaId : 1});
-		})
-		.then(function(){
-			return Player.findByIndex('areaId', 1)
+			return Player.find({areaId : 1})
 			.then(function(players){
 				players.length.should.eql(2);
 				players.forEach(function(player){
@@ -140,29 +134,45 @@ describe('connection test', function(){
 			});
 		})
 		.then(function(){
-			return Player.update(2, {$set : {areaId : 2}});
+			return Player.update({areaId : 1}, {$set : {areaId : 2}});
 		})
 		.then(function(){
-			return Player.findByIndex('areaId', 1)
-			.then(function(players){
-				players.length.should.eql(1);
-				players[0].areaId.should.eql(1);
-			});
-		})
-		.then(function(){
-			return Player.remove(1);
-		})
-		.then(function(){
-			return Player.findByIndex('areaId', 1)
+			return Player.find({areaId : 1})
 			.then(function(players){
 				players.length.should.eql(0);
 			});
 		})
 		.then(function(){
-			return Player.findByIndex('areaId', 2)
+			return Player.find({areaId : 2})
 			.then(function(players){
-				players.length.should.eql(1);
-				players[0].areaId.should.eql(2);
+				players.length.should.eql(2);
+			});
+		})
+		.then(function(){
+			return Player.remove({areaId : 2});
+		})
+		.then(function(){
+			return Player.find({areaId : 2})
+			.then(function(players){
+				players.length.should.eql(0);
+			});
+		})
+		.then(function(){
+			// Should ignore the index
+			return Player.insert({_id : '1', areaId : -1});
+		})
+		.then(function(){
+			// Should ignore the index
+			return Player.find({areaId : -1})
+			.then(function(players){
+				players.length.should.eql(0);
+			});
+		})
+		.then(function(){
+			// invalid index value
+			return Player.updateById('1', {$set : {areaId : ['invalid value']}})
+			.catch(function(err){
+				logger.debug(err);
 			});
 		})
 		.then(function(){
@@ -174,7 +184,7 @@ describe('connection test', function(){
 		.nodeify(cb);
 	});
 
-	it('error handling', function(cb){
+	it('compound index test', function(cb){
 		var conn = null;
 		var Player = null;
 
@@ -187,32 +197,50 @@ describe('connection test', function(){
 		.then(function(ret){
 			conn = ret;
 			Player = conn.collection('player');
-			return Player.insert(1, {areaId : 1});
+
+			return Player.insert({_id : '1', deviceType : 1, deviceId : 'id1'});
 		})
 		.then(function(){
-			return conn.commit();
+			return Player.find({deviceType : 1, deviceId : 'id1'})
+			.then(function(players){
+				players.length.should.eql(1);
+			});
 		})
 		.then(function(){
-			return Player.update(1, {$set : {areaId : ['invalid index value']}});
-		})
-		.catch(function(err){
-			//Should throw error and rolledback
-			return Player.find(1);
-		})
-		.then(function(ret){
-			ret.areaId.should.eql(1);
+			return Player.update({_id : '1'}, {$set : {deviceType : 2}});
 		})
 		.then(function(){
-			return Player.remove(1);
+			return Player.find({deviceType : 2, deviceId : 'id1'})
+			.then(function(players){
+				players.length.should.eql(1);
+			});
 		})
 		.then(function(){
-			return conn.commit();
+			return Player.insert({_id : '2', deviceType : 2, deviceId : 'id1'})
+			.catch(function(err){
+				// Should throw duplicate key error
+				logger.debug(err);
+			});
+		})
+		.then(function(){
+			// rolledback on previous error
+			return Player.find({deviceType : 2, deviceId : 'id1'})
+			.then(function(players){
+				players.length.should.eql(0);
+			});
+		})
+		.then(function(){
+
+		})
+		.then(function(){
+			return conn.close();
 		})
 		.finally(function(){
 			return memdb.stopServer();
 		})
 		.nodeify(cb);
 	});
+
 
 	it('findCached', function(cb){
 		var conn = null;
@@ -227,14 +255,14 @@ describe('connection test', function(){
 			conn = ret;
 
 			// miss cache
-			return conn.collection('player').findCached('p1')
+			return conn.collection('player').findByIdCached('p1')
 			.then(function(ret){
 				(ret === null).should.eql(true);
 			});
 		})
 		.then(function(){
 			// hit cache
-			return conn.collection('player').findCached('p1')
+			return conn.collection('player').findByIdCached('p1')
 			.then(function(ret){
 				(ret === null).should.eql(true);
 			});

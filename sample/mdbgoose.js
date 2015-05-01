@@ -44,7 +44,7 @@ var main = function(){
 				return player.saveAsync();
 			})
 			.then(function(){
-				return Player.findAsync('p1');
+				return Player.findByIdAsync('p1');
 			})
 			.then(function(player){
 				player.name.should.eql('rain');

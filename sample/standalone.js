@@ -22,14 +22,14 @@ var main = function(){
 		return autoconn.execute(function(){
 			var Player = autoconn.collection('player');
 			return P.try(function(){
-				return Player.insert(1, {name : 'rain'});
+				return Player.insert({_id : '1', name : 'rain'});
 			})
 			.then(function(){
-				return Player.find(1);
+				return Player.findById('1');
 			})
 			.then(function(player){
 				player.name.should.eql('rain');
-				return Player.remove(1);
+				return Player.removeById('1');
 			});
 		});
 	})

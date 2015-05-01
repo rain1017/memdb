@@ -460,8 +460,8 @@ proto._addDoc = function(key, doc){
 	});
 
 	var res = this._resolveKey(key);
-	doc.on('updateIndex', function(connectionId, field, oldValue, newValue){
-		self.emit('docUpdateIndex:' + res.name, connectionId, res.id, field, oldValue, newValue);
+	doc.on('updateIndex', function(connectionId, indexKey, oldValue, newValue){
+		self.emit('docUpdateIndex:' + res.name, connectionId, res.id, indexKey, oldValue, newValue);
 	});
 
 	// Loaded at this instant
@@ -687,7 +687,7 @@ proto._resolveKey = function(key){
 proto._createDoc = function(key, doc){
 	var res = this._resolveKey(key);
 	var coll = this.config.collections[res.name];
-	var indexes = coll ? coll.indexes || []: [];
+	var indexes = coll ? coll.indexes || {}: {};
 
 	return new Document({_id : res.id, doc: doc, indexes: indexes});
 };

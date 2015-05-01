@@ -37,11 +37,11 @@ var main = function(){
 			var User = autoconn.collection('user');
 			return P.try(function(){
 				// Insert a doc
-				return User.insert(doc._id, doc);
+				return User.insert(doc);
 			})
 			.then(function(){
 				// find the doc
-				return User.find(doc._id)
+				return User.findById(doc._id)
 				.then(function(ret){
 					ret.should.eql(doc);
 				});
@@ -55,11 +55,11 @@ var main = function(){
 			var User = autoconn.collection('user');
 			return P.try(function(){
 				// Update one field
-				return User.update(doc._id, {$set : {level : 2}});
+				return User.updateById(doc._id, {$set : {level : 2}});
 			})
 			.then(function(){
 				// Find specified field
-				return User.find(doc._id, 'level')
+				return User.findById(doc._id, 'level')
 				.then(function(ret){
 					ret.should.eql({level : 2});
 				});
@@ -79,14 +79,14 @@ var main = function(){
 			var User = autoconn.collection('user');
 			return P.try(function(){
 				// doc should be rolled back
-				return User.find(doc._id, 'level')
+				return User.findById(doc._id, 'level')
 				.then(function(ret){
 					ret.should.eql({level : 1});
 				});
 			})
 			.then(function(){
 				// Remove the doc
-				return User.remove(doc._id);
+				return User.removeById(doc._id);
 			}); // Auto commit here
 		});
 	})

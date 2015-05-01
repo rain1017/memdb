@@ -10,12 +10,9 @@ var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 /**
  *
- * opts.exist
- * opts.doc
- *
  * Events:
  *
- * updateIndex - (connectionId, field, oldValue, newValue)
+ * updateIndex - (connectionId, indexKey, oldValue, newValue)
  * Used for internal index update (won't fire on commit or rollback)
  */
 var Document = function(opts){ //jshint ignore:line
@@ -30,7 +27,7 @@ var Document = function(opts){ //jshint ignore:line
 	this.commited = doc;
 	this.changed = undefined; // undefined means no change (while null means removed)
 
-	this.indexes = opts.indexes || []; // fire event on index change
+	this.indexes = opts.indexes || {};
 
 	this.connectionId = null; // Connection that hold the document lock
 	this._lock = new AsyncLock({
@@ -139,11 +136,9 @@ proto.modify = function(connectionId, cmd, param){
 	this.ensureLocked(connectionId);
 
 	var oldValues = {};
-	var self = this;
-
-	this.indexes.forEach(function(field){
-		oldValues[field] = self._getIndexValue(!!self.changed ? self.changed[field] : undefined);
-	});
+	for(var indexKey in this.indexes){
+		oldValues[indexKey] = this._getIndexValue(indexKey, this.indexes[indexKey]);
+	}
 
 	var modifyFunc = modifier[cmd];
 	if(typeof(modifyFunc) !== 'function'){
@@ -157,12 +152,16 @@ proto.modify = function(connectionId, cmd, param){
 		this.changed._id = this._id;
 	}
 
-	this.indexes.forEach(function(field){
-		var value = self._getIndexValue(!!self.changed ? self.changed[field] : undefined);
-		if(oldValues[field] !== value){
-			self.emit('updateIndex', connectionId, field, oldValues[field], value);
+	for(indexKey in this.indexes){
+		var value = this._getIndexValue(indexKey, this.indexes[indexKey]);
+		if(oldValues[indexKey] !== value){
+			logger.trace('updateIndex %s %s %s', indexKey, oldValues[indexKey], value);
+
+			this.emit('updateIndex', connectionId, indexKey, oldValues[indexKey], value);
 		}
-	});
+	}
+
+	logger.trace('%s %s %j => %j', this._id, cmd, param, this.changed);
 };
 
 proto.lock = function(connectionId){
@@ -230,16 +229,30 @@ proto.isLocked = function(connectionId){
 	return this.connectionId === connectionId && connectionId !== null && connectionId !== undefined;
 };
 
-proto._getIndexValue = function(obj){
-	if(obj === null || obj === undefined){
+proto._getIndexValue = function(indexKey, opts){
+	opts = opts || {};
+
+	var self = this;
+	var indexValue = JSON.parse(indexKey).map(function(key){
+		var value = !!self.changed ? self.changed[key] : undefined;
+		if(value === null || value === undefined){
+			return undefined;
+		}
+		if(['number', 'string', 'boolean'].indexOf(typeof(value)) === -1){
+			throw new Error('invalid value for indexed key ' + indexKey);
+		}
+		var ignores = opts.valueIgnore ? opts.valueIgnore[key] || [] : [];
+		if(ignores.indexOf(value) !== -1){
+			return undefined;
+		}
+		return value;
+	});
+
+	// Return null if one of the value is undefined
+	if(indexValue.indexOf(undefined) !== -1){
 		return null;
 	}
-
-	if(typeof(obj) === 'number' || typeof(obj) === 'string' || typeof(obj) === 'boolean'){
-		return JSON.stringify(obj);
-	}
-
-	throw new Error('Indexed field can not have value other than number, string, boolean, null or undefined');
+	return JSON.stringify(indexValue);
 };
 
 module.exports = Document;

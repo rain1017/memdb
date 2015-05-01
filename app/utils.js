@@ -94,4 +94,8 @@ exports.uuid = function(){
 	return ((Date.now() - 1422720000000) * 1000 + _.random(1000)).toString(36);
 };
 
+exports.isDict = function(obj){
+	return typeof(obj) === 'object' && obj !== null && !Array.isArray(obj);
+};
+
 module.exports = exports;
