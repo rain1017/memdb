@@ -26,6 +26,7 @@ var Database = function(opts){
 
 	// check and compile index config
 	opts.collections = opts.collections || {};
+
 	Object.keys(opts.collections).forEach(function(name){
 		var collection = opts.collections[name];
 		var compiledIndexes = {};

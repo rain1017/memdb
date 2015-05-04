@@ -216,4 +216,65 @@ describe('mdbgoose test', function(){
 		})
 		.nodeify(cb);
 	});
+
+	it('gen collection config', function(cb){
+		var mdbgoose = memdb.goose;
+		var Schema = mdbgoose.Schema;
+		var types = mdbgoose.SchemaTypes;
+		mdbgoose.setConnectOpts();
+
+		delete mdbgoose.connection.models.player;
+		var DummySchema = new Schema({
+			_id : String,
+			name : String,
+			first : {type : String, indexIgnore : ['']},
+			last : {type : String, indexIgnore : ['']},
+			groupId : {type : String, index : true, indexIgnore : [-1]},
+			uniqKey : {type : String, unique : true},
+			uniqKey2 : {type : String, index : {unique : true}},
+		},  {collection : 'dummy'});
+
+		DummySchema.index({first : 1, last : 1}, {unique : true});
+
+		mdbgoose.model('Dummy', DummySchema);
+
+		var config = mdbgoose.genCollectionConfig();
+
+		var expected = {
+		    dummy: {
+		        indexes: [
+		        {
+		            keys: ['groupId'],
+		            valueIgnore: {
+		                groupId: [-1]
+		            }
+		        },
+		        {
+		            keys: ['uniqKey'],
+		            unique: true,
+		            valueIgnore: {
+		                uniqKey: []
+		            }
+		        },
+		        {
+		            keys: ['uniqKey2'],
+		            unique: true,
+		            valueIgnore: {
+		                uniqKey2: []
+		            }
+		        }, {
+		            keys: ['first', 'last'],
+		            valueIgnore: {
+		                first: [''],
+		                last: ['']
+		            },
+		            unique: true
+		        }]
+    		}
+		}
+
+		config.dummy.should.eql(expected.dummy);
+
+		cb();
+	});
 });
