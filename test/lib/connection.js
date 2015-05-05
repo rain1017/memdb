@@ -36,28 +36,28 @@ describe('connection test', function(){
 			return conn.commit();
 		})
 		.then(function(){
-			return User.updateById(user1._id, {$set : {age : 31}});
+			return User.update(user1._id, {$set : {age : 31}});
 		})
 		.then(function(){
-			return User.findById(user1._id, 'age')
+			return User.find(user1._id, 'age')
 			.then(function(ret){
 				ret.age.should.eql(31);
 			});
 		})
 		.then(function(){
-			return User.findById(user2._id)
+			return User.find(user2._id)
 			.then(function(ret){
 				ret.should.eql(user2);
 			});
 		})
 		.then(function(){
-			return User.removeById(user2._id);
+			return User.remove(user2._id);
 		})
 		.then(function(){
 			return News.insert(news1);
 		})
 		.then(function(){
-			return User.findById(user2._id)
+			return User.find(user2._id)
 			.then(function(ret){
 				(ret === null).should.eql(true);
 			});
@@ -84,10 +84,10 @@ describe('connection test', function(){
 			});
 		})
 		.then(function(){
-			return User.removeById(user1._id);
+			return User.remove(user1._id);
 		})
 		.then(function(){
-			return User.removeById(user2._id);
+			return User.remove(user2._id);
 		})
 		.then(function(){
 			return conn.commit();
@@ -170,7 +170,7 @@ describe('connection test', function(){
 		})
 		.then(function(){
 			// invalid index value
-			return Player.updateById('1', {$set : {areaId : ['invalid value']}})
+			return Player.update('1', {$set : {areaId : ['invalid value']}})
 			.catch(function(err){
 				logger.debug(err);
 			});
@@ -255,14 +255,14 @@ describe('connection test', function(){
 			conn = ret;
 
 			// miss cache
-			return conn.collection('player').findByIdCached('p1')
+			return conn.collection('player').findCached('p1')
 			.then(function(ret){
 				(ret === null).should.eql(true);
 			});
 		})
 		.then(function(){
 			// hit cache
-			return conn.collection('player').findByIdCached('p1')
+			return conn.collection('player').findCached('p1')
 			.then(function(ret){
 				(ret === null).should.eql(true);
 			});

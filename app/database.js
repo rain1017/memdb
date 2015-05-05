@@ -92,9 +92,8 @@ proto.execute = function(connId, method, args){
 	});
 };
 
-var _collMethods = ['insert', 'insertById',
-					'find', 'findOne', 'findById', 'findForUpdate', 'findOneForUpdate', 'findByIdForUpdate',  'findByIdCached',
-					'update', 'updateById', 'remove', 'removeById', 'lockById'];
+var _collMethods = ['find', 'findOne', 'findById', 'findLocked', 'findOneLocked', 'findByIdLocked',
+					'insert', 'update', 'remove', 'lock', 'findCached'];
 
 _collMethods.forEach(function(method){
 	proto[method] = function(connId, name){

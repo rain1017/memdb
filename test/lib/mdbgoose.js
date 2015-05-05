@@ -72,6 +72,18 @@ describe('mdbgoose test', function(){
 					});
 				})
 				.then(function(){
+					return Player.findAsync('p1')
+					.then(function(player){
+						player._id.should.eql('p1');
+					});
+				})
+				.then(function(){
+					return Player.findAsync('p1', null, {lock : true})
+					.then(function(player){
+						player._id.should.eql('p1');
+					});
+				})
+				.then(function(){
 					return Player.findOneAsync({_id : 'p1'})
 					.then(function(player){
 						player._id.should.eql('p1');
@@ -84,20 +96,20 @@ describe('mdbgoose test', function(){
 					});
 				})
 				.then(function(){
-					return Player.findForUpdateAsync({_id : 'p1'})
+					return Player.findLockedAsync({_id : 'p1'})
 					.then(function(players){
 						players.length.should.eql(1);
 						players[0]._id.should.eql('p1');
 					});
 				})
 				.then(function(){
-					return Player.findOneForUpdateAsync({_id : 'p1'})
+					return Player.findOneLockedAsync({_id : 'p1'})
 					.then(function(player){
 						player._id.should.eql('p1');
 					});
 				})
 				.then(function(){
-					return Player.findByIdForUpdateAsync('p1');
+					return Player.findByIdLockedAsync('p1');
 				})
 				.then(function(player){
 					logger.debug('%j', player);
@@ -114,7 +126,7 @@ describe('mdbgoose test', function(){
 				})
 				.then(function(){
 					return P.try(function(){
-						return Player.findByIdAsync('p1');
+						return Player.findAsync('p1');
 					})
 					.then(function(player){
 						logger.debug('%j', player);
@@ -138,7 +150,16 @@ describe('mdbgoose test', function(){
 					});
 				})
 				.then(function(){
-					return Player.findByIdCachedAsync('p1')
+					return P.try(function(){
+						return Player.findAsync({areaId : 'a1'}, null, {limit : 1});
+					})
+					.then(function(players){
+						logger.debug('%j', players);
+						players.length.should.eql(1);
+					});
+				})
+				.then(function(){
+					return Player.findCachedAsync('p1')
 					.then(function(ret){
 						logger.debug('%j', ret);
 					});
@@ -203,7 +224,7 @@ describe('mdbgoose test', function(){
 					return player1.saveAsync();
 				})
 				.then(function(){
-					return Player.findByIdAsync('p1');
+					return Player.findAsync('p1');
 				})
 				.then(function(player){
 					player.name.should.eql('rain');
@@ -271,7 +292,7 @@ describe('mdbgoose test', function(){
 		            unique: true
 		        }]
     		}
-		}
+		};
 
 		config.dummy.should.eql(expected.dummy);
 

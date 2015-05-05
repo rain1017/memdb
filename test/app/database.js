@@ -54,7 +54,7 @@ describe('database test', function(){
 		})
 		.then(function(){
 			return P.try(function(){
-				return db2.findById(connId, 'player', player1._id);
+				return db2.find(connId, 'player', player1._id);
 			})
 			.then(function(ret){
 				ret.should.eql(player1);
@@ -62,7 +62,7 @@ describe('database test', function(){
 		})
 		.then(function(){
 			return P.try(function(){
-				return db2.findById(connId, 'player', player2._id);
+				return db2.find(connId, 'player', player2._id);
 			})
 			.then(function(ret){
 				ret.should.eql(player2);

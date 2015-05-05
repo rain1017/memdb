@@ -25,11 +25,11 @@ var main = function(){
 				return Player.insert({_id : '1', name : 'rain'});
 			})
 			.then(function(){
-				return Player.findById('1');
+				return Player.find('1');
 			})
 			.then(function(player){
 				player.name.should.eql('rain');
-				return Player.removeById('1');
+				return Player.remove('1');
 			});
 		});
 	})

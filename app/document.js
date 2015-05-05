@@ -84,7 +84,7 @@ proto.find = function(connectionId, fields){
 			}
 		});
 	}
-	else if(excludeFields.length > 0){
+	else{
 		ret = utils.clone(doc);
 		excludeFields.forEach(function(field){
 			delete ret[field];

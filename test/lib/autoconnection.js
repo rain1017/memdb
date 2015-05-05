@@ -42,14 +42,14 @@ describe('autoconnection test', function(){
 						var level = null;
 
 						return P.try(function(){
-							return User.findByIdForUpdate(user1._id, 'level');
+							return User.findLocked(user1._id, 'level');
 						})
 						.then(function(ret){
 							level = ret.level;
 						})
 						.delay(20)
 						.then(function(){
-							return User.updateById(user1._id, {level : level + 1});
+							return User.update(user1._id, {level : level + 1});
 						});
 					});
 				});
@@ -58,12 +58,12 @@ describe('autoconnection test', function(){
 				return autoconn.execute(function(){
 					var User = autoconn.collection('user');
 					return P.try(function(){
-						return User.findById(user1._id);
+						return User.find(user1._id);
 					})
 					.then(function(ret){
 						// level should equal to count
 						ret.level.should.eql(count);
-						return User.removeById(user1._id);
+						return User.remove(user1._id);
 					});
 				});
 			});
@@ -86,7 +86,7 @@ describe('autoconnection test', function(){
 			return autoconn.execute(function(){
 				return P.try(function(){
 					var User = autoconn.collection('user');
-					return User.findById(user1._id);
+					return User.find(user1._id);
 				})
 				.then(function(ret){
 					(ret === null).should.eql(true);

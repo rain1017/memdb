@@ -75,7 +75,7 @@ proto.insertById = function(connId, id, doc){
 
 	var self = this;
 	return P.try(function(){
-		return self.lockById(connId, id);
+		return self.lock(connId, id);
 	})
 	.then(function(){
 		return self.shard.insert(connId, self._key(id), doc);
@@ -89,8 +89,12 @@ proto.insertById = function(connId, id, doc){
 };
 
 proto.find = function(connId, query, fields, opts){
+	if(typeof(query) === 'number' || typeof(query) === 'string'){
+		return this.findById(connId, query, fields, opts);
+	}
+
 	if(query === null || typeof(query) !== 'object'){
-		throw new Error('query must be a object');
+		throw new Error('invalid query');
 	}
 
 	if(query.hasOwnProperty('_id')){
@@ -126,7 +130,7 @@ proto.findById = function(connId, id, fields, opts){
 	var self = this;
 	return P.try(function(){
 		if(opts && opts.lock){
-			return self.lockById(connId, id);
+			return self.lock(connId, id);
 		}
 	})
 	.then(function(){
@@ -134,25 +138,25 @@ proto.findById = function(connId, id, fields, opts){
 	});
 };
 
-proto.findForUpdate = function(connId, query, fields, opts){
+proto.findLocked = function(connId, query, fields, opts){
 	opts = opts || {};
 	opts.lock = true;
 	return this.find(connId, query, fields, opts);
 };
 
-proto.findOneForUpdate = function(connId, query, fields, opts){
+proto.findOneLocked = function(connId, query, fields, opts){
 	opts = opts || {};
 	opts.lock = true;
 	return this.findOne(connId, query, fields, opts);
 };
 
-proto.findByIdForUpdate = function(connId, id, fields, opts){
+proto.findByIdLocked = function(connId, id, fields, opts){
 	opts = opts || {};
 	opts.lock = true;
 	return this.findById(connId, id, fields, opts);
 };
 
-proto.findByIdCached = function(connId, id){
+proto.findCached = function(connId, id){
 	id = this._checkId(id);
 	return this.shard.findCached(connId, this._key(id));
 };
@@ -186,6 +190,15 @@ proto.update = function(connId, query, doc, opts){
 	return P.try(function(){
 		return self.find(connId, query, '_id', {lock : true});
 	})
+	.then(function(docs){
+		if(!docs){
+			return [];
+		}
+		if(!Array.isArray(docs)){
+			docs = [docs];
+		}
+		return docs;
+	})
 	.map(function(ret){
 		return self.updateById(connId, ret._id, doc, opts);
 	}, {concurrency : 1});
@@ -196,7 +209,7 @@ proto.updateById = function(connId, id, doc, opts){
 
 	var self = this;
 	return P.try(function(){
-		return self.lockById(connId, id);
+		return self.lock(connId, id);
 	})
 	.then(function(){
 		return self.shard.update(connId, self._key(id), doc, opts);
@@ -211,6 +224,15 @@ proto.remove = function(connId, query){
 	return P.try(function(){
 		return self.find(connId, query, '_id', {lock : true});
 	})
+	.then(function(docs){
+		if(!docs){
+			return [];
+		}
+		if(!Array.isArray(docs)){
+			docs = [docs];
+		}
+		return docs;
+	})
 	.map(function(doc){
 		return self.removeById(connId, doc._id);
 	}, {concurrency : 1});
@@ -221,7 +243,7 @@ proto.removeById = function(connId, id){
 
 	var self = this;
 	return P.try(function(){
-		return self.lockById(connId, id);
+		return self.lock(connId, id);
 	})
 	.then(function(){
 		return self.shard.remove(connId, self._key(id));
@@ -231,7 +253,7 @@ proto.removeById = function(connId, id){
 	});
 };
 
-proto.lockById = function(connId, id){
+proto.lock = function(connId, id){
 	id = this._checkId(id);
 
 	if(this.shard.isLocked(connId, this._key(id))){

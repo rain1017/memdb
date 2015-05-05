@@ -110,7 +110,7 @@ describe.skip('performance test', function(){
 
 			return autoconn.execute(function(){
 				var Player = autoconn.collection('player');
-				return Player.insert(player._id, player);
+				return Player.insert(player);
 			});
 		})
 		.then(function(){
@@ -250,7 +250,7 @@ describe.skip('performance test', function(){
 				_.range(count).forEach(function(id){
 					var doc = {_id : id, name : 'rain', exp : id};
 					promise = promise.then(function(){
-						return Player.insert(doc._id, doc);
+						return Player.insert(doc);
 					});
 				});
 				return promise;
