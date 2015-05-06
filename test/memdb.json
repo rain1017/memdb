@@ -12,10 +12,10 @@
 	},
 	"logger" : {
 		"path" : "/tmp",
-		"level" : "WARN"
+		"level" : "TRACE"
 	},
 	"promise" : {
-		"longStackTraces" : false
+		"longStackTraces" : true
 	},
 	"collections" : {
 		"player" : {

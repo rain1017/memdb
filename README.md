@@ -128,7 +128,7 @@ return P.try(function(){
 })
 .then(function(){
 	// Find the doc
-	return conn.collection('player').findOne({_id : player._id})
+	return conn.collection('player').find(player._id)
 	.then(function(ret){
 		ret.should.eql(player);
 	});
@@ -139,11 +139,11 @@ return P.try(function(){
 })
 .then(function(){
 	// Update a field
-	return conn.collection('player').update({_id : player._id}, {$set : {level : 2}});
+	return conn.collection('player').update(player._id, {$set : {level : 2}});
 })
 .then(function(){
 	// Find the doc (only return specified field)
-	return conn.collection('player').findOne({_id : player._id}, {'level' : true})
+	return conn.collection('player').find(player._id, {'level' : true})
 	.then(function(ret){
 		ret.level.should.eql(2);
 	});
@@ -154,14 +154,14 @@ return P.try(function(){
 })
 .then(function(){
 	// Doc should rolled back
-	return conn.collection('player').findOne({_id : player._id}, {'level' : true})
+	return conn.collection('player').find(player._id, {'level' : true})
 	.then(function(ret){
 		ret.level.should.eql(1);
 	});
 })
 .then(function(){
 	// Remove doc
-	return conn.collection('player').remove({_id : player._id});
+	return conn.collection('player').remove(player._id);
 })
 .then(function(){
 	// Commit changes
@@ -169,7 +169,7 @@ return P.try(function(){
 })
 .then(function(){
 	// Doc should not exist
-	return conn.collection('player').findOne({_id : player._id})
+	return conn.collection('player').find(player._id)
 	.then(function(ret){
 		(ret === null).should.eql(true);
 	});

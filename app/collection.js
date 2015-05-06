@@ -51,18 +51,19 @@ var proto = Collection.prototype;
 
 proto.insert = function(connId, docs){
 	if(!Array.isArray(docs)){
-		docs = [docs];
+		return this._insertById(connId, docs._id, docs);
 	}
+
 	var self = this;
 	return P.map(docs, function(doc){
 		if(!doc){
 			throw new Error('doc is null');
 		}
-		return self.insertById(connId, doc._id, doc);
+		return self._insertById(connId, doc._id, doc);
 	}, {concurrency : 1}); //disable concurrent to avoid race condition
 };
 
-proto.insertById = function(connId, id, doc){
+proto._insertById = function(connId, id, doc){
 	if(!utils.isDict(doc)){
 		throw new Error('doc must be a dictionary');
 	}
@@ -185,68 +186,87 @@ proto._findByIndex = function(connId, indexKey, indexValue, fields, opts){
 	});
 };
 
-proto.update = function(connId, query, doc, opts){
+proto.update = function(connId, query, modifier, opts){
+	opts = opts || {};
 	var self = this;
 	return P.try(function(){
 		return self.find(connId, query, '_id', {lock : true});
 	})
-	.then(function(docs){
-		if(!docs){
-			return [];
+	.then(function(ret){
+		if(!ret || ret.length === 0){
+			if(!opts.upsert){
+				return 0;
+			}
+			// upsert
+			if(typeof(query) === 'string' || typeof(query) === 'number'){
+				query = {_id : query};
+			}
+			return self.insert(connId, query)
+			.then(function(id){
+				return self._updateById(connId, id, modifier, opts);
+			})
+			.then(function(){
+				return 1;
+			});
 		}
-		if(!Array.isArray(docs)){
-			docs = [docs];
+
+		if(!Array.isArray(ret)){
+			return self._updateById(connId, ret._id, modifier, opts)
+			.then(function(){
+				return 1;
+			});
 		}
-		return docs;
-	})
-	.map(function(ret){
-		return self.updateById(connId, ret._id, doc, opts);
-	}, {concurrency : 1});
+		return P.map(ret, function(doc){
+			return self._updateById(connId, doc._id, modifier, opts);
+		}, {concurrency : 1})
+		.then(function(){
+			return ret.length;
+		});
+	});
 };
 
-proto.updateById = function(connId, id, doc, opts){
+proto._updateById = function(connId, id, modifier, opts){
 	id = this._checkId(id);
 
 	var self = this;
 	return P.try(function(){
-		return self.lock(connId, id);
-	})
-	.then(function(){
-		return self.shard.update(connId, self._key(id), doc, opts);
+		return self.shard.update(connId, self._key(id), modifier, opts);
 	})
 	.then(function(){
 		return self._finishIndexTasks(id);
 	});
 };
 
-proto.remove = function(connId, query){
+proto.remove = function(connId, query, opts){
 	var self = this;
 	return P.try(function(){
 		return self.find(connId, query, '_id', {lock : true});
 	})
-	.then(function(docs){
-		if(!docs){
-			return [];
+	.then(function(ret){
+		if(!ret){
+			return 0;
 		}
-		if(!Array.isArray(docs)){
-			docs = [docs];
+		if(!Array.isArray(ret)){
+			return self._removeById(connId, ret._id, opts)
+			.then(function(){
+				return 1;
+			});
 		}
-		return docs;
-	})
-	.map(function(doc){
-		return self.removeById(connId, doc._id);
-	}, {concurrency : 1});
+		return P.map(ret, function(doc){
+			return self._removeById(connId, doc._id, opts);
+		}, {concurrency : 1})
+		.then(function(){
+			return ret.length;
+		});
+	});
 };
 
-proto.removeById = function(connId, id){
+proto._removeById = function(connId, id, opts){
 	id = this._checkId(id);
 
 	var self = this;
 	return P.try(function(){
-		return self.lock(connId, id);
-	})
-	.then(function(){
-		return self.shard.remove(connId, self._key(id));
+		return self.shard.remove(connId, self._key(id), opts);
 	})
 	.then(function(){
 		return self._finishIndexTasks(id);
@@ -278,10 +298,10 @@ proto._insertIndex = function(connId, id, indexKey, indexValue){
 	var id64 = new Buffer(id).toString('base64');
 
 	if(this.config.indexes[indexKey].unique){
-		var doc = {'ids' : {}, 'count' : 1};
+		var doc = {_id : indexValue, 'ids' : {}, 'count' : 1};
 		doc.ids[id64] = 1;
 
-		return indexCollection.insertById(connId, indexValue, doc)
+		return indexCollection.insert(connId, doc)
 		.catch(function(err){
 			if(err.message === 'doc already exists'){
 				throw new Error('Duplicate value for unique key ' + indexKey);
@@ -297,13 +317,13 @@ proto._insertIndex = function(connId, id, indexKey, indexValue){
 	param.$set['ids.' + id64] = 1;
 
 	return P.try(function(){
-		return indexCollection.findById(connId, indexValue, 'count');
+		return indexCollection.find(connId, indexValue, 'count');
 	})
 	.then(function(ret){
 		if(ret && ret.count >= MAX_INDEX_COLLISION){
 			throw new Error('Too many duplicate values on same index');
 		}
-		return indexCollection.updateById(connId, indexValue, param, {upsert : true});
+		return indexCollection.update(connId, indexValue, param, {upsert : true});
 	});
 };
 
@@ -320,14 +340,14 @@ proto._removeIndex = function(connId, id, indexKey, indexValue){
 			$inc: {count : -1}
 		};
 		param.$unset['ids.' + id64] = 1;
-		return indexCollection.updateById(connId, indexValue, param);
+		return indexCollection.update(connId, indexValue, param);
 	})
 	.then(function(){
-		return indexCollection.findById(connId, indexValue, 'count');
+		return indexCollection.find(connId, indexValue, 'count');
 	})
 	.then(function(ret){
 		if(ret.count === 0){
-			return indexCollection.removeById(connId, indexValue);
+			return indexCollection.remove(connId, indexValue);
 		}
 	});
 };
