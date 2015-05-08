@@ -23,7 +23,6 @@ var Database = function(opts){
 	this.shard = new Shard(opts);
 	this.collections = {};
 	this.connections = {};
-	this.connectionAutoId = 1;
 	this.connectionLock = new AsyncLock({Promise : P});
 
 	// check and compile index config
@@ -60,7 +59,7 @@ proto.stop = function(force){
 };
 
 proto.connect = function(){
-	var conn = new Connection({_id : this.connectionAutoId++});
+	var conn = new Connection({_id : utils.uuid()});
 	this.connections[conn._id] = conn;
 	logger.info('shard[%s].connection[%s] created', this.shard._id, conn._id);
 	return conn._id;

@@ -178,8 +178,10 @@ proto.lock = function(connectionId){
 			self.connectionId = connectionId;
 			self.releaseCallback = release;
 			self.changed = utils.clone(self.commited);
-
 			deferred.resolve();
+		})
+		.catch(function(err){
+			deferred.reject(err);
 		});
 	}
 	return deferred.promise;
