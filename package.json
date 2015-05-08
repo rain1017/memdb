@@ -31,7 +31,7 @@
 		"bluebird": "~2.9.24",
 		"lodash": "~3.7.0",
 		"clone": "~1.0.2",
-		"async-lock": "~0.3.1",
+		"async-lock": "~0.3.2",
 		"redis": "~0.12.1",
 		"hiredis": "~0.3.0",
 		"mongodb": "~2.0.28",

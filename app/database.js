@@ -9,6 +9,7 @@ var EventEmitter = require('events').EventEmitter;
 var Collection = require('./collection');
 var Connection = require('./connection');
 var Shard = require('./shard');
+var AsyncLock = require('async-lock');
 var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 /**
@@ -23,6 +24,7 @@ var Database = function(opts){
 	this.collections = {};
 	this.connections = {};
 	this.connectionAutoId = 1;
+	this.connectionLock = new AsyncLock({Promise : P});
 
 	// check and compile index config
 	opts.collections = opts.collections || {};
@@ -75,20 +77,25 @@ proto.disconnect = function(connId){
 
 proto.execute = function(connId, method, args){
 	var self = this;
-	return P.try(function(){
-		var func = self[method];
-		if(typeof(func) !== 'function'){
-			throw new Error('unsupported method - ' + method);
-		}
-		return func.apply(self, [connId].concat(args));
-	})
-	.then(function(ret){
-		logger.info('shard[%s].connection[%s].%s(%j) => %j', self.shard._id, connId, method, args, ret);
-		return ret;
-	}, function(err){
-		logger.warn('shard[%s].connection[%s].%s(%j) => %s', self.shard._id, connId, method, args, err.message);
-		self.rollback(connId);
-		throw err;
+	if(this.connectionLock.isBusy(connId)){
+		logger.warn('concurrent query on same connection, bug in client code? shard[%s].connection[%s].%s(%j)', this.shard._id, connId, method, args);
+	}
+	return this.connectionLock.acquire(connId, function(){
+		return P.try(function(){
+			var func = self[method];
+			if(typeof(func) !== 'function'){
+				throw new Error('unsupported method - ' + method);
+			}
+			return func.apply(self, [connId].concat(args));
+		})
+		.then(function(ret){
+			logger.info('shard[%s].connection[%s].%s(%j) => %j', self.shard._id, connId, method, args, ret);
+			return ret;
+		}, function(err){
+			logger.warn('shard[%s].connection[%s].%s(%j) => %s', self.shard._id, connId, method, args, err.message);
+			self.rollback(connId);
+			throw err;
+		});
 	});
 };
 

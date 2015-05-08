@@ -17,10 +17,41 @@ exports.normalizecb = function(cb){
 exports.setPromiseConcurrency = function(P, concurrency){
 	var map = P.prototype.map;
 	P.prototype.map = function(fn, options){
-		if(!options || !options.concurrency){
-			options = {concurrency : concurrency};
+		options = options || {};
+		if(!options.concurrency){
+			options.concurrency = concurrency;
 		}
 		return map.call(this, fn, options);
+	};
+};
+
+exports.injectLogger = function(pomeloLogger){
+	if(pomeloLogger.__memdb__){
+		return; // already injected
+	}
+	pomeloLogger.__memdb__ = true;
+
+	var getLogger = pomeloLogger.getLogger;
+
+	pomeloLogger.getLogger = function(){
+		var logger = getLogger.apply(this, arguments);
+		var methods = ['log', 'debug', 'info', 'warn', 'error', 'trace', 'fatal'];
+
+		methods.forEach(function(method){
+			var originMethod = logger[method];
+			logger[method] = function(){
+				var prefix = '';
+				if(process.domain && process.domain.__memdb__){
+					prefix += '[trans:' + process.domain.__memdb__.trans + '] ';
+				}
+				if(arguments.length > 0){
+					arguments[0] = prefix + arguments[0];
+				}
+				return originMethod.apply(this, arguments);
+			};
+		});
+
+		return logger;
 	};
 };
 

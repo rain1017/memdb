@@ -1,5 +1,6 @@
 'use strict';
 
+var memdb = require('../lib');
 var P = require('bluebird');
 var child_process = require('child_process');
 var path = require('path');

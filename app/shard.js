@@ -22,8 +22,6 @@ var STATE = {
 	STOPED : 4
 };
 
-// Max pending tasks for each doc
-var DEFAULT_MAX_PENDING_TASKS = 100;
 
 var DEFAULT_HEARTBEAT_INTERVAL = 60 * 1000;
 var DEFAULT_HEARTBEAT_TIMEOUT = 180 * 1000;
@@ -42,8 +40,8 @@ var DEFAULT_BACKEND_LOCK_TIMEOUT = 10 * 1000;
 // retry interval for backend lock
 var DEFAULT_BACKEND_LOCK_RETRY_INTERVAL = 100;
 
-// timeout for each async task for specific key
-var DEFAULT_TASKLOCK_TIMEOUT = 10 * 1000;
+// timeout for locking doc
+var DEFAULT_LOCK_TIMEOUT = 10 * 1000;
 
 /**
  * opts.redis - {host : '127.0.0.1', port : 6379} (for backendLocker)
@@ -87,7 +85,6 @@ var Shard = function(opts){
 		backend : opts.backend || {},
 		slave : opts.slave || {},
 
-		maxPendingTasks : opts.maxPendingTasks || DEFAULT_MAX_PENDING_TASKS,
 		persistentInterval : opts.persistentInterval || DEFAULT_PERSISTENT_INTERVAL,
 		heartbeatInterval : opts.heartbeatInterval || DEFAULT_HEARTBEAT_INTERVAL,
 		docIdleTimeout : opts.docIdleTimeout || DEFAULT_DOC_IDLE_TIMEOUT,
@@ -95,7 +92,7 @@ var Shard = function(opts){
 		backendLockTimeout : opts.backendLockTimeout || DEFAULT_BACKEND_LOCK_TIMEOUT,
 		backendLockRetryInterval : opts.backendLockRetryInterval || DEFAULT_BACKEND_LOCK_RETRY_INTERVAL,
 		heartbeatTimeout : opts.heartbeatTimeout || DEFAULT_HEARTBEAT_TIMEOUT,
-		taskLockTimeout : opts.taskLockTimeout || DEFAULT_TASKLOCK_TIMEOUT,
+		lockTimeout : opts.lockTimeout || DEFAULT_LOCK_TIMEOUT,
 
 		// only for test, DO NOT disable slave in production
 		disableSlave : opts.disableSlave || false,
@@ -121,11 +118,7 @@ var Shard = function(opts){
 	// Newly commited docs (for incremental _save) {key : true}
 	this.commitedKeys = {};
 	// locker for tasks on the same doc
-	this.taskLock = new AsyncLock({
-								maxPending : this.config.maxPendingTasks,
-								timeout : this.config.taskLockTimeout,
-								Promise : P,
-							});
+	this.taskLock = new AsyncLock({Promise : P});
 
 	this.heartbeatInterval = null;
 	this.persistentInterval = null;
@@ -689,7 +682,7 @@ proto._createDoc = function(key, doc){
 	var coll = this.config.collections[res.name];
 	var indexes = coll ? coll.indexes || {}: {};
 
-	return new Document({_id : res.id, doc: doc, indexes: indexes});
+	return new Document({_id : res.id, doc: doc, indexes: indexes, lockTimeout : this.config.lockTimeout});
 };
 
 proto._ensureState = function(state){

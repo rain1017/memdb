@@ -5,6 +5,7 @@ var utils = require('./utils');
 var Connection = function(opts){
 	opts = opts || {};
 	this._id = opts._id || utils.uuid();
+	this.isBusy = false;
 	this.lockedKeys = {};
 };
 

@@ -168,7 +168,10 @@ describe('mdbgoose test', function(){
 		})
 		.then(function(){
 			// force persistent to mongodb
-			return mdbgoose.autoConnect().persistentAll();
+			var autoconn = mdbgoose.autoConnect();
+			return autoconn.execute(function(){
+				return autoconn.persistentAll();
+			});
 		})
 		.then(function(){
 			// Call mongodb directly

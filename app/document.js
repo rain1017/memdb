@@ -8,6 +8,8 @@ var EventEmitter = require('events').EventEmitter;
 var modifier = require('./modifier');
 var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
+var DEFAULT_LOCK_TIMEOUT = 10 * 1000;
+
 /**
  *
  * Events:
@@ -30,10 +32,7 @@ var Document = function(opts){ //jshint ignore:line
 	this.indexes = opts.indexes || {};
 
 	this.connectionId = null; // Connection that hold the document lock
-	this._lock = new AsyncLock({
-								Promise : P,
-								timeout : 1000000 * 1000, // Never timeout
-								});
+	this._lock = new AsyncLock({Promise : P, timeout : opts.lockTimeout || DEFAULT_LOCK_TIMEOUT});
 	this.releaseCallback = null;
 
 	EventEmitter.call(this);

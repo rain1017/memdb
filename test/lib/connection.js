@@ -241,6 +241,31 @@ describe('connection test', function(){
 		.nodeify(cb);
 	});
 
+	it('concurrent query on same connection', function(cb){
+		var conn = null;
+
+		return P.try(function(){
+			return memdb.startServer(env.dbConfig('s1'));
+		})
+		.then(function(){
+			return memdb.connect();
+		})
+		.then(function(ret){
+			conn = ret;
+
+			var Player = conn.collection('player');
+			Player.insert({_id : 1, name : 'rain'});
+			Player.remove({_id : 1});
+			return conn.commit();
+		})
+		.then(function(){
+			return conn.close();
+		})
+		.finally(function(){
+			return memdb.stopServer();
+		})
+		.nodeify(cb);
+	});
 
 	it('findCached', function(cb){
 		var conn = null;
