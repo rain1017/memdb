@@ -77,7 +77,7 @@ proto.disconnect = function(connId){
 proto.execute = function(connId, method, args){
 	var self = this;
 	if(this.connectionLock.isBusy(connId)){
-		logger.warn('concurrent query on same connection, bug in client code? shard[%s].connection[%s].%s(%j)', this.shard._id, connId, method, args);
+		logger.warn('concurrent query on same connection, bug in client code? shard[%s].connection[%s].%s(%j)', this.shard._id, connId, method, args, new Error());
 	}
 	return this.connectionLock.acquire(connId, function(){
 		return P.try(function(){
@@ -91,7 +91,7 @@ proto.execute = function(connId, method, args){
 			logger.info('shard[%s].connection[%s].%s(%j) => %j', self.shard._id, connId, method, args, ret);
 			return ret;
 		}, function(err){
-			logger.warn('shard[%s].connection[%s].%s(%j) => %s', self.shard._id, connId, method, args, err.message);
+			logger.error('shard[%s].connection[%s].%s(%j) =>', self.shard._id, connId, method, args, err);
 			self.rollback(connId);
 			throw err;
 		});
