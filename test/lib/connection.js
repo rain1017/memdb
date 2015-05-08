@@ -241,7 +241,7 @@ describe('connection test', function(){
 		.nodeify(cb);
 	});
 
-	it('concurrent query on same connection', function(cb){
+	it.only('concurrent query on same connection', function(cb){
 		var conn = null;
 
 		return P.try(function(){
