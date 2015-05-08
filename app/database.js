@@ -86,6 +86,8 @@ proto.execute = function(connId, method, args){
 		});
 	}
 
+	logger.debug('shard[%s].connection[%s].%s(%j) start...', self.shard._id, connId, method, args);
+
 	return this.connectionLock.acquire(connId, function(){
 		return P.try(function(){
 			var func = self[method];
