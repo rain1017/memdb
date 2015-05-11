@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <link type="image/x-icon" rel="icon" href="../favicon.ico">
+    <link type="image/x-icon" rel="shortcut icon" href="../favicon.ico">
+    <link rel="stylesheet" href="/pipe.css">
+    <link rel="stylesheet" href="/sh_vim-dark.css">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script type="text/javascript" src="//use.typekit.net/mse5tqx.js"></script>
+    <script type="text/javascript">try{Typekit.load();}catch(e){}</script>
+    <title>About Documentation | MemDB</title>
+  </head>
+
+  <body class="int alt" id="docs">
+    <div id="nav">
+      <img id="logo" src="/images/logo.png" alt="node.js">
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li class="active"><a href="/documentation/">Docs</a></li>
+        <li><a href="http://forum.memdb.org">Forum</a></li>
+        <li><a href="http://blog.memdb.org">Blog</a></li>
+        <li><a href="https://github.com/rain1017/memdb">Github</a></li>
+        <li><a href="/about/">About</a></li>
+      </ul>
+    </div>
+
+    <div id="content-wrap">
+    <div id="content" class="clearfix">
+      <div id="column2" class="interior">
+        <!--<img src="/images/logo-light.svg" alt="node.js" width="170">-->
+        <ul class="docs-nav">
+          <li><a href="/documentation/">About Docs</a></li>
+          <li><a href="/documentation/tutorials/">Tutorials</a></li>
+          <li><a href="/documentation/contributing/">Contributing</a></li>
+          <li><a href="/documentation/workflow/">Workflow</a></li>
+          <li><a href="/documentation/localization/">Localization</a></li>
+          <li><a href="/api/">API Docs</a></li>
+        </ul>
+      </div>
+      <div id="column1" class="interior">
+        <h1>About Documentation<span><a class="mark" href="#index_md_about_documentation" id="index_md_about_documentation">#</a></span></h1>
+<p>It&#39;s important for Node.js to provide documentation to its users, but
+documentation means different things to different people. Here on nodejs.org
+you will find three types of documentation, reference documentation, getting
+started documentation, and tutorials.
+
+</p>
+<p>Our <a href="/api/">API reference documentation</a> is meant to provide detailed version
+information about a given method or pattern in Node.js. From this documentation
+you should be able to identify what input a method has, the return value of
+that method, and what if any errors may be related to method. You should also
+be able to identify which methods are available for different versions of
+Node.js.
+
+</p>
+<p>The Getting Started materials are meant to ease you into some of the concepts
+found in Node. They are meant to be approachable unopinionated pieces to help
+you understand the patterns you will see in the Node.js APIs as well as in
+other modules provided from the community.
+
+</p>
+<p>Tutorials are for slightly more advanced topics, documentation meant to guide
+the user through specific use cases for Node.js. This is meant to highlight the
+different and varied use cases that can be found for Node.js, but are not meant
+to discuss the third party modules that are found in the community.
+
+</p>
+<p>All of this documentation is meant to only highlight the builtin core modules
+provided by Node, and not to highlight the module and collection of modules
+found in the community. Node.js doesn&#39;t want to be in the business of picking
+winners or losers, so to avoid the appearance of favoritism we only discuss
+our APIs.
+</p>
+
+      </div>
+    </div>
+    </div>
+
+    <div id="footer">
+      <div class="foot-1">
+        <a href="http://memdb.org"><h5>The MemDB Project is Sponsored by</h5>
+        <img src="/images/logo-footer.jpg">
+      </div>
+      <div class="foot-2">
+        <div class="foot-nav">
+          <ul>
+            <li><a href="/download/">Downloads</a></li>
+          </ul>
+          <ul>
+            <li><a href="/documentation/">Documentation</a></li>
+            <li><a href="/api/">API Docs</a></li>
+            <li><a href="/documentation/tutorials/">Tutorials</a></li>
+            <li><a href="/documentation/localization/">Localization</a></li>
+          </ul>
+          <ul>
+            <li><a href="/community/">Community</a></li>
+            <li><a href="https://github.com/rain1017/memdb/issues">Github Issues</a></li>
+            <li><a href="http://groups.google.com/group/memdb">Mailing List</a></li>
+            <li><a href="http://webchat.freenode.net/?channels=node.js">IRC</a></li>
+            <li><a href="https://twitter.com/memdb">Twitter</a></li>
+          </ul>
+          <ul>
+            <li><a href="/about/">About</a></li>
+            <li><a href="/about/organization/">Organization</a></li>
+            <li><a href="/about/core-team/">Core Team</a></li>
+            <li><a href="/about/resources/">Resources</a></li>
+          </ul>
+          <ul>
+            <li><a href="http://blog.memdb.org">Blog</a></li>
+          </ul>
+        </div>
+        <p class="copyright">Copyright 2015 <a href="http://memdb.org/">Comeplus, Inc</a>, MemDB is a <a href="/images/trademark-policy.pdf">trademark</a> of Comeplus, Inc. <a href="https://github.com/rain1017/memdb/master/LICENSE">View license</a>.</p>
+      </div>
+    </div>
+
+    <script src="/sh_main.js"></script>
+    <script src="/sh_javascript.min.js"></script>
+    <script>highlight(undefined, undefined, 'pre');</script>
+
+    <script>
+      $(document).ready(function() {
+        $('#nav a[href^="/' + location.pathname.split("/")[1] + '"]').parent().closest('li').addClass('active');
+        $('.docs-nav a').each(function() {
+          if ($(this).attr("href") == window.location.pathname) {
+            $(this).parent().closest('li').addClass('active');
+          }
+        });
+      });
+    </script>
+    <script src="/tracking.js"></script>
+    <script src="/main.js"></script>
+  </body>
+</html>
+
