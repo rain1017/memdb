@@ -356,10 +356,16 @@ proto._finishIndexTasks = function(id){
 	if(!this.pendingIndexTasks[id]){
 		return;
 	}
-	var self = this;
+    // Save domain
+    var d = process.domain;
+    var self = this;
 	return P.map(self.pendingIndexTasks[id], function(){
 		delete self.pendingIndexTasks[id];
-	}, {concurrency : 1});
+	}, {concurrency : 1})
+    .then(function(){
+        // Restore domain
+        process.domain = d;
+    });
 };
 
 proto._indexCollectionName = function(indexKey){

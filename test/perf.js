@@ -91,7 +91,7 @@ describe.skip('performance test', function(){
 		var player = {_id : 1, name : 'rain', exp : 0};
 
 		var incPlayerExp = function(){
-			return autoconn.execute(function(){
+			return autoconn.transaction(function(){
 				var Player = autoconn.collection('player');
 				return Player.update(player._id, {$inc : {exp : 1}});
 			})
@@ -105,10 +105,12 @@ describe.skip('performance test', function(){
 		return P.try(function(){
 			return memdb.startServer(env.dbConfig('s1'));
 		})
-		.then(function(){
-			autoconn = memdb.autoConnect();
-
-			return autoconn.execute(function(){
+        .then(function(){
+            return memdb.autoConnect();
+        })
+		.then(function(ret){
+			autoconn = ret;
+			return autoconn.transaction(function(){
 				var Player = autoconn.collection('player');
 				return Player.insert(player);
 			});
@@ -123,7 +125,7 @@ describe.skip('performance test', function(){
 			rate = count * 1000 / (Date.now() - startTick);
 			logger.warn('Rate: %s', rate);
 
-			return autoconn.execute(function(){
+			return autoconn.transaction(function(){
 				var Player = autoconn.collection('player');
 				return P.try(function(){
 					return Player.find(player._id);
@@ -152,11 +154,14 @@ describe.skip('performance test', function(){
 		return P.try(function(){
 			return memdb.startServer(env.dbConfig('s1'));
 		})
-		.then(function(){
-			autoconn = memdb.autoConnect();
+        .then(function(){
+            return memdb.autoConnect();
+        })
+		.then(function(ret){
+			autoconn = ret;
 
 			startTick = Date.now();
-			return autoconn.execute(function(){
+			return autoconn.transaction(function(){
 				var Player = autoconn.collection('player');
 
 				return P.reduce(_.range(count), function(sofar, value){
@@ -190,11 +195,14 @@ describe.skip('performance test', function(){
 			config.persistentInterval = 3600 * 1000;
 			return memdb.startServer(config);
 		})
-		.then(function(){
-			autoconn = memdb.autoConnect();
+        .then(function(){
+            return memdb.autoConnect();
+        })
+		.then(function(ret){
+			autoconn = ret;
 
 			startTick = Date.now();
-			return autoconn.execute(function(){
+			return autoconn.transaction(function(){
 				var Player = autoconn.collection('player');
 				var promise = P.resolve(); // jshint ignore:line
 				_.range(count).forEach(function(id){
@@ -244,7 +252,7 @@ describe.skip('performance test', function(){
 		})
 		.then(function(){
 			var autoconn = new AutoConnection({db : db1});
-			return autoconn.execute(function(){
+			return autoconn.transaction(function(){
 				var Player = autoconn.collection('player');
 				var promise = P.resolve();
 				_.range(count).forEach(function(id){
@@ -264,7 +272,7 @@ describe.skip('performance test', function(){
 				return P.delay(_.random(count * 1000 / requestRate))
 				.then(function(){
 					var start = null;
-					return autoconn.execute(function(){
+					return autoconn.transaction(function(){
 						start = Date.now();
 						return autoconn.collection('player').remove(id);
 					})

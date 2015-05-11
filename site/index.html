@@ -23,18 +23,18 @@
     </ul>
   </div>
   <div id="intro">
-      <h2>Distributed transactional in memory database.</h2>
+      <h2>Distributed transactional in memory database</h2>
       <div style='width:50%; float:left'>
       <h3>Performance</h3>
       Data access is mainly based on in process memory, which is extremely fast
-      <h3>Scalablility</h3>
+      <h3>Scalable</h3>
       System is horizontally scalable by adding more shards.
     </div>
     <div style='width:50%; float:left'>
       <h3>Transaction</h3>
       You can commit/rollback change just like traditional database. 'row' based locking is also supported
       <h3>High Availability</h3>
-      All server is backed by one or more redis replication, you will never lose any commited data
+      Each shard is backed by one or more redis replication, you will never lose any commited data
     </div>
 
     <p class="version" style='clear:both'>Current Version: v0.2.0</p>
@@ -57,6 +57,7 @@
       <div id="column1">
         <h2>Basic Example</h2>
         <p>Start one shard in in-process mode and use raw api</p>
+        <p>You should run on node >= v0.12 with --harmony option</p>
         <p></p>
 <pre>
 // npm install memdb, bluebird

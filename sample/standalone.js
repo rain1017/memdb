@@ -1,52 +1,30 @@
 'use strict';
 
-var memdb = require('../lib');
+// npm install memdb, bluebird
+// run with node >= 0.12 with --harmony option
+
+var memdb = require('memdb');
 var P = require('bluebird');
-var should = require('should');
 
-/**
- * Start memdb server manually first
- *
- * node ../app/server.js --conf=../test/memdb.json --shard=s1
- */
+// IMPORTANT: You should first start memdb server by:
+// node app/server.js --conf=test/memdb.json --shard=s1
 
-var main = function(){
-	var autoconn = null;
-	return P.try(function(){
-		// Connect to server, specify host and port
-		return memdb.autoConnect({host : '127.0.0.1', port : 3000});
-	})
-	.then(function(ret){
-		autoconn = ret;
+var main = P.coroutine(function*(){
+    // When specifying port and host, client will connect to the standalone server
+    var autoconn = yield memdb.autoConnect({host : '127.0.0.1', port : 3000});
 
-		return autoconn.execute(function(){
-			var Player = autoconn.collection('player');
-			return P.try(function(){
-				return Player.insert({_id : '1', name : 'rain'});
-			})
-			.then(function(){
-				return Player.find('1');
-			})
-			.then(function(player){
-				player.name.should.eql('rain');
-				return Player.remove('1');
-			});
-		});
-	})
-	.then(function(){
-		// Close connection
-		return autoconn.close();
-	});
-};
+    // Make some query in one transaction
+    yield autoconn.transaction(P.coroutine(function*(){
+        var Player = autoconn.collection('player');
+        var playerId = yield Player.insert({name : 'rain'});
+        console.log(yield Player.find(playerId));
+        yield Player.remove(playerId);
+    }));
+
+    // Close the connection
+    yield autoconn.close();
+});
 
 if (require.main === module) {
-	return P.try(function(){
-		return main();
-	})
-	.catch(function(e){
-		console.error(e);
-	})
-	.finally(function(){
-		process.exit();
-	});
+    main().catch(console.error).finally(process.exit);
 }

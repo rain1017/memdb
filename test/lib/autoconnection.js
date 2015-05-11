@@ -19,9 +19,12 @@ describe('autoconnection test', function(){
 		return P.try(function(){
 			return memdb.startServer(env.dbConfig(shardId));
 		})
-		.then(function(){
-			autoconn = memdb.autoConnect();
-			return autoconn.execute(function(){
+        .then(function(){
+            return memdb.autoConnect();
+        })
+		.then(function(ret){
+			autoconn = ret;
+			return autoconn.transaction(function(){
 				var User = autoconn.collection('user');
 				return User.insert(user1);
 			});
@@ -37,7 +40,7 @@ describe('autoconnection test', function(){
 				.then(function(){
 					// Simulate non-atomic check and update operation
 					// each 'thread' add 1 to user1.level
-					return autoconn.execute(function(){
+					return autoconn.transaction(function(){
 						var User = autoconn.collection('user');
 						var level = null;
 
@@ -55,7 +58,7 @@ describe('autoconnection test', function(){
 				});
 			})
 			.then(function(){
-				return autoconn.execute(function(){
+				return autoconn.transaction(function(){
 					var User = autoconn.collection('user');
 					return P.try(function(){
 						return User.find(user1._id);
@@ -69,7 +72,7 @@ describe('autoconnection test', function(){
 			});
 		})
 		.then(function(){
-			return autoconn.execute(function(){
+			return autoconn.transaction(function(){
 				return P.try(function(){
 					var User = autoconn.collection('user');
 					return User.insert(user1);
@@ -83,7 +86,7 @@ describe('autoconnection test', function(){
 			});
 		})
 		.then(function(){
-			return autoconn.execute(function(){
+			return autoconn.transaction(function(){
 				return P.try(function(){
 					var User = autoconn.collection('user');
 					return User.find(user1._id);

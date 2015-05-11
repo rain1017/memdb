@@ -9,6 +9,7 @@ var EventEmitter = require('events').EventEmitter;
 var Collection = require('./collection');
 var Connection = require('./connection');
 var Shard = require('./shard');
+var consts = require('./consts');
 var AsyncLock = require('async-lock');
 var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
@@ -43,6 +44,7 @@ var Database = function(opts){
 		collection.indexes = compiledIndexes;
 	});
 
+    logger.info('Parsed opts: %j', opts);
 	this.config = opts;
 };
 
@@ -86,7 +88,7 @@ proto.execute = function(connId, method, args){
 		});
 	}
 
-	logger.debug('shard[%s].connection[%s].%s(%j) start...', self.shard._id, connId, method, args);
+	logger.debug('shard[%s].connection[%s].%s(%j)...', self.shard._id, connId, method, args);
 
 	return this.connectionLock.acquire(connId, function(){
 		return P.try(function(){
@@ -107,10 +109,7 @@ proto.execute = function(connId, method, args){
 	});
 };
 
-var _collMethods = ['find', 'findOne', 'findById', 'findLocked', 'findOneLocked', 'findByIdLocked',
-					'insert', 'update', 'remove', 'lock', 'findCached'];
-
-_collMethods.forEach(function(method){
+consts.collMethods.forEach(function(method){
 	proto[method] = function(connId, name){
 		var conn = this._connection(connId);
 		var collection = this._collection(name);

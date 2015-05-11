@@ -42,7 +42,7 @@ describe('mdbgoose test', function(){
 			return mdbgoose.connectAsync(env.config.backend.url);
 		})
 		.then(function(){
-			return mdbgoose.execute(function(){
+			return mdbgoose.transaction(function(){
 				var player1 = new Player({
 									_id : 'p1',
 									areaId: 'a2',
@@ -166,10 +166,12 @@ describe('mdbgoose test', function(){
 				});
 			});
 		})
-		.then(function(){
+        .then(function(){
+            return mdbgoose.autoConnect();
+        })
+		.then(function(autoconn){
 			// force persistent to mongodb
-			var autoconn = mdbgoose.autoConnect();
-			return autoconn.execute(function(){
+			return autoconn.transaction(function(){
 				return autoconn.persistentAll();
 			});
 		})
@@ -217,7 +219,7 @@ describe('mdbgoose test', function(){
 			return memdb.startServer(env.dbConfig('s1'));
 		})
 		.then(function(){
-			return mdbgoose.execute(function(){
+			return mdbgoose.transaction(function(){
 				var player1 = new Player({
 									_id : 'p1',
 									areaId: 'a2',

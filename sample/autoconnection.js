@@ -1,110 +1,68 @@
 'use strict';
 
-var memdb = require('../lib');
+// npm install memdb, bluebird
+// run with node >= 0.12 with --harmony option
+
+var memdb = require('memdb');
 var P = require('bluebird');
-var should = require('should');
 
-// For distributed system, just run memdb in each server (Each instance is a shard).
-
-var main = function(){
-
-	// memdb's config
-	var config = {
-		//shard Id (Must unique and immutable for each server)
-		shard : 'shard1',
-		// Center backend storage, must be same for all shards
-		backend : {engine : 'mongodb', url : 'mongodb://localhost/memdb-test'},
-		// Used for backendLock, must be same for all shards
-		redis : {host : '127.0.0.1', port : 6379},
-		// Redis data replication (for current shard)
-		slave : {host : '127.0.0.1', port : 6379},
-	};
-
-	var doc = {_id : '1', name : 'rain', level : 1};
-
-	var autoconn = null;
-	return P.try(function(){
-		// Start memdb
-		return memdb.startServer(config);
-	})
-	.then(function(){
-		// Get autoConnection
-		autoconn = memdb.autoConnect();
-
-		// One transaction for each execution scope
-		return autoconn.execute(function(){
-			// Get collection
-			var User = autoconn.collection('user');
-			return P.try(function(){
-				// Insert a doc
-				return User.insert(doc);
-			})
-			.then(function(){
-				// find the doc
-				return User.find(doc._id)
-				.then(function(ret){
-					ret.should.eql(doc);
-				});
-			});
-		}); // Auto commit here
-	})
-	.then(function(){
-		// One transaction for each execution scope
-		return autoconn.execute(function(){
-			// Get collection
-			var User = autoconn.collection('user');
-			return P.try(function(){
-				// Update one field
-				return User.update(doc._id, {$set : {level : 2}});
-			})
-			.then(function(){
-				// Find specified field
-				return User.find(doc._id, 'level')
-				.then(function(ret){
-					ret.should.eql({level : 2});
-				});
-			})
-			.then(function(){
-				// Exception here!
-				throw new Error('Oops!');
-			});
-		}) // Rollback on exception
-		.catch(function(e){
-			e.message.should.eql('Oops!');
-		});
-	})
-	.then(function(){
-		return autoconn.execute(function(){
-			// Get collection
-			var User = autoconn.collection('user');
-			return P.try(function(){
-				// doc should be rolled back
-				return User.find(doc._id, 'level')
-				.then(function(ret){
-					ret.should.eql({level : 1});
-				});
-			})
-			.then(function(){
-				// Remove the doc
-				return User.remove(doc._id);
-			}); // Auto commit here
-		});
-	})
-	.then(function(){
-		// Close autoConnection
-		return autoconn.close();
-	})
-	.finally(function(){
-		// Stop memdb
-		return memdb.stopServer();
-	});
+// memdb's config
+var config = {
+    //shard Id (Must unique and immutable for each shard)
+    shard : 's1',
+    // Center backend storage, must be same for all shards
+    backend : {engine : 'mongodb', url : 'mongodb://localhost/memdb-test'},
+    // Center redis used for backendLock, must be same for all shards
+    redis : {host : '127.0.0.1', port : 6379},
+    // Redis data replication (for current shard)
+    slave : {host : '127.0.0.1', port : 6379, db : 1},
 };
 
+var main = P.coroutine(function*(){
+    // Start a memdb shard with in-process mode
+    yield memdb.startServer(config);
+
+    var autoconn = yield memdb.autoConnect();
+
+    var User = autoconn.collection('user');
+    var doc = {_id : '1', name : 'rain', level : 1};
+
+    // Start a transaction
+    yield autoconn.transaction(P.coroutine(function*(){
+        // Insert a doc
+        yield User.insert(doc);
+        // Find the doc
+        console.log(yield User.find(doc._id));
+    })); // Auto commit after transaction
+
+    try{
+        // Start another transaction
+        yield autoconn.transaction(P.coroutine(function*(){
+            // Update doc with $set modifier
+            yield User.update(doc._id, {$set : {level : 2}});
+            // Find the changed doc
+            console.log(yield User.find(doc._id));
+            // Exception here!
+            throw new Error('Oops!');
+        }));
+    }
+    catch(err){
+        // Catch the exception
+        console.log(err);
+
+        // Change is rolled back
+        yield autoconn.transaction(P.coroutine(function*(){
+            console.log(yield User.find(doc._id));
+        }));
+    }
+
+    yield autoconn.transaction(P.coroutine(function*(){
+        yield User.remove(doc._id);
+    }));
+
+    yield memdb.stopServer();
+});
+
 if (require.main === module) {
-	return P.try(function(){
-		return main();
-	})
-	.finally(function(){
-		process.exit();
-	});
+    main().catch(console.error).finally(process.exit);
 }

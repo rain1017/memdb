@@ -1,67 +1,78 @@
 'use strict';
 
-var memdb = require('../lib');
-var P = require('bluebird');
-var should = require('should');
+// npm install memdb, bluebird
+// run with node >= 0.12 with --harmony option
 
+var memdb = require('memdb');
 var mdbgoose = memdb.goose;
-var Schema = mdbgoose.Schema;
+var P = require('bluebird');
 
-var playerSchema = new Schema({
-	_id : String,
-	name : String,
-	fullname : {first: String, last: String},
-	extra : mdbgoose.SchemaTypes.Mixed,
-}, {collection : 'player', versionKey: false});
-
-var Player = mdbgoose.model('player', playerSchema);
-
-var main = function(){
-	// memdb's config
-	var config = {
-		//shard Id (Must unique and immutable for each server)
-		shard : 'shard1',
-		// Center backend storage, must be same for all shards
-		backend : {engine : 'mongodb', url : 'mongodb://localhost/memdb-test'},
-		// Used for backendLock, must be same for all shards
-		redis : {host : '127.0.0.1', port : 6379},
-		// Redis data replication (for current shard)
-		slave : {host : '127.0.0.1', port : 6379},
-	};
-
-	return P.try(function(){
-		return memdb.startServer(config);
-	})
-	.then(function(){
-		return mdbgoose.execute(function(){
-			return P.try(function(){
-				var player = new Player({
-					_id : 'p1',
-					name: 'rain',
-					fullname : {firt : 'Yu', last : 'Xia'},
-					extra : {},
-				});
-				return player.saveAsync();
-			})
-			.then(function(){
-				return Player.findAsync('p1');
-			})
-			.then(function(player){
-				player.name.should.eql('rain');
-				return player.removeAsync();
-			});
-		});
-	})
-	.finally(function(){
-		return memdb.stopServer();
-	});
+// memdb's config
+var config = {
+    //shard Id (Must unique and immutable for each shard)
+    shard : 's1',
+    // Center backend storage, must be same for all shards
+    backend : {engine : 'mongodb', url : 'mongodb://localhost/memdb-test'},
+    // Center redis used for backendLock, must be same for all shards
+    redis : {host : '127.0.0.1', port : 6379},
+    // Redis data replication (for current shard)
+    slave : {host : '127.0.0.1', port : 6379, db : 1},
 };
 
+// Define player schema
+var playerSchema = new mdbgoose.Schema({
+	_id : String,
+	name : String,
+    areaId : {type : Number, index : true, indexIgnore : [-1, null]},
+	deviceType : {type : Number, indexIgnore : [-1, null]},
+    deviceId : {type : String, indexIgnore : ['', null]},
+    items : [mdbgoose.SchemaTypes.Mixed],
+}, {collection : 'player'});
+// Define a compound unique index
+playerSchema.index({deviceType : 1, deviceId : 1}, {unique : true});
+
+// Define player model
+var Player = mdbgoose.model('player', playerSchema);
+
+var main = P.coroutine(function*(){
+    // Parse mdbgoose schema to collection config
+    config.collections = mdbgoose.genCollectionConfig();
+
+    // Start a memdb shard with in-process mode
+    yield memdb.startServer(config);
+
+    // Execute in a transaction
+	yield mdbgoose.transaction(P.coroutine(function*(){
+		var player = new Player({
+			_id : 'p1',
+			name: 'rain',
+            areaId : 1,
+			deviceType : 1,
+            deviceId : 'id1',
+            items : [],
+		});
+        // insert a player
+		yield player.saveAsync();
+        // find player by id
+        console.log(yield Player.findAsync('p1'));
+        // find player by areaId, return array of players
+        console.log(yield Player.findAsync({areaId : 1}));
+        // find player by deviceType and deviceId
+        player = yield Player.findOneAsync({deviceType : 1, deviceId : 'id1'});
+        console.log(player);
+
+        // update player
+        player.areaId = 2;
+        yield player.saveAsync();
+
+        // remove the player
+        yield player.removeAsync();
+    }));
+
+    // stop memdb server
+    yield memdb.stopServer();
+});
+
 if (require.main === module) {
-	return P.try(function(){
-		return main();
-	})
-	.finally(function(){
-		process.exit();
-	});
+    main().catch(console.error).finally(process.exit);
 }
