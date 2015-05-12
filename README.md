@@ -48,7 +48,7 @@ Understanding mongodb can help you get quick started, since many concepts in mem
 
 ## System Architecture
 
-![architecture](https://github.com/rain1017/memdb/tree/master/doc/images/architecture.png)
+![architecture](https://github.com/rain1017/memdb/wiki/images/architecture.png)
 
 The chart above is a typical architecture of a memdb server cluster.
 
