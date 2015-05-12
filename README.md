@@ -5,111 +5,150 @@ Distributed transactional in memory database
 [![Build Status](https://travis-ci.org/rain1017/memdb.svg?branch=master)](https://travis-ci.org/rain1017/memdb)
 [![Dependencies Status](https://david-dm.org/rain1017/memdb.svg)](https://david-dm.org/rain1017/memdb)
 
-Geting the __performance__ of in memory database, the __scalibility__ of distributed database, and the __robustness__ of transactional database.
-
 ## Why memdb?
 
-* __Performance__ : Data access is mainly based on in process memory, which is extremely fast.
+- [x] __Performance__ : Data access is mainly based on in process memory, which is extremely fast.
 
-* __Scalablility__ : System is horizontally scalable by adding more shards.
+- [x] __Scalable__ : System is horizontally scalable by adding more shards.
 
-* __Transaction__ : You can commit/rollback change just like traditional database. 'row' based locking is also supported.
+- [x] __Transaction__ : Full transaction support like traditional database, data consistency is guaranteed. 'row' based locking mechanism is used.
 
-* __High Availability__ : All server is backed by one or more redis replication, you will never lose any commited data.
+- [x] __High Availability__ : Each shard is backed by one or more redis replica, you will never lose any commited data.
 
-### Comparsion with other databases
+__Comparison with other databases__
 
-Database | Performance      | Horizontally Scalable | Transaction Support | Data Structure  | High Availibility
+Database | Performance      | Horizontally Scalable | Transaction Support | Data Structure  | High Availability
 ---------|------------------|-----------------------|---------------------|-----------------|------------------
-MySQL    | Medium (Disk I/O)| No                    | Yes (InnoDB)        | Row based       | Yes
-MongoDB  | Medium (Disk I/O)| Yes                   | No                  | Object (Bson)   | Yes
-Redis    | High (Memory)    | Yes                   | No                  | Very Basic      | Yes
-MemDB    | High (Memory)    | Yes                   | Yes                 | Object (Json)   | Yes
+MySQL    | Medium (Disk I/O)| No                    | Yes (with InnoDB)   | Row based       | Yes
+MongoDB  | Medium (Disk I/O)| Yes                   | No (except some basic atomic modifier) | Object (BSON)   | Yes
+Redis    | High (In Memory) | Yes                   | No (.multi can do some 'transaction like' thing) | Very Elemental  | Yes
+MemDB    | High (In Memory) | Yes                   | Yes                 | Object (JSON)   | Yes
 
-### Which is suite for memdb?
 
-* Network intensitive realtime application
-* Application that has data hot area (Some data is tend to be accessed together in a certain period), like online game server
+## Prerequisites
 
-### Which is not suite for memdb?
+### Node.js >= v0.10
 
-* Application require complex SQL quering
-
-## Prerequistics
-
-### Node.js >=v0.10 with Promise
-
-We assume you're already familiar with node.js. 
+We assume you're already familiar with [node.js](http://nodejs.org/). 
 
 In addition, you should have some understanding on promise based async programming, see [bluebird](https://github.com/petkaantonov/bluebird) for detail. 
 
-Some samples require node >= v0.12 with --harmony option, although this is not required by memdb, we strongly recommend you use generator in client code.
+Some samples require node >= v0.12 with --harmony option, although this is not required by memdb, we strongly recommend you use generator in client code. [how-to-generators](https://strongloop.com/strongblog/how-to-generators-node-js-yield-use-cases/)
 
-### redis
+### Redis
 
-You should have have redis installed
+You should have have [redis](http://redis.io/) installed
 
-### mongodb
+### MongoDB
 
-You should have mongodb installed. Understand mongodb can help you get quick started, since many concepts in memdb is quite similiar with mongodb.
+You should have [mongodb](http://mongodb.org/) installed. 
 
-## System Components
+Understanding mongodb can help you get quick started, since many concepts in memdb is quite similiar.
 
-### Shard
 
-* A shard is a node in the distributed system
-* Each shard preserve a part of data (on demand) in local memory
-* The data is performed in local memory when requsted data is already in this shard, otherwise data will be synced between shards. You should access same data from the same shard if possible, this will maximize the performance
+## System Architecture
 
-### Center Backend
+![architecture](https://github.com/rain1017/memdb/tree/master/doc/images/architecture.png)
 
-* Backend is center persistent storage, all data in the system is eventually persistented to backend db.
-* Mongodb is recommended for backend engine.
+The chart above is a typical architecture of a memdb server cluster.
 
-### Center Redis
+### MemDB Shard
 
-* Internal use for database global locking/event mechanism
+A shard is a node (the unit for scaling) in the MemDB cluster.
 
-#### Shard Redis Replication
+Each shard hold a part of data in local memory (just like cache). Data has been accessed is held in local memory until being requested by other shard (or when memory is low).
 
-Every shard use redis as data replication, you can add more replication to redis too. All commited data can be restored after server failure, you will never lose any commited data.
+When the data being requested is already in this shard, a fast in memory operation will be made. Otherwise, the shard will first sync the data from the current holder shard (or from backend storage if no shard owns the data). 
+
+You should always access same data from the same shard if possible, which will maximize the performance.
+
+### MemDB Client
+
+The MemDB client is where you write your server business logic. Client and shard is a 1-1 relationship (Although you're not forced to do this). 
+
+If you use nodejs as server language, it's recommended to put client and shard in the same node process by using in-process mode. If you use other programming language, put them in the same server.
+
+### Global Backend Storage (MongoDB)
+
+Center persistent storage, data in all shards will be eventually persistented to backend storage.
+
+Currently MongoDB is recommended for backend engine.
+
+### Global Locking/Event (Redis)
+
+Internal use for global locking/event mechanism, based on Redis.
+
+### Shard Replica
+
+Each shard use one Redis as data replication, you can add more replication to Redis too. 
+
+All commited data can be restored after shard failure.
+
+### Frontend Server
+
+Frontend server is not a part of MemDB, it must be implemented properly.
+ 
+Frontend server connect directly to user client side, it can be a nginx server, or connectors of game server, whatever. The job of frontend server is to do load balancing and routing. Remember, MemDB maximize performance when you __always access the same data from the same shard__, so the goal of routing algorithm is to make sure (if possible) the API accessing the same data is always being routed to the same backend server (In a typical game server scenario, using areaId as routing key is a good option).
 
 ## Database Concepts
 
 ### Document
 
-* One document, like mongodb's document or mysql's row.
-* Document is just json, so data in document must be json serializable. Number, String, Boolean, Array and Dict are supported, other type is not supported.
+Document is like mongodb's document or mysql's row.
+
+Document is just json, data in document must be json serializable. Number, String, Boolean, Array and Dict are supported, other type is not supported.
 
 ### Collection
 
-* One collection of documents, like mongodb's collection or mysql's table.
+One collection of documents, like mongodb's collection or mysql's table.
 
 ### Connection
 
-* A 'connection' to shard, like traditional database's connection.
-* Connection is not concurrency safe (due to node's async nature), DO NOT share connection in different API handlers which may run concurrently. We suggest you use AutoConnection instead.
+A connection to shard, like traditional database's connection.
+
+Due to node's async nature, connection is not concurrency safe, DO NOT share connection in different API handlers which may run concurrently, we suggest you use AutoConnection instead.
+
+```
+var conn = yield memdb.connect();
+yield conn.collection('player').find(id);
+```
 
 ### AutoConnection
 
-* Use one connection in each execution scope, and auto commit on execution complete and rollback on execution failure.
-* Please put each request handler in one execution scope, therefore the request will be processed in one connection and guarded with transaction.
+AutoConnection manages a pool of connections, pick one connection for each transaction, and auto commit on transaction complete or rollback on failure.
 
-### Mdbgoose
+AutoConnection use [domain](nodejs.org/api/domain.html) (to determine which transaction scope you're currently in). User must ensure the code in transaction scope is domain safe.
 
-Mdbgoose is modified from mongoose. mdbgoose for memdb is similar to mongoose for mongodb. You can leverage the power of mongoose for object modeling. Just use it like you were using mongoose!
+Please put each API request handler in one transaction, therefore the request will be processed in one connection and guarded with transaction.
+
+```
+var autoconn = yield memdb.autoConnect();
+
+// Start one transaction
+yield autoconn.transaction(Promise.coroutine(function*(){
+    // *** This is the transaction scope ***
+    // Make sure domain won't changed
+
+    yield autoconn.collection('player').insert({...});
+    // more queries
+
+    // ***************
+}));
+```
 
 ### Concurrency/Locking/Transaction
 
-The concurrency behavior is similar to mysql with innodb engine
+Locking is based on document.
 
-* Lock is based on document
-* One connection must hold the lock in order to write (insert/remove/update) to a doc
-* All locks held by a connection will be released after commit or rollback
-* A connection will always read the latest commited value (if not holding the lock), you must explicitly lock the doc first if you do non-atomic 'read and update' operation.
-* All changes (after last commit) is not visible to other connections until being commited
-* All changes (after last commit) will be discarded after rollback or closing a connection without commit
-* If any error accured, the entire transaction will be rolledback immediately.
+One connection will try to hold the lock when write (insert/remove/update) to a doc.
+
+All locks held by a connection will be released after commit or rollback.
+
+All changes (after last commit) is not visible to other connections until being commited.
+
+All changes (after last commit) will be discarded after rollback or closing a connection without commit.
+
+If any error accured, the entire transaction will be rolledback immediately.
 
 ### Query and index
 
@@ -123,20 +162,21 @@ Value comparing (like sorting, $lt, $gt) is not supported.
 
 The doc count which has same index value is limited, so index on 'boolean' or 'enum' is not a good idea.
 
-See [more]() about index
-
 ### In-process mode VS standalone mode
 
-Memorydb support two running mode: in-process and standalone. 
+MemDB support two running mode: in-process and standalone. 
 
 #### In-process mode
 
-memdb is used as a library and started by library caller. Both client and server is in the same node process, which can maximize performance. You can use this mode as long as your client is written with node.js. This mode is recommended.
+MemDB is used as a library and started by library caller. Both client and server is in the same node process, which can maximize performance. You can use this mode as long as your client is written with node.js. This mode is recommended.
 
 #### Standalone mode
 
-memdb is started as a socket server, the client should use socket to communicate with server (like other database). This mode is more flexible and support clients from other programming languages, but at a cost of performance penalty on network transfering. Use this mode when you need to access database from other programming languages or you need more flexibility on deployment.
+MemDB is started as a socket server, the client should use socket to communicate with server (like other database). This mode is more flexible and support clients from other programming languages, but at a cost of performance penalty on network transfering. Use this mode when you need to access database from other programming languages or you need more flexibility on deployment.
 
+### Mdbgoose
+
+Mdbgoose is the 'mongoose' for memdb, actually its modified from [mongoose](http://mongoosejs.com/). You can leverage must power of mongoose for object modeling, just use it like you were using mongoose!
 
 ## Sample
 
