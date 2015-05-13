@@ -89,6 +89,7 @@
 <a id="a-quick-sample" class="anchor" href="#a-quick-sample" aria-hidden="true"><span class="octicon octicon-link"></span></a>A Quick Sample</h3>
 
 <div class="highlight highlight-javascript"><pre><span class="pl-k">var</span> memdb <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>memdb<span class="pl-pds">'</span></span>);
+<span class="pl-k">var</span> mdbgoose <span class="pl-k">=</span> memdb.goose;
 <span class="pl-k">var</span> P <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>bluebird<span class="pl-pds">'</span></span>);
 
 <span class="pl-c">// memdb's config</span>
@@ -103,33 +104,55 @@
     slave <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port <span class="pl-k">:</span> <span class="pl-c1">6379</span>, db <span class="pl-k">:</span> <span class="pl-c1">1</span>},
 };
 
+<span class="pl-c">// Define player schema</span>
+<span class="pl-k">var</span> playerSchema <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">mdbgoose.Schema</span>({
+    _id <span class="pl-k">:</span> <span class="pl-c1">String</span>,
+    name <span class="pl-k">:</span> <span class="pl-c1">String</span>,
+    areaId <span class="pl-k">:</span> {type <span class="pl-k">:</span> <span class="pl-c1">Number</span>, index <span class="pl-k">:</span> <span class="pl-c1">true</span>, indexIgnore <span class="pl-k">:</span> [<span class="pl-k">-</span><span class="pl-c1">1</span>, <span class="pl-c1">null</span>]},
+    deviceType <span class="pl-k">:</span> {type <span class="pl-k">:</span> <span class="pl-c1">Number</span>, indexIgnore <span class="pl-k">:</span> [<span class="pl-k">-</span><span class="pl-c1">1</span>, <span class="pl-c1">null</span>]},
+    deviceId <span class="pl-k">:</span> {type <span class="pl-k">:</span> <span class="pl-c1">String</span>, indexIgnore <span class="pl-k">:</span> [<span class="pl-s"><span class="pl-pds">'</span><span class="pl-pds">'</span></span>, <span class="pl-c1">null</span>]},
+    items <span class="pl-k">:</span> [mdbgoose.SchemaTypes.Mixed],
+}, {collection <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>});
+<span class="pl-c">// Define a compound unique index</span>
+playerSchema.<span class="pl-c1">index</span>({deviceType <span class="pl-k">:</span> <span class="pl-c1">1</span>, deviceId <span class="pl-k">:</span> <span class="pl-c1">1</span>}, {unique <span class="pl-k">:</span> <span class="pl-c1">true</span>});
+
+<span class="pl-c">// Define player model</span>
+<span class="pl-k">var</span> Player <span class="pl-k">=</span> mdbgoose.model(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, playerSchema);
+
 <span class="pl-k">var</span> main <span class="pl-k">=</span> P.coroutine(<span class="pl-k">function*</span>(){
+    <span class="pl-c">// Parse mdbgoose schema to collection config</span>
+    config.collections <span class="pl-k">=</span> mdbgoose.genCollectionConfig();
+
     <span class="pl-c">// Start a memdb shard with in-process mode</span>
     <span class="pl-k">yield</span> memdb.startServer(config);
 
-    <span class="pl-c">// Create a new connection</span>
-    <span class="pl-k">var</span> conn <span class="pl-k">=</span> <span class="pl-k">yield</span> memdb.connect();
-    <span class="pl-c">// Get player collection</span>
-    <span class="pl-k">var</span> Player <span class="pl-k">=</span> conn.collection(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>);
-    <span class="pl-c">// Insert a doc</span>
-    <span class="pl-k">var</span> player <span class="pl-k">=</span> {_id <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>p1<span class="pl-pds">'</span></span>, name <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>rain<span class="pl-pds">'</span></span>, level <span class="pl-k">:</span> <span class="pl-c1">1</span>};
-    <span class="pl-k">yield</span> Player.insert(player);
-    <span class="pl-c">// Commit changes</span>
-    <span class="pl-k">yield</span> conn.commit();
-    <span class="pl-c">// Update a field</span>
-    <span class="pl-k">yield</span> Player.update(player._id, {$set <span class="pl-k">:</span> {level <span class="pl-k">:</span> <span class="pl-c1">2</span>}});
-    <span class="pl-c">// Find the doc (only return specified field)</span>
-    <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-k">yield</span> Player.<span class="pl-c1">find</span>(player._id, <span class="pl-s"><span class="pl-pds">'</span>level<span class="pl-pds">'</span></span>)); <span class="pl-c">// should print {level : 2}</span>
-    <span class="pl-c">// Rollback changes</span>
-    <span class="pl-k">yield</span> conn.rollback();
-    <span class="pl-c">// Data restore to last commited state</span>
-    <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-k">yield</span> Player.<span class="pl-c1">find</span>(player._id, <span class="pl-s"><span class="pl-pds">'</span>level<span class="pl-pds">'</span></span>)); <span class="pl-c">// should print {level : 1}</span>
-    <span class="pl-c">// Remove doc</span>
-    <span class="pl-k">yield</span> Player.<span class="pl-c1">remove</span>(player._id);
-    <span class="pl-c">// Commit change</span>
-    <span class="pl-k">yield</span> conn.commit();
-    <span class="pl-c">// close connection</span>
-    <span class="pl-k">yield</span> conn.<span class="pl-c1">close</span>();
+    <span class="pl-c">// Execute in a transaction</span>
+    <span class="pl-k">yield</span> mdbgoose.transaction(P.coroutine(<span class="pl-k">function*</span>(){
+        <span class="pl-k">var</span> player <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">Player</span>({
+            _id <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>p1<span class="pl-pds">'</span></span>,
+            name<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>rain<span class="pl-pds">'</span></span>,
+            areaId <span class="pl-k">:</span> <span class="pl-c1">1</span>,
+            deviceType <span class="pl-k">:</span> <span class="pl-c1">1</span>,
+            deviceId <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>id1<span class="pl-pds">'</span></span>,
+            items <span class="pl-k">:</span> [],
+        });
+        <span class="pl-c">// insert a player</span>
+        <span class="pl-k">yield</span> player.saveAsync();
+        <span class="pl-c">// find player by id</span>
+        <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-k">yield</span> Player.findAsync(<span class="pl-s"><span class="pl-pds">'</span>p1<span class="pl-pds">'</span></span>));
+        <span class="pl-c">// find player by areaId, return array of players</span>
+        <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-k">yield</span> Player.findAsync({areaId <span class="pl-k">:</span> <span class="pl-c1">1</span>}));
+        <span class="pl-c">// find player by deviceType and deviceId</span>
+        player <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.findOneAsync({deviceType <span class="pl-k">:</span> <span class="pl-c1">1</span>, deviceId <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>id1<span class="pl-pds">'</span></span>});
+        <span class="pl-en">console</span><span class="pl-c1">.log</span>(player);
+
+        <span class="pl-c">// update player</span>
+        player.areaId <span class="pl-k">=</span> <span class="pl-c1">2</span>;
+        <span class="pl-k">yield</span> player.saveAsync();
+
+        <span class="pl-c">// remove the player</span>
+        <span class="pl-k">yield</span> player.removeAsync();
+    }));
 
     <span class="pl-c">// stop memdb server</span>
     <span class="pl-k">yield</span> memdb.stopServer();
