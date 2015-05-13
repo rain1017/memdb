@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>MemDB by rain1017</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">MemDB</h1>
+      <h2 class="project-tagline">Distributed transactional in memory database</h2>
+      <a href="https://github.com/rain1017/memdb" class="btn">View on GitHub</a>
+      <a href="https://github.com/rain1017/memdb/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/rain1017/memdb/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <h2>
+<a id="why-memdb" class="anchor" href="#why-memdb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Why memdb?</h2>
+
+<ul>
+<li><p><strong>Performance</strong> : Data access is mainly based on in process memory, which is extremely fast.</p></li>
+<li><p><strong>Scalable</strong> : System is horizontally scalable by adding more shards.</p></li>
+<li><p><strong>Transaction</strong> : Full transaction support like traditional database, data consistency is guaranteed. 'row' based locking mechanism is used.</p></li>
+<li><p><strong>High Availability</strong> : Each shard is backed by one or more redis replica, you will never lose any commited data.</p></li>
+</ul>
+
+<p><strong>Comparison with other databases</strong></p>
+
+<table>
+<thead>
+<tr>
+<th>Database</th>
+<th>Performance</th>
+<th>Horizontally Scalable</th>
+<th>Transaction Support</th>
+<th>Data Structure</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MySQL</td>
+<td>Medium (Disk I/O)</td>
+<td>No</td>
+<td><strong>Yes (InnoDB)</strong></td>
+<td>Row based</td>
+</tr>
+<tr>
+<td>MongoDB</td>
+<td>Medium (Disk I/O)</td>
+<td><strong>Yes</strong></td>
+<td>No  (except some basic atomic modifier)</td>
+<td><strong>Object(BSON)</strong></td>
+</tr>
+<tr>
+<td>Redis</td>
+<td><strong>High (Memory)</strong></td>
+<td><strong>Yes</strong></td>
+<td>No  (.multi can do some 'transaction like' thing)</td>
+<td>Very Elemental</td>
+</tr>
+<tr>
+<td><strong>MemDB</strong></td>
+<td><strong>High (Memory)</strong></td>
+<td><strong>Yes</strong></td>
+<td><strong>Yes</strong></td>
+<td><strong>Object(JSON)</strong></td>
+</tr>
+</tbody>
+</table>
+
+<h2>
+<a id="quick-start" class="anchor" href="#quick-start" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick Start</h2>
+
+<h3>
+<a id="install-dependencies" class="anchor" href="#install-dependencies" aria-hidden="true"><span class="octicon octicon-link"></span></a>Install Dependencies</h3>
+
+<ul>
+<li><p>Install <a href="https://nodejs.org/download/">Node.js v0.12</a></p></li>
+<li><p>Install <a href="http://redis.io/download">Redis</a></p></li>
+<li><p>Install <a href="https://www.mongodb.org/downloads">MongoDB</a></p></li>
+</ul>
+
+<h3>
+<a id="a-quick-sample" class="anchor" href="#a-quick-sample" aria-hidden="true"><span class="octicon octicon-link"></span></a>A Quick Sample</h3>
+
+<div class="highlight highlight-javascript"><pre><span class="pl-k">var</span> memdb <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>memdb<span class="pl-pds">'</span></span>);
+<span class="pl-k">var</span> P <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>bluebird<span class="pl-pds">'</span></span>);
+
+<span class="pl-c">// memdb's config</span>
+<span class="pl-k">var</span> config <span class="pl-k">=</span> {
+    <span class="pl-c">//shard Id (Must unique and immutable for each shard)</span>
+    shard <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>s1<span class="pl-pds">'</span></span>,
+    <span class="pl-c">// Center backend storage, must be same for all shards</span>
+    backend <span class="pl-k">:</span> {engine <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>mongodb<span class="pl-pds">'</span></span>, url <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>mongodb://localhost/memdb-test<span class="pl-pds">'</span></span>},
+    <span class="pl-c">// Center redis used for backendLock, must be same for all shards</span>
+    redis <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port <span class="pl-k">:</span> <span class="pl-c1">6379</span>},
+    <span class="pl-c">// Redis data replication (for current shard)</span>
+    slave <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port <span class="pl-k">:</span> <span class="pl-c1">6379</span>, db <span class="pl-k">:</span> <span class="pl-c1">1</span>},
+};
+
+<span class="pl-k">var</span> main <span class="pl-k">=</span> P.coroutine(<span class="pl-k">function*</span>(){
+    <span class="pl-c">// Start a memdb shard with in-process mode</span>
+    <span class="pl-k">yield</span> memdb.startServer(config);
+
+    <span class="pl-c">// Create a new connection</span>
+    <span class="pl-k">var</span> conn <span class="pl-k">=</span> <span class="pl-k">yield</span> memdb.connect();
+    <span class="pl-c">// Get player collection</span>
+    <span class="pl-k">var</span> Player <span class="pl-k">=</span> conn.collection(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>);
+    <span class="pl-c">// Insert a doc</span>
+    <span class="pl-k">var</span> player <span class="pl-k">=</span> {_id <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>p1<span class="pl-pds">'</span></span>, name <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>rain<span class="pl-pds">'</span></span>, level <span class="pl-k">:</span> <span class="pl-c1">1</span>};
+    <span class="pl-k">yield</span> Player.insert(player);
+    <span class="pl-c">// Commit changes</span>
+    <span class="pl-k">yield</span> conn.commit();
+    <span class="pl-c">// Update a field</span>
+    <span class="pl-k">yield</span> Player.update(player._id, {$set <span class="pl-k">:</span> {level <span class="pl-k">:</span> <span class="pl-c1">2</span>}});
+    <span class="pl-c">// Find the doc (only return specified field)</span>
+    <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-k">yield</span> Player.<span class="pl-c1">find</span>(player._id, <span class="pl-s"><span class="pl-pds">'</span>level<span class="pl-pds">'</span></span>)); <span class="pl-c">// should print {level : 2}</span>
+    <span class="pl-c">// Rollback changes</span>
+    <span class="pl-k">yield</span> conn.rollback();
+    <span class="pl-c">// Data restore to last commited state</span>
+    <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-k">yield</span> Player.<span class="pl-c1">find</span>(player._id, <span class="pl-s"><span class="pl-pds">'</span>level<span class="pl-pds">'</span></span>)); <span class="pl-c">// should print {level : 1}</span>
+    <span class="pl-c">// Remove doc</span>
+    <span class="pl-k">yield</span> Player.<span class="pl-c1">remove</span>(player._id);
+    <span class="pl-c">// Commit change</span>
+    <span class="pl-k">yield</span> conn.commit();
+    <span class="pl-c">// close connection</span>
+    <span class="pl-k">yield</span> conn.<span class="pl-c1">close</span>();
+
+    <span class="pl-c">// stop memdb server</span>
+    <span class="pl-k">yield</span> memdb.stopServer();
+});
+
+<span class="pl-k">if</span> (<span class="pl-c1">require</span>.main <span class="pl-k">===</span> <span class="pl-c1">module</span>) {
+    main().catch(<span class="pl-en">console</span><span class="pl-c1">.error</span>).finally(<span class="pl-c1">process</span>.exit);
+}</pre></div>
+
+<p><strong>Run the sample</strong></p>
+
+<pre><code>npm install memdb bluebird
+node --harmony sample.js
+</code></pre>
+
+<p><strong>Become a cluster</strong></p>
+
+<p>Just start more shards with <strong>same backend and redis config</strong>, and they will automatically become a MemDB cluster.</p>
+
+<h2>
+<a id="documents" class="anchor" href="#documents" aria-hidden="true"><span class="octicon octicon-link"></span></a>Documents</h2>
+
+<ul>
+<li><a href="https://github.com/rain1017/memdb/wiki">The Wiki</a></li>
+<li><a href="http://memdb.org">Home Page</a></li>
+<li><a href="http://memdb.org/api">API Docs</a></li>
+</ul>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/rain1017/memdb">MemDB</a> is maintained by <a href="https://github.com/rain1017">rain1017</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
+
