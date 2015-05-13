@@ -36,8 +36,9 @@ __MemDB__    | __High (Memory)__ | __Yes__                   | __Yes__          
 
 ### A Quick Sample
 
-```
+```javascript
 var memdb = require('memdb');
+var mdbgoose = memdb.goose;
 var P = require('bluebird');
 
 // memdb's config
@@ -52,33 +53,55 @@ var config = {
     slave : {host : '127.0.0.1', port : 6379, db : 1},
 };
 
+// Define player schema
+var playerSchema = new mdbgoose.Schema({
+    _id : String,
+    name : String,
+    areaId : {type : Number, index : true, indexIgnore : [-1, null]},
+    deviceType : {type : Number, indexIgnore : [-1, null]},
+    deviceId : {type : String, indexIgnore : ['', null]},
+    items : [mdbgoose.SchemaTypes.Mixed],
+}, {collection : 'player'});
+// Define a compound unique index
+playerSchema.index({deviceType : 1, deviceId : 1}, {unique : true});
+
+// Define player model
+var Player = mdbgoose.model('player', playerSchema);
+
 var main = P.coroutine(function*(){
+    // Parse mdbgoose schema to collection config
+    config.collections = mdbgoose.genCollectionConfig();
+
     // Start a memdb shard with in-process mode
     yield memdb.startServer(config);
 
-    // Create a new connection
-    var conn = yield memdb.connect();
-    // Get player collection
-    var Player = conn.collection('player');
-    // Insert a doc
-    var player = {_id : 'p1', name : 'rain', level : 1};
-    yield Player.insert(player);
-    // Commit changes
-    yield conn.commit();
-    // Update a field
-    yield Player.update(player._id, {$set : {level : 2}});
-    // Find the doc (only return specified field)
-    console.log(yield Player.find(player._id, 'level')); // should print {level : 2}
-    // Rollback changes
-    yield conn.rollback();
-    // Data restore to last commited state
-    console.log(yield Player.find(player._id, 'level')); // should print {level : 1}
-    // Remove doc
-    yield Player.remove(player._id);
-    // Commit change
-    yield conn.commit();
-    // close connection
-    yield conn.close();
+    // Execute in a transaction
+    yield mdbgoose.transaction(P.coroutine(function*(){
+        var player = new Player({
+            _id : 'p1',
+            name: 'rain',
+            areaId : 1,
+            deviceType : 1,
+            deviceId : 'id1',
+            items : [],
+        });
+        // insert a player
+        yield player.saveAsync();
+        // find player by id
+        console.log(yield Player.findAsync('p1'));
+        // find player by areaId, return array of players
+        console.log(yield Player.findAsync({areaId : 1}));
+        // find player by deviceType and deviceId
+        player = yield Player.findOneAsync({deviceType : 1, deviceId : 'id1'});
+        console.log(player);
+
+        // update player
+        player.areaId = 2;
+        yield player.saveAsync();
+
+        // remove the player
+        yield player.removeAsync();
+    }));
 
     // stop memdb server
     yield memdb.stopServer();

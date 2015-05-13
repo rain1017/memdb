@@ -21,10 +21,10 @@ var config = {
 
 // Define player schema
 var playerSchema = new mdbgoose.Schema({
-	_id : String,
-	name : String,
+    _id : String,
+    name : String,
     areaId : {type : Number, index : true, indexIgnore : [-1, null]},
-	deviceType : {type : Number, indexIgnore : [-1, null]},
+    deviceType : {type : Number, indexIgnore : [-1, null]},
     deviceId : {type : String, indexIgnore : ['', null]},
     items : [mdbgoose.SchemaTypes.Mixed],
 }, {collection : 'player'});
@@ -42,17 +42,17 @@ var main = P.coroutine(function*(){
     yield memdb.startServer(config);
 
     // Execute in a transaction
-	yield mdbgoose.transaction(P.coroutine(function*(){
-		var player = new Player({
-			_id : 'p1',
-			name: 'rain',
+    yield mdbgoose.transaction(P.coroutine(function*(){
+        var player = new Player({
+            _id : 'p1',
+            name: 'rain',
             areaId : 1,
-			deviceType : 1,
+            deviceType : 1,
             deviceId : 'id1',
             items : [],
-		});
+        });
         // insert a player
-		yield player.saveAsync();
+        yield player.saveAsync();
         // find player by id
         console.log(yield Player.findAsync('p1'));
         // find player by areaId, return array of players
