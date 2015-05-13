@@ -99,7 +99,11 @@ __Become a cluster__
 
 Just start more shards with __same backend and redis config__, and they will automatically become a MemDB cluster.
 
+## Documents
 
+* [The Wiki](https://github.com/rain1017/memdb/wiki)
+* [Home Page](http://memdb.org)
+* [API Docs](http://memdb.org/api)
 
 ## License
 (The MIT License)
