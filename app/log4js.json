@@ -1,23 +1,23 @@
 {
-	"appenders": [
-		{
-			"type": "console"
-		},
-		{
-			"type": "dateFile",
-			"filename": "${opts:base}/memdb-${opts:shardId}.log",
-			"pattern": "-yyyyMMdd",
-			"layout": {
-				"type": "basic"
-			  }
-			,"backups": 5,
-			"category":"memdb"
-		}
-	],
+    "appenders": [
+        {
+            "type": "console"
+        },
+        {
+            "type": "dateFile",
+            "filename": "${opts:base}/memdb-${opts:shardId}.log",
+            "pattern": "-yyyyMMdd",
+            "layout": {
+                "type": "basic"
+              }
+            ,"backups": 5,
+            "category":"memdb"
+        }
+    ],
 
-	"levels" : {
-	},
+    "levels" : {
+    },
 
-	"replaceConsole": true,
-	"lineDebug": false
+    "replaceConsole": true,
+    "lineDebug": false
 }

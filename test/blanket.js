@@ -7,5 +7,5 @@ var appDir = path.join(__dirname, '../app');
 var libDir = path.join(__dirname, '../lib');
 
 blanket({
-	pattern: [appDir, libDir]
+    pattern: [appDir, libDir]
 });
