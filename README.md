@@ -24,6 +24,13 @@ MongoDB  | Medium (Disk I/O)| __Yes__                   | No  (except some basic
 Redis    | __High (Memory)__ | __Yes__                   | No  (.multi can do some 'transaction like' thing) | Very Elemental  
 __MemDB__    | __High (Memory)__ | __Yes__                   | __Yes__                 | __Object(JSON)__   
 
+## Documents
+
+* [The Wiki](https://github.com/rain1017/memdb/wiki)
+* [Home Page](http://memdb.org)
+* [API Reference](https://github.com/rain1017/memdb/wiki/API-Reference)
+* [Samples](https://github.com/rain1017/memdb/wiki/Samples)
+
 ## Quick Start
 
 ### Install Dependencies
@@ -71,12 +78,13 @@ var Player = mdbgoose.model('player', playerSchema);
 var main = P.coroutine(function*(){
     // Parse mdbgoose schema to collection config
     config.collections = mdbgoose.genCollectionConfig();
-
     // Start a memdb shard with in-process mode
     yield memdb.startServer(config);
 
+    // Connect to in-process server
+    yield mdbgoose.connectAsync();
     // Execute in a transaction
-    yield mdbgoose.transaction(P.coroutine(function*(){
+    yield mdbgoose.transactionAsync(P.coroutine(function*(){
         var player = new Player({
             _id : 'p1',
             name: 'rain',
@@ -122,11 +130,6 @@ __Become a cluster__
 
 Just start more shards with __same backend and redis config__, and they will automatically become a MemDB cluster.
 
-## Documents
-
-* [The Wiki](https://github.com/rain1017/memdb/wiki)
-* [Home Page](http://memdb.org)
-* [API Docs](http://memdb.org/api)
 
 ## License
 (The MIT License)

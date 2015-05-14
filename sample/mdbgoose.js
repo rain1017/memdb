@@ -5,7 +5,7 @@
 
 var memdb = require('memdb');
 var mdbgoose = memdb.goose;
-var P = require('bluebird');
+var P = memdb.Promise;
 
 // memdb's config
 var config = {
@@ -37,12 +37,13 @@ var Player = mdbgoose.model('player', playerSchema);
 var main = P.coroutine(function*(){
     // Parse mdbgoose schema to collection config
     config.collections = mdbgoose.genCollectionConfig();
-
     // Start a memdb shard with in-process mode
     yield memdb.startServer(config);
 
+    // Connect to in-process server
+    yield mdbgoose.connectAsync();
     // Execute in a transaction
-    yield mdbgoose.transaction(P.coroutine(function*(){
+    yield mdbgoose.transactionAsync(P.coroutine(function*(){
         var player = new Player({
             _id : 'p1',
             name: 'rain',

@@ -16,8 +16,7 @@ describe('mdbgoose test', function(){
 		var Schema = mdbgoose.Schema;
 		var types = mdbgoose.SchemaTypes;
 
-		mdbgoose.setConnectOpts({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
-
+        mdbgoose._autoconn = null;
 		delete mdbgoose.connection.models.player;
 		var playerSchema = new Schema({
 			_id : String,
@@ -35,11 +34,13 @@ describe('mdbgoose test', function(){
 		return P.try(function(){
 			return env.startServer('s1');
 		})
-		.then(function(ret){
-			serverProcess = ret;
-
+        .then(function(ret){
+            serverProcess = ret;
+            return mdbgoose.connectAsync({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
+        })
+		.then(function(){
 			// connect to backend mongodb
-			return mdbgoose.connectAsync(env.config.backend.url);
+			return mdbgoose.connectMongoAsync(env.config.backend.url);
 		})
 		.then(function(){
 			return mdbgoose.transaction(function(){
@@ -167,12 +168,9 @@ describe('mdbgoose test', function(){
 			});
 		})
         .then(function(){
-            return mdbgoose.autoConnect();
-        })
-		.then(function(autoconn){
 			// force persistent to mongodb
-			return autoconn.transaction(function(){
-				return autoconn.persistentAll();
+			return mdbgoose.autoconn.transaction(function(){
+				return mdbgoose.autoconn.persistentAll();
 			});
 		})
 		.then(function(){
@@ -202,8 +200,7 @@ describe('mdbgoose test', function(){
 		var Schema = mdbgoose.Schema;
 		var types = mdbgoose.SchemaTypes;
 
-		mdbgoose.setConnectOpts();
-
+        mdbgoose._autoconn = null;
 		delete mdbgoose.connection.models.player;
 		var playerSchema = new Schema({
 			_id : String,
@@ -218,6 +215,9 @@ describe('mdbgoose test', function(){
 		return P.try(function(){
 			return memdb.startServer(env.dbConfig('s1'));
 		})
+        .then(function(){
+            return mdbgoose.connectAsync();
+        })
 		.then(function(){
 			return mdbgoose.transaction(function(){
 				var player1 = new Player({
@@ -247,8 +247,8 @@ describe('mdbgoose test', function(){
 		var mdbgoose = memdb.goose;
 		var Schema = mdbgoose.Schema;
 		var types = mdbgoose.SchemaTypes;
-		mdbgoose.setConnectOpts();
 
+        mdbgoose._autoconn = null;
 		delete mdbgoose.connection.models.player;
 		var DummySchema = new Schema({
 			_id : String,
