@@ -26,10 +26,11 @@ __MemDB__    | __High (Memory)__ | __Yes__                   | __Yes__          
 
 ## Documents
 
-* [The Wiki](https://github.com/rain1017/memdb/wiki)
-* [Home Page](http://memdb.org)
-* [API Reference](https://github.com/rain1017/memdb/wiki/API-Reference)
-* [Samples](https://github.com/rain1017/memdb/wiki/Samples)
+* __[The Wiki](https://github.com/rain1017/memdb/wiki)__
+
+## Use Cases
+
+* __[quick-pomelo](http://quickpomelo.com)__
 
 ## Quick Start
 
