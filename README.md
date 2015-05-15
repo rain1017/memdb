@@ -26,11 +26,7 @@ __MemDB__    | __High (Memory)__ | __Yes__                   | __Yes__          
 
 ## Documents
 
-* __[The Wiki](https://github.com/rain1017/memdb/wiki)__
-
-## Use Cases
-
-* __[quick-pomelo](http://quickpomelo.com)__
+### [The Wiki](https://github.com/rain1017/memdb/wiki)
 
 ## Quick Start
 
@@ -131,6 +127,8 @@ __Become a cluster__
 
 Just start more shards with __same backend and redis config__, and they will automatically become a MemDB cluster.
 
+## Quick-pomelo
+__[quick-pomelo](http://quickpomelo.com)__ is a rapid and robust game server framework based on memdb
 
 ## License
 (The MIT License)
