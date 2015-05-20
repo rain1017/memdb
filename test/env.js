@@ -55,7 +55,7 @@ var startServer = function(shardId){
     serverProcess.stdout.pipe(process.stdout);
     serverProcess.stderr.pipe(process.stderr);
 
-    return P.delay(1000) // wait for server start
+    return P.delay(2000) // wait for server start
     .then(function(){
         return serverProcess;
     });

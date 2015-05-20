@@ -37,6 +37,7 @@ proto.get = function(name, id){
 
 proto.set = function(name, id, doc){
     if(doc !== null && doc !== undefined){
+        doc._id = id;
         return this.conn.collection(name).updateAsync({_id : id}, doc, {upsert : true});
     }
     else{
@@ -46,12 +47,10 @@ proto.set = function(name, id, doc){
 
 // items : [{name, id, doc}]
 proto.setMulti = function(items){
-    return P.bind(this)
-    .then(function(){
-        return items;
-    })
-    .map(function(item){
-        return this.set(item.name, item.id, item.doc);
+    var self = this;
+
+    return P.mapLimit(items, function(item){
+        return self.set(item.name, item.id, item.doc);
     });
 };
 

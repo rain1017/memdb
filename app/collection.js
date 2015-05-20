@@ -55,12 +55,12 @@ proto.insert = function(connId, docs){
     }
 
     var self = this;
-    return P.map(docs, function(doc){
+    return P.mapLimit(docs, function(doc){
         if(!doc){
             throw new Error('doc is null');
         }
         return self._insertById(connId, doc._id, doc);
-    }, {concurrency : 1}); //disable concurrent to avoid race condition
+    }, 1); //disable concurrent to avoid race condition
 };
 
 proto._insertById = function(connId, id, doc){
@@ -159,7 +159,11 @@ proto.findByIdLocked = function(connId, id, fields, opts){
 
 proto.findCached = function(connId, id){
     id = this._checkId(id);
-    return this.shard.findCached(connId, this._key(id));
+
+    var self = this;
+    return P.try(function(){
+        return self.shard.findCached(connId, self._key(id));
+    });
 };
 
 // value is object
@@ -179,10 +183,10 @@ proto._findByIndex = function(connId, indexKey, indexValue, fields, opts){
         if(opts && opts.limit){
             ids = ids.slice(0, opts.limit);
         }
-        return P.map(ids, function(id64){
+        return P.mapLimit(ids, function(id64){
             var id = new Buffer(id64, 'base64').toString();
             return self.findById(connId, id, fields, opts);
-        }, {concurrency : 1});
+        }, 1);
     });
 };
 
@@ -216,9 +220,9 @@ proto.update = function(connId, query, modifier, opts){
                 return 1;
             });
         }
-        return P.map(ret, function(doc){
+        return P.mapLimit(ret, function(doc){
             return self._updateById(connId, doc._id, modifier, opts);
-        }, {concurrency : 1})
+        }, 1)
         .then(function(){
             return ret.length;
         });
@@ -252,9 +256,9 @@ proto.remove = function(connId, query, opts){
                 return 1;
             });
         }
-        return P.map(ret, function(doc){
+        return P.mapLimit(ret, function(doc){
             return self._removeById(connId, doc._id, opts);
-        }, {concurrency : 1})
+        }, 1)
         .then(function(){
             return ret.length;
         });
@@ -359,9 +363,9 @@ proto._finishIndexTasks = function(id){
     // Save domain
     var d = process.domain;
     var self = this;
-    return P.map(self.pendingIndexTasks[id], function(){
+    return P.mapLimit(self.pendingIndexTasks[id], function(){
         delete self.pendingIndexTasks[id];
-    }, {concurrency : 1})
+    }, 1)
     .then(function(){
         // Restore domain
         process.domain = d;

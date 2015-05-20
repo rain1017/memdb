@@ -168,9 +168,8 @@ describe('mdbgoose test', function(){
             });
         })
         .then(function(){
-            // force persistent to mongodb
-            return mdbgoose.autoconn.transaction(function(){
-                return mdbgoose.autoconn.persistentAll();
+            return mdbgoose.transaction(function(){
+                return mdbgoose.autoconn.flushBackend();
             });
         })
         .then(function(){

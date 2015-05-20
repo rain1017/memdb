@@ -165,26 +165,6 @@ describe('shard test', function(){
         .nodeify(cb);
     });
 
-    it('doc idle', function(cb){
-        var config = env.dbConfig('s1');
-        config.docIdleTimeout = 100;
-        var shard = new Shard(config);
-
-        var key = 'user:1';
-        return P.try(function(){
-            return shard.start();
-        })
-        .then(function(){
-            return shard.find('c1', key);
-        })
-        .delay(200) //Doc idle timed out, should unloaded
-        .then(function(){
-            shard._isLoaded(key).should.eql(false);
-            return shard.stop();
-        })
-        .nodeify(cb);
-    });
-
     it('globalEvent register/unregister', function(cb){
         var shard = new Shard(env.dbConfig('s1'));
         return P.try(function(){
@@ -201,56 +181,6 @@ describe('shard test', function(){
             shard.globalEvent.emit('request:s1', 'player:1');
         })
         .delay(100)
-        .nodeify(cb);
-    });
-
-    it('find cached', function(cb){
-        var config = env.dbConfig('s1');
-        config.docCacheTimeout = 100;
-        config.docIdleTimeout = 100;
-        var shard = new Shard(config);
-
-        var key = 'user:1', doc = {_id : '1', name : 'rain'};
-        return P.try(function(){
-            return shard.start();
-        })
-        .then(function(){
-            return shard.lock('c1', key);
-        })
-        .then(function(){
-            return shard.insert('c1', key, doc);
-        })
-        .then(function(){
-            return shard.commit('c1', [key]);
-        })
-        .then(function(){
-            return shard.findCached('c1', key)
-            .then(function(ret){
-                ret.should.eql(doc);
-            });
-        })
-        .delay(500) // doc unloaded and cache timed out
-        .then(function(){
-            // read from backend
-            return P.try(function(){
-                return shard.findCached('c1', key);
-            })
-            .then(function(ret){
-                ret.should.eql(doc);
-            });
-        })
-        .then(function(){
-            // get from cache
-            return P.try(function(){
-                return shard.findCached('c1', key);
-            })
-            .then(function(ret){
-                ret.should.eql(doc);
-            });
-        })
-        .then(function(){
-            return shard.stop();
-        })
         .nodeify(cb);
     });
 });

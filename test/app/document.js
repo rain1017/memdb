@@ -262,4 +262,13 @@ describe('document test', function(){
         })
         .nodeify(cb);
     });
+
+    it('too large doc', function(cb){
+        var doc = new Document({_id : 1});
+        doc.lock(1);
+        should(function(){
+            doc.insert(1, {tooLargeArray : _.range(1000000)});
+        }).throw();
+        cb();
+    });
 });

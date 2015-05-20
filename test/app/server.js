@@ -10,7 +10,7 @@ describe('server test', function(){
     beforeEach(env.flushdb);
     after(env.flushdb);
 
-    it.only('start/stop server', function(cb){
+    it('start/stop server', function(cb){
         return P.try(function(){
             return env.startServer('s1');
         })

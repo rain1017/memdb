@@ -2,7 +2,7 @@
 
 var P = require('bluebird');
 var utils = require('./utils');
-utils.setPromiseConcurrency(P, 1024);
+utils.promiseSetLimit(P, 1024);
 
 var util = require('util');
 var EventEmitter = require('events').EventEmitter;
@@ -141,8 +141,8 @@ proto.rollback = function(connId){
     logger.info('shard[%s].connection[%s] rolledback', this.shard._id, connId);
 };
 
-proto.persistentAll = function(){
-    return this.shard.persistentAll();
+proto.flushBackend = function(){
+    return this.shard.flushBackend();
 };
 
 proto._collection = function(name){

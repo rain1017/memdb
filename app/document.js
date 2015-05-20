@@ -178,6 +178,8 @@ proto.lock = function(connectionId){
             self.connectionId = connectionId;
             self.releaseCallback = release;
             self.changed = utils.clone(self.commited);
+
+            self.emit('lock');
             deferred.resolve();
         })
         .catch(function(err){
@@ -187,6 +189,17 @@ proto.lock = function(connectionId){
     return deferred.promise;
 };
 
+// Wait existing lock release (not create new lock)
+proto._waitUnlock = function(){
+    var deferred = P.defer();
+    return this._lock.acquire('', function(){
+        deferred.resolve();
+    })
+    .catch(function(err){
+        deferred.reject(err);
+    });
+};
+
 proto._unlock = function(){
     if(this.connectionId === null){
         return;
@@ -194,11 +207,17 @@ proto._unlock = function(){
     this.connectionId = null;
     var releaseCallback = this.releaseCallback;
     this.releaseCallback = null;
+
+    this.emit('unlock');
     process.nextTick(releaseCallback);
 };
 
 proto._getChanged = function(){
     return this.changed !== undefined ? this.changed : this.commited;
+};
+
+proto._getCommited = function(){
+    return this.commited;
 };
 
 proto.commit = function(connectionId){
@@ -228,6 +247,10 @@ proto.ensureLocked = function(connectionId){
 
 proto.isLocked = function(connectionId){
     return this.connectionId === connectionId && connectionId !== null && connectionId !== undefined;
+};
+
+proto.isFree = function(){
+    return this.connectionId === null;
 };
 
 proto._getIndexValue = function(indexKey, opts){

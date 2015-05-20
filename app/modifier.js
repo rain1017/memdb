@@ -2,20 +2,31 @@
 
 var utils = require('./utils');
 
+// Max document size 1MB after serialize
+var MAX_DOC_SIZE = 1024 * 1024;
+
+var clone = function(obj){
+    var json = JSON.stringify(obj);
+    if(json.length > MAX_DOC_SIZE){
+        throw new Error('Document size exceed limit');
+    }
+    return JSON.parse(json);
+};
+
 module.exports = {
     $insert : function(doc, param){
         param = param || {};
         if(doc !== null){
             throw new Error('doc already exists');
         }
-        return utils.clone(param);
+        return clone(param);
     },
     $replace : function(doc, param){
         param = param || {};
         if(doc === null){
             throw new Error('doc not exist');
         }
-        return utils.clone(param);
+        return clone(param);
     },
     $remove : function(doc, param){
         if(doc === null){
@@ -28,7 +39,7 @@ module.exports = {
             throw new Error('doc not exist');
         }
         for(var path in param){
-            utils.setObjPath(doc, path, utils.clone(param[path]));
+            utils.setObjPath(doc, path, clone(param[path]));
         }
         return doc;
     },
@@ -73,7 +84,7 @@ module.exports = {
             if(!Array.isArray(arr)){
                 throw new Error('not an array');
             }
-            arr.push(utils.clone(param[path]));
+            arr.push(clone(param[path]));
         }
         return doc;
     },
@@ -95,7 +106,7 @@ module.exports = {
                 items = [items];
             }
             for(var i in items){
-                arr.push(utils.clone(items[i]));
+                arr.push(clone(items[i]));
             }
         }
         return doc;
@@ -122,7 +133,7 @@ module.exports = {
                 }
             }
             if(!exist){
-                arr.push(utils.clone(value));
+                arr.push(clone(value));
             }
         }
         return doc;

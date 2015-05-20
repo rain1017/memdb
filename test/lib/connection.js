@@ -266,38 +266,4 @@ describe('connection test', function(){
         })
         .nodeify(cb);
     });
-
-    it('findCached', function(cb){
-        var conn = null;
-
-        return P.try(function(){
-            return memdb.startServer(env.dbConfig('s1'));
-        })
-        .then(function(){
-            return memdb.connect();
-        })
-        .then(function(ret){
-            conn = ret;
-
-            // miss cache
-            return conn.collection('player').findCached('p1')
-            .then(function(ret){
-                (ret === null).should.eql(true);
-            });
-        })
-        .then(function(){
-            // hit cache
-            return conn.collection('player').findCached('p1')
-            .then(function(ret){
-                (ret === null).should.eql(true);
-            });
-        })
-        .then(function(){
-            return conn.close();
-        })
-        .finally(function(){
-            return memdb.stopServer();
-        })
-        .nodeify(cb);
-    });
 });
