@@ -141,8 +141,6 @@ if (require.main === module) {
     var level = loggerConf.level || 'INFO';
     pomeloLogger.setGlobalLogLevel(pomeloLogger.levels[level]);
 
-    var shards = conf.shards || {};
-
     var isDaemon = argv.d || argv.daemon;
 
     if(!shardId){
@@ -158,11 +156,12 @@ if (require.main === module) {
     }
     else{
         // Start specific shard
-        var shardConfig = shards[shardId];
+        var shardConfig = conf.shards && conf.shards[shardId];
         if(!shardConfig){
             console.error('Shard %s not exist in config', shardId);
             process.exit(1);
         }
+        delete conf.shards;
 
         if(isDaemon){
             console.warn('Daemon mode is not supported now');
@@ -181,17 +180,12 @@ if (require.main === module) {
             });
         }
         else{
-            var opts = {
-                shard : shardId,
-                host : shardConfig.host,
-                port : shardConfig.port,
-                locking : shardConfig.locking,
-                event : shardConfig.event,
-                backend : shardConfig.backend,
-                slave : shardConfig.slave,
-                collections : conf.collections,
-            };
-            startShard(opts);
+            // Override shard specific config
+            conf.shard = shardId;
+            for(var key in shardConfig){
+                conf[key] = shardConfig[key];
+            }
+            startShard(conf);
         }
     }
 }
