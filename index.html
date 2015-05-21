@@ -1,25 +1,34 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html>
   <head>
-    <meta charset="UTF-8">
-    <title>MemDB by rain1017</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
-    <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
     <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
-  </head>
-  <body>
-    <section class="page-header">
-      <h1 class="project-name">MemDB</h1>
-      <h2 class="project-tagline">Distributed transactional in memory database</h2>
-      <a href="https://github.com/rain1017/memdb" class="btn">View on GitHub</a>
-      <a href="https://github.com/rain1017/memdb/zipball/master" class="btn">Download .zip</a>
-      <a href="https://github.com/rain1017/memdb/tarball/master" class="btn">Download .tar.gz</a>
-    </section>
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
 
-    <section class="main-content">
-      <h2>
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <title>MemDB by rain1017</title>
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <h1>MemDB</h1>
+        <h2>Distributed transactional in memory database</h2>
+        <a href="https://github.com/rain1017/memdb" class="button"><small>View project on</small> GitHub</a>
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <h2>
 <a id="why-memdb" class="anchor" href="#why-memdb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Why memdb?</h2>
 
 <ul>
@@ -103,11 +112,13 @@
 <span class="pl-k">var</span> config <span class="pl-k">=</span> {
     <span class="pl-c">//shard Id (Must unique and immutable for each shard)</span>
     shard <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>s1<span class="pl-pds">'</span></span>,
-    <span class="pl-c">// Center backend storage, must be same for all shards</span>
+    <span class="pl-c">// Global backend storage, all shards must connect to the same mongodb (or mongodb cluster)</span>
     backend <span class="pl-k">:</span> {engine <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>mongodb<span class="pl-pds">'</span></span>, url <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>mongodb://localhost/memdb-test<span class="pl-pds">'</span></span>},
-    <span class="pl-c">// Center redis used for backendLock, must be same for all shards</span>
-    redis <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port <span class="pl-k">:</span> <span class="pl-c1">6379</span>},
-    <span class="pl-c">// Redis data replication (for current shard)</span>
+    <span class="pl-c">// Global locking redis, all shards must connect to the same redis (or redis cluster)</span>
+    locking <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port <span class="pl-k">:</span> <span class="pl-c1">6379</span>, db <span class="pl-k">:</span> <span class="pl-c1">0</span>},
+    <span class="pl-c">// Global event redis, all shards must connect to the same redis</span>
+    <span class="pl-c1">event</span> <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port <span class="pl-k">:</span> <span class="pl-c1">6379</span>, db <span class="pl-k">:</span> <span class="pl-c1">0</span>},
+    <span class="pl-c">// Data replication redis, one redis instance for each shard</span>
     slave <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port <span class="pl-k">:</span> <span class="pl-c1">6379</span>, db <span class="pl-k">:</span> <span class="pl-c1">1</span>},
 };
 
@@ -178,22 +189,31 @@ node --harmony sample.js
 
 <p><strong>Become a cluster</strong></p>
 
-<p>Just start more shards with <strong>same backend and redis config</strong>, and they will automatically become a MemDB cluster.</p>
+<p>Just start more shards that connect to <strong>the same global services (backend/locking/event)</strong>, and they will automatically become a MemDB cluster.</p>
 
 <h2>
 <a id="quick-pomelo" class="anchor" href="#quick-pomelo" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick-pomelo</h2>
 
 <p><strong><a href="http://quickpomelo.com">quick-pomelo</a></strong> is a rapid and robust game server framework based on memdb</p>
+        </section>
 
-      <footer class="site-footer">
-        <span class="site-footer-owner"><a href="https://github.com/rain1017/memdb">MemDB</a> is maintained by <a href="https://github.com/rain1017">rain1017</a>.</span>
+        <aside id="sidebar">
+          <a href="https://github.com/rain1017/memdb/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/rain1017/memdb/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
 
-        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
-      </footer>
+          <p class="repo-owner"><a href="https://github.com/rain1017/memdb"></a> is maintained by <a href="https://github.com/rain1017">rain1017</a>.</p>
 
-    </section>
+          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
+    </div>
 
   
   </body>
 </html>
-
