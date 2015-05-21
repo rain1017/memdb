@@ -21,7 +21,7 @@ if(config.logger && config.logger.level){
 
 var flushdb = function(cb){
     return P.try(function(){
-        return P.promisify(mongodb.MongoClient.connect)(config.backend.url, config.backend.options);
+        return P.promisify(mongodb.MongoClient.connect)(config.shards.s1.backend.url, config.shards.s1.backend.options);
     })
     .then(function(db){
         return P.try(function(){
@@ -32,8 +32,8 @@ var flushdb = function(cb){
         });
     })
     .then(function(){
-        var client = redis.createClient(config.redis.port, config.redis.host);
-        client.select(config.redis.db);
+        var client = redis.createClient(config.shards.s1.locking.port, config.shards.s1.locking.host);
+        client.select(config.shards.s1.locking.db);
         return client.flushdbAsync()
         .then(function(){
             client.end();
@@ -87,8 +87,9 @@ module.exports = {
     dbConfig : function(shardId){
         return {
             shard : shardId,
-            redis : config.redis,
-            backend : config.backend,
+            locking : config.shards[shardId].locking,
+            event : config.shards[shardId].event,
+            backend : config.shards[shardId].backend,
             slave : config.shards[shardId].slave,
             collections : config.collections,
         };

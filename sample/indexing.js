@@ -10,11 +10,13 @@ var P = require('bluebird');
 var config = {
     //shard Id (Must unique and immutable for each shard)
     shard : 's1',
-    // Center backend storage, must be same for all shards
+    // Global backend storage, all shards must connect to the same mongodb (or mongodb cluster)
     backend : {engine : 'mongodb', url : 'mongodb://localhost/memdb-test'},
-    // Center redis used for backendLock, must be same for all shards
-    redis : {host : '127.0.0.1', port : 6379},
-    // Redis data replication (for current shard)
+    // Global locking redis, all shards must connect to the same redis (or redis cluster)
+    locking : {host : '127.0.0.1', port : 6379, db : 0},
+    // Global event redis, all shards must connect to the same redis
+    event : {host : '127.0.0.1', port : 6379, db : 0},
+    // Data replication redis, one redis instance for each shard
     slave : {host : '127.0.0.1', port : 6379, db : 1},
 
     // Config for each collections

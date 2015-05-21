@@ -254,9 +254,10 @@ describe.skip('performance test', function(){
                 shards = _.range(1, shardCount + 1).map(function(shardId){
                     var config = {
                         shard : shardId,
-                        redis : env.config.redis,
-                        backend : env.config.backend,
-                        slave : env.config.redis,
+                        locking : env.config.shards.s1.locking,
+                        event : env.config.shards.s1.event,
+                        backend : env.config.shards.s1.backend,
+                        slave : env.config.shards.s1.slave,
                         backendLockRetryInterval : lockRetryInterval,
                     };
                     return new Database(config);
@@ -333,7 +334,7 @@ describe.skip('performance test', function(){
         this.timeout(3600 * 1000);
 
         var config = env.dbConfig('s1');
-        config.memoryLimit = 1024 * 1024 * 1024; //1G
+        config.memoryLimit = 1024; //1G
 
         // Set large value to trigger gc, small value to not trigger gc
         config.idleTimeout = 3600 * 1000;
@@ -346,7 +347,7 @@ describe.skip('performance test', function(){
         })
         .then(function(autoconn){
             var p = P.resolve();
-            _.range(200000).forEach(function(i){
+            _.range(10000).forEach(function(i){
                 p = p.then(function(){
                     var doc = {_id : i};
                     for(var j=0; j<1000; j++){

@@ -22,8 +22,8 @@ var STATE = {
     STOPED : 4
 };
 
-// memory limit 1GB
-var DEFAULT_MEMORY_LIMIT = 1024 * 1024 * 1024;
+// memory limit 1024MB
+var DEFAULT_MEMORY_LIMIT = 1024;
 
 // unload doc count per GC cycle
 var DEFAULT_GC_COUNT = 100;
@@ -53,8 +53,9 @@ var DEFAULT_HEARTBEAT_INTERVAL = 60 * 1000;
 var DEFAULT_HEARTBEAT_TIMEOUT = 180 * 1000;
 
 /**
- * opts.redis - {host : '127.0.0.1', port : 6379} (for backendLocker)
- * opts.backend - (for data persistent)
+ * opts.locking - {host : '127.0.0.1', port : 6379} // Global Locking Redis
+ * opts.event - {host : '127.0.0.1', port : 6379} //Global Event Redis
+ * opts.backend - // Global backend storage
  *  {
  *      engine : 'mongodb',
  *      url : 'mongodb://localhost',
@@ -82,14 +83,21 @@ var Shard = function(opts){
         throw new Error('You must specify shard id');
     }
 
-    opts.redis = opts.redis || {};
+    opts.locking = opts.locking || {};
+    opts.event = opts.event || {};
 
     this.config = {
-        redis : {
-            host : opts.redis.host || '127.0.0.1',
-            port : opts.redis.port || 6379,
-            db : opts.redis.db || 0,
-            options : opts.redis.options || {},
+        locking : {
+            host : opts.locking.host || '127.0.0.1',
+            port : opts.locking.port || 6379,
+            db : opts.locking.db || 0,
+            options : opts.locking.options || {},
+        },
+        event : {
+            host : opts.event.host || '127.0.0.1',
+            port : opts.event.port || 6379,
+            db : opts.event.db || 0,
+            options : opts.event.options || {},
         },
         backend : opts.backend || {},
         slave : opts.slave || {},
@@ -115,10 +123,10 @@ var Shard = function(opts){
     };
 
     this.backendLocker = new BackendLocker({
-                                host : this.config.redis.host,
-                                port : this.config.redis.port,
-                                db : this.config.redis.db,
-                                options : this.config.redis.options,
+                                host : this.config.locking.host,
+                                port : this.config.locking.port,
+                                db : this.config.locking.db,
+                                options : this.config.locking.options,
                                 shardHeartbeatTimeout : this.config.heartbeatTimeout,
                             });
 
@@ -149,10 +157,10 @@ var Shard = function(opts){
     this.taskLock = new AsyncLock({Promise : P});
 
     // For sending messages between shards
-    var pubClient = redis.createClient(this.config.redis.port, this.config.redis.host, this.config.redis.options);
-    var subClient = redis.createClient(this.config.redis.port, this.config.redis.host, this.config.redis.options);
-    pubClient.select(this.config.redis.db);
-    subClient.select(this.config.redis.db);
+    var pubClient = redis.createClient(this.config.event.port, this.config.event.host, this.config.event.options);
+    var subClient = redis.createClient(this.config.event.port, this.config.event.host, this.config.event.options);
+    pubClient.select(this.config.event.db);
+    subClient.select(this.config.event.db);
     this.globalEvent = new GlobalEventEmitter({pub : pubClient, sub: subClient});
 
     // Request for unlock backend key
@@ -684,7 +692,7 @@ proto.gc = function(){
         var usage = process.memoryUsage();
         var memSize = usage.heapUsed;
 
-        if(memSize < self.config.memoryLimit){
+        if(memSize < self.config.memoryLimit * 1024 * 1024){
             // Memory not reach limit, no need to gc
             return;
         }
