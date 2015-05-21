@@ -56,4 +56,5 @@ if (require.main === module) {
     main().catch(console.error).finally(process.exit);
 }
 
-// For distributed system, just run memdb in each server with the same config, and each server will be a shard
+// Start more shards that connect to __the same global services (backend/locking/event)__
+// They will automatically become a MemDB cluster.
