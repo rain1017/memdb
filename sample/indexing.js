@@ -91,5 +91,3 @@ var main = P.coroutine(function*(){
 if (require.main === module) {
     main().catch(console.error).finally(process.exit);
 }
-
-// For distributed system, just run memdb in each server with the same config, and each server will be a shard
