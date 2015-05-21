@@ -8,6 +8,7 @@
 *.sublime-project
 *.sublime-workspace
 coverage.html
+Thumbs.db
 .DS_Store
 .project
 .nodemonignore
