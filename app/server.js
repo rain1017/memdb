@@ -185,8 +185,9 @@ if (require.main === module) {
                 shard : shardId,
                 host : shardConfig.host,
                 port : shardConfig.port,
-                redis : conf.redis,
-                backend : conf.backend,
+                locking : shardConfig.locking,
+                event : shardConfig.event,
+                backend : shardConfig.backend,
                 slave : shardConfig.slave,
                 collections : conf.collections,
             };

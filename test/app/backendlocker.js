@@ -10,11 +10,12 @@ describe('backendlocker test', function(){
 
     it('lock/unlock', function(cb){
         var locker = new BackendLocker({
-                            host : env.config.redis.host,
-                            port : env.config.redis.port,
+                            host : env.config.shards.s1.locking.host,
+                            port : env.config.shards.s1.locking.port,
+                            db : env.config.shards.s1.locking.db,
                             });
 
-        var docId = 'doc1', shardId = 'shard1';
+        var docId = 'doc1', shardId = 's1';
         return P.try(function(){
             return locker.unlockAll();
         })

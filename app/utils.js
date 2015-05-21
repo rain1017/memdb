@@ -14,16 +14,44 @@ exports.normalizecb = function(cb){
     };
 };
 
-exports.setPromiseConcurrency = function(P, concurrency){
-    var map = P.prototype.map;
-    P.prototype.map = function(fn, options){
-        options = options || {};
-        if(!options.concurrency){
-            options.concurrency = concurrency;
+// Add mapLimit to promise
+// not using concurrency = xxx option since it doesn't release memory
+exports.promiseSetLimit = function(P, defaultLimit){
+    P.mapLimit = function(items, fn, limit){
+        if(!limit){
+            limit = defaultLimit;
         }
-        return map.call(this, fn, options);
+        var groups = [];
+        var group = [];
+        items.forEach(function(item){
+            group.push(item);
+            if(group.length >= limit){
+                groups.push(group);
+                group = [];
+            }
+        });
+        if(group.length > 0){
+            groups.push(group);
+        }
+
+        var results = [];
+        var promise = P.resolve();
+        groups.forEach(function(group){
+            promise = promise.then(function(){
+                return P.map(group, fn)
+                .then(function(ret){
+                    ret.forEach(function(item){
+                        results.push(item);
+                    });
+                });
+            });
+        });
+        return promise.then(function(){
+            return results;
+        });
     };
 };
+
 
 exports.injectLogger = function(pomeloLogger){
     if(pomeloLogger.__memdb__){

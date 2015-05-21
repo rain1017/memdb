@@ -19,6 +19,65 @@ describe('database test', function(){
     //  //tested in ../lib/connection
     // });
 
+    it('persistent / idle timeout / find cached', function(cb){
+        var config1 = env.dbConfig('s1');
+        config1.persistentDelay = 100;
+        var db1 = new Database(config1);
+
+        var config2 = env.dbConfig('s2');
+        config2.idleTimeout = 200;
+        var db2 = new Database(config2);
+
+        var conn1 = null, conn2 = null;
+
+        var collName = 'player', doc = {_id : '1', name : 'rain'};
+        return P.try(function(){
+            return P.all([db1.start(), db2.start()]);
+        })
+        .then(function(){
+            conn1 = db1.connect();
+            conn2 = db2.connect();
+        })
+        .then(function(conn){
+            return db1.insert(conn1, collName, doc);
+        })
+        .then(function(){
+            return db1.commit(conn1);
+        })
+        .delay(500) // doc persistented
+        .then(function(){
+            // read from backend
+            return db2.findCached(conn2, collName, doc._id)
+            .then(function(ret){
+                ret.should.eql(doc);
+            });
+        })
+        .then(function(){
+            // get from cache
+            return db2.findCached(conn2, collName, doc._id)
+            .then(function(ret){
+                ret.should.eql(doc);
+            });
+        })
+        .then(function(){
+            return db2.remove(conn2, collName, doc._id);
+        })
+        .then(function(){
+            return db2.commit(conn2);
+        })
+        .delay(500) // doc idle timed out, should persistented
+        .then(function(){
+            return db1.findCached(conn1, collName, doc._id)
+            .then(function(ret){
+                (ret === null).should.eql(true);
+            });
+        })
+        .then(function(){
+            return P.all([db1.stop(), db2.stop()]);
+        })
+        .nodeify(cb);
+    });
+
     it('restore from slave', function(cb){
         var db1 = null, db2 = null;
         var connId = null;
@@ -26,7 +85,9 @@ describe('database test', function(){
         var player2 = {_id : 'p2', name : 'snow', age: 25};
 
         return P.try(function(){
-            db1 = new Database(env.dbConfig('s1'));
+            var config = env.dbConfig('s1');
+            config.gcInterval = 3600 * 1000; // disable gc
+            db1 = new Database(config);
             return db1.start();
         })
         .then(function(){
@@ -67,10 +128,6 @@ describe('database test', function(){
             .then(function(ret){
                 ret.should.eql(player2);
             });
-        })
-        .then(function(){
-            // test persistent all
-            return db2.persistentAll();
         })
         .then(function(){
             return db2.stop();

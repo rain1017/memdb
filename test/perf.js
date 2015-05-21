@@ -19,70 +19,6 @@ describe.skip('performance test', function(){
         env.flushdb(cb);
     });
 
-    it('clone', function(cb){
-        this.timeout(30000);
-
-        var data = [];
-        _.range(1).forEach(function(index){
-            var dct = {};
-            _.range(10000).forEach(function(key){
-                dct[key] = key;
-            });
-            data.push(dct);
-        });
-        console.log(JSON.stringify(data).length);
-
-        var count = 500;
-        var copy = null;
-        var start = Date.now();
-        for(var i=0; i<count; i++){
-            //copy = utils.cloneEx(data);
-            copy = JSON.parse(JSON.stringify(data));
-            //copy = clone(data);
-        }
-        console.log(1000 * count / (Date.now() - start));
-        cb();
-    });
-
-    it('json/bson test', function(cb){
-        var bson = require('bson');
-        var BSON = bson.native().BSON;
-        // All bson types
-        var bsonTypes = [bson.Long, bson.ObjectID, bson.Binary, bson.Code, bson.DBRef, bson.Symbol, bson.Double, bson.Timestamp, bson.MaxKey, bson.MinKey];
-        // BSON parser
-        var bsonParser = new BSON(bsonTypes);
-
-        var obj = {str : 'value', number : 1.2, array : [1, 2, 'hello'], dt : new Date()};
-
-        var count = 100000;
-        var start = Date.now();
-        var encoded = null;
-        for(var i=0; i<count; i++){
-            encoded = JSON.stringify(obj);
-        }
-        console.log('json encode: ' , 1000 * count / (Date.now() - start));
-
-        start = Date.now();
-        for(i=0; i<count; i++){
-            JSON.parse(encoded);
-        }
-        console.log('json decode: ' , 1000 * count / (Date.now() - start));
-
-        start = Date.now();
-        for(i=0; i<count; i++){
-            encoded = bsonParser.serialize(obj);
-        }
-        console.log('bson encode: ' , 1000 * count / (Date.now() - start));
-
-        start = Date.now();
-        for(i=0; i<count; i++){
-            bsonParser.deserialize(encoded);
-        }
-        console.log('bson decode: ' , 1000 * count / (Date.now() - start));
-
-        cb();
-    });
-
     it('write single doc', function(cb){
         this.timeout(30 * 1000);
 
@@ -240,10 +176,10 @@ describe.skip('performance test', function(){
 
         return P.try(function(){
             var config1 = env.dbConfig('s1');
-            config1.persistentInterval = 3600 * 100;
+            config1.persistentDelay = 3600 * 100;
 
             var config2 = env.dbConfig('s2');
-            config2.persistentInterval = 3600 * 100;
+            config2.persistentDelay = 3600 * 100;
 
             db1 = new Database(config1);
             db2 = new Database(config2);
@@ -318,9 +254,10 @@ describe.skip('performance test', function(){
                 shards = _.range(1, shardCount + 1).map(function(shardId){
                     var config = {
                         shard : shardId,
-                        redis : env.config.redis,
-                        backend : env.config.backend,
-                        slave : env.config.redis,
+                        locking : env.config.shards.s1.locking,
+                        event : env.config.shards.s1.event,
+                        backend : env.config.shards.s1.backend,
+                        slave : env.config.shards.s1.slave,
                         backendLockRetryInterval : lockRetryInterval,
                     };
                     return new Database(config);
@@ -345,7 +282,7 @@ describe.skip('performance test', function(){
                         logger.info('start request %s on shard %s', requestId, conn.db.shard._id);
 
                         var start = Date.now();
-                        return conn.execute(function(){
+                        return conn.transaction(function(){
                             var Player = conn.collection('player');
                             return Player.update(1, {$inc : {exp : 1}}, {upsert : true});
                         })
@@ -391,6 +328,46 @@ describe.skip('performance test', function(){
             });
         });
         promise.nodeify(cb);
+    });
+
+    it('gc & idle', function(cb){
+        this.timeout(3600 * 1000);
+
+        var config = env.dbConfig('s1');
+        config.memoryLimit = 1024; //1G
+
+        // Set large value to trigger gc, small value to not trigger gc
+        config.idleTimeout = 3600 * 1000;
+
+        return P.try(function(){
+            return memdb.startServer(config);
+        })
+        .then(function(){
+            return memdb.autoConnect();
+        })
+        .then(function(autoconn){
+            var p = P.resolve();
+            _.range(10000).forEach(function(i){
+                p = p.then(function(){
+                    var doc = {_id : i};
+                    for(var j=0; j<1000; j++){
+                        doc['key' + j] = 'value' + j;
+                    }
+                    logger.warn('%s %j', i, process.memoryUsage());
+                    return autoconn.transaction(function(){
+                        return autoconn.collection('player').insert(doc);
+                    });
+                });
+            });
+            return p;
+        })
+        .then(function(){
+            logger.warn('%j', process.memoryUsage());
+        })
+        .finally(function(){
+            return memdb.stopServer();
+        })
+        .nodeify(cb);
     });
 });
 

@@ -40,7 +40,7 @@ describe('mdbgoose test', function(){
         })
         .then(function(){
             // connect to backend mongodb
-            return mdbgoose.connectMongoAsync(env.config.backend.url);
+            return mdbgoose.connectMongoAsync(env.config.shards.s1.backend.url);
         })
         .then(function(){
             return mdbgoose.transaction(function(){
@@ -168,9 +168,8 @@ describe('mdbgoose test', function(){
             });
         })
         .then(function(){
-            // force persistent to mongodb
-            return mdbgoose.autoconn.transaction(function(){
-                return mdbgoose.autoconn.persistentAll();
+            return mdbgoose.transaction(function(){
+                return mdbgoose.autoconn.flushBackend();
             });
         })
         .then(function(){
