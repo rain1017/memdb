@@ -363,10 +363,11 @@ proto._finishIndexTasks = function(id){
     // Save domain
     var d = process.domain;
     var self = this;
-    return P.mapLimit(self.pendingIndexTasks[id], function(){
-        delete self.pendingIndexTasks[id];
+    return P.mapLimit(self.pendingIndexTasks[id], function(promise){
+        return promise;
     }, 1)
     .then(function(){
+        delete self.pendingIndexTasks[id];
         // Restore domain
         process.domain = d;
     });

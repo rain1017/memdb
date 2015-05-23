@@ -41,6 +41,11 @@ proto.get = function(name, id){
     });
 };
 
+// Return an async iterator with .next(cb) signature
+proto.getAll = function(name){
+    throw new Error('Not implemented');
+};
+
 // delete when doc is null
 proto.set = function(name, id, doc){
     if(doc !== null && doc !== undefined){
@@ -75,6 +80,10 @@ proto.drop = function(name){
     else{
         this.client.flushdbAsync();
     }
+};
+
+proto.getCollectionNames = function(){
+    throw new Error('Not implemented');
 };
 
 module.exports = RedisBackend;

@@ -14,8 +14,7 @@ var AsyncLock = require('async-lock');
 var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 /**
- * opts.collections - {name : definition}
- *      definition.indexes - [field, field]
+ *
  */
 var Database = function(opts){
     // clone since we want to modify it

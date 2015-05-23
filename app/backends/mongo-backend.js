@@ -2,10 +2,11 @@
 
 var P = require('bluebird');
 var mongodb = P.promisifyAll(require('mongodb'));
+var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 var MongoBackend = function(opts){
     opts = opts || {};
-    this._url = opts.url || 'mongodb://localhost/memdb';
+    this._url = opts.url || 'mongodb://localhost/test';
     this._options = opts.options || {};
 };
 
@@ -24,18 +25,31 @@ proto.start = function(){
                 return ret;
             }
         });
+
+        logger.info('backend mongodb connected to %s', this._url);
     });
 };
 
 proto.stop = function(){
-    return this.conn.closeAsync();
+    return this.conn.closeAsync()
+    .then(function(){
+        logger.info('backend mongodb closed');
+    });
 };
 
 proto.get = function(name, id){
+    logger.debug('backend mongodb get %s %s', name, id);
     return this.conn.collection(name).findOneAsync({_id : id});
 };
 
+// Return an async iterator with .next(cb) signature
+proto.getAll = function(name){
+    logger.debug('backend mongodb getAll %s', name);
+    return this.conn.collection(name).findAsync();
+};
+
 proto.set = function(name, id, doc){
+    logger.debug('backend mongodb set %s %s', name, id);
     if(doc !== null && doc !== undefined){
         doc._id = id;
         return this.conn.collection(name).updateAsync({_id : id}, doc, {upsert : true});
@@ -49,6 +63,7 @@ proto.set = function(name, id, doc){
 proto.setMulti = function(items){
     var self = this;
 
+    logger.debug('backend mongodb setMulti');
     return P.mapLimit(items, function(item){
         return self.set(item.name, item.id, item.doc);
     });
@@ -56,12 +71,27 @@ proto.setMulti = function(items){
 
 // drop table or database
 proto.drop = function(name){
+    logger.debug('backend mongodb drop %s', name);
     if(!!name){
-        return this.conn.collection(name).dropAsync();
+        return this.conn.collection(name).dropAsync()
+        .catch(function(e){
+            // Ignore ns not found error
+            if(e.message.indexOf('ns not found') === -1){
+                throw e;
+            }
+        });
     }
     else{
         return this.conn.dropDatabaseAsync();
     }
+};
+
+proto.getCollectionNames = function(){
+    return this.conn.collectionsAsync().then(function(collections){
+        return collections.map(function(collection){
+            return collection.s.name;
+        });
+    });
 };
 
 module.exports = MongoBackend;
