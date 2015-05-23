@@ -14,11 +14,11 @@ var utils = require('./utils');
 var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 // dropIndex('field1 field2')
-exports.dropIndex = function(backendConf, collName, fields){
-    if(!Array.isArray(fields)){
-        fields = fields.split(' ');
+exports.dropIndex = function(backendConf, collName, keys){
+    if(!Array.isArray(keys)){
+        keys = keys.split(' ');
     }
-    var indexKey = JSON.stringify(fields.sort());
+    var indexKey = JSON.stringify(keys.sort());
     var backend = backends.create(backendConf);
 
     return P.try(function(){
@@ -35,17 +35,17 @@ exports.dropIndex = function(backendConf, collName, fields){
 };
 
 // rebuildIndex('field1 field2', {unique : true})
-exports.rebuildIndex = function(backendConf, collName, fields, opts){
+exports.rebuildIndex = function(backendConf, collName, keys, opts){
     opts = opts || {};
-    if(!Array.isArray(fields)){
-        fields = fields.split(' ');
+    if(!Array.isArray(keys)){
+        keys = keys.split(' ');
     }
-    var indexKey = JSON.stringify(fields.sort());
+    var indexKey = JSON.stringify(keys.sort());
     var backend = backends.create(backendConf);
 
     logger.warn('Start rebuild index %s %s', collName, indexKey);
     return P.try(function(){
-        return exports.dropIndex(backendConf, collName, fields);
+        return exports.dropIndex(backendConf, collName, keys);
     })
     .then(function(){
         return backend.start();
