@@ -47,92 +47,36 @@ module.exports = function(grunt) {
                 src: ['coverage.html']
             }
         },
-        concurrent: {
-            dev: {
-                tasks: ['nodemon', 'node-inspector'],
-                options: {
-                    logConcurrentOutput: true
-                }
-            },
-            debug: {
-                tasks: ['nodemon:dev', 'node-inspector'],
-                options: {
-                    logConcurrentOutput: true
-                }
-            },
-            'debug-test': {
-                tasks: ['nodemon:debug-test', 'node-inspector', 'watch:testsJS'],
-                options: {
-                    logConcurrentOutput: true
-                }
-            }
-        },
         nodemon: {
-            'debug-test': {
-                script: '/usr/local/lib/node_modules/mocha/bin/_mocha',
-                options: {
-                    nodeArgs: ['--debug=31001', '--debug-brk'],
-                    args: ['tests/compiler_test.js'],
-                    watch: ['tests'],
-                    ext: 'js',
-                    callback: function (nodemon) {
-                        nodemon.on('log', function (event) {
-                            console.log(event.colour);
-                        });
-                        // opens browser on initial server start
-                        nodemon.on('config:update', function () {
-                            // Delay before server listens on port
-                            setTimeout(function() {
-                                require('open')('http://localhost:31010/debug?port=31001');
-                            }, 1000);
-                        });
-                    }
-                }
-            },
             dev: {
-                script: 'msample.js',
+                script: 'app/server.js',
                 options: {
-                    nodeArgs: ['--debug=31001', '--debug-brk'],
-                    env: {
-                        PORT: '31000'
-                    },
-                    ignore: [
-                        'public/**'
-                    ],
-                    watch: ['node_modules/**/*.js', 'views/**/*.js', 'services/**/*.js', '*.js', 'models/**/*.js'],
-                    ext: 'js',
-                    callback: function (nodemon) {
-                        nodemon.on('log', function (event) {
-                            console.log(event.colour);
-                        });
-                        // opens browser on initial server start
-                        nodemon.on('config:update', function () {
-                            // Delay before server listens on port
-                            setTimeout(function() {
-                                require('open')('http://localhost:31010/debug?port=31001');
-                            }, 1000);
-                        });
-                        // refreshes browser when server reboots
-                        nodemon.on('restart', function () {
-                            // Delay before server listens on port
-                            setTimeout(function() {
-                                require('fs').writeFileSync('.rebooted', 'rebooted');
-                            }, 1000);
-                        });
-                    }
+                    args : ['--conf=./test/memdb.json', '--shard=s1'],
+                    nodeArgs: ['--debug'],
+                    ext: 'js,html',
+                    watch: watchFiles.serverJS
                 }
             }
         },
         'node-inspector': {
             custom: {
                 options: {
-                    'web-port': 31010,
+                    'web-port': 8088,
                     'web-host': 'localhost',
-                    'debug-port': 31001,
+                    'debug-port': 5858,
                     'save-live-edit': true,
-                    'no-preload': false,
-                    'stack-trace-limit': 100
+                    'no-preload': true,
+                    'stack-trace-limit': 50,
+                    'hidden': []
                 }
+            }
+        },
+        concurrent: {
+            default: ['nodemon', 'watch'],
+            debug: ['nodemon', 'watch', 'node-inspector'],
+            options: {
+                logConcurrentOutput: true,
+                limit: 10
             }
         },
     });
@@ -149,6 +93,9 @@ module.exports = function(grunt) {
     // Test task.
     grunt.registerTask('test', ['clean', 'lint', 'env:test', 'mochaTest']);
 
-    // Default task(s).
-    grunt.registerTask('default', ['test']);
+    // Run server
+    grunt.registerTask('default', ['clean', 'lint', 'concurrent:default']);
+
+    // Debug server
+    grunt.registerTask('debug', ['clean', 'lint', 'concurrent:debug']);
 };

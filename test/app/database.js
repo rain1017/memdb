@@ -86,6 +86,7 @@ describe('database test', function(){
 
         return P.try(function(){
             var config = env.dbConfig('s1');
+            config.heartbeatInterval = -1; // disable heartbeat
             config.gcInterval = 3600 * 1000; // disable gc
             db1 = new Database(config);
             return db1.start();

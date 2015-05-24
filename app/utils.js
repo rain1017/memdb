@@ -160,69 +160,32 @@ exports.isDict = function(obj){
     return typeof(obj) === 'object' && obj !== null && !Array.isArray(obj);
 };
 
-/**
-* smartForEach
-*
-* itor - array, iterator or asyncIterator(with .next(cb))
-* func - return promise or use cb
-* returns - promise or use cb
-*/
-exports.smartForEach = function(itor, func, cb){
-    if(Array.isArray(itor)){ // Translate to iterator if itor is normal array
-        var i = 0;
-        return exports.smartForEach({
-            next : function(){
-                if(i >= itor.length){
-                    return null;
-                }
-                else{
-                    return itor[i++];
-                }
-            }
-        }, func);
-    }
-
+// Async foreach for mongo's cursor
+exports.mongoForEach = function(itor, func){
     var deferred = P.defer();
-
-    var handleItem = function(value){
-        if(value === null){
-            return deferred.resolve();
-        }
-        // Callback style if func accept 2nd argument
-        if(func.length === 2){
-            return func(value, next);
-        }
-        // promise style
-        P.try(function(){
-            return func(value);
-        })
-        .nodeify(next);
-    };
 
     var next = function(err){
         if(err){
             return deferred.reject(err);
         }
-        // normal iterator with .next()
-        if(itor.next.length === 0){
-            return handleItem(itor.next());
-        }
+
         // async iterator with .next(cb)
         itor.next(function(err, value){
             if(err){
                 return deferred.reject(err);
             }
-            handleItem(value);
+            if(value === null){
+                return deferred.resolve();
+            }
+            P.try(function(){
+                return func(value);
+            })
+            .nodeify(next);
         });
     };
     next();
 
-    if(typeof(cb) === 'function'){
-        return deferred.promise.nodeify(cb);
-    }
-    else{
-        return deferred.promise;
-    }
+    return deferred.promise;
 };
 
 module.exports = exports;

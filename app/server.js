@@ -1,10 +1,9 @@
 'use strict';
+
 var P = require('bluebird');
 var minimist = require('minimist');
 var path = require('path');
 var fs = require('fs');
-var forever = require('forever');
-var child_process = require('child_process');
 
 var pomeloLogger = require('pomelo-logger');
 var logger = pomeloLogger.getLogger('memdb', __filename);
@@ -16,6 +15,9 @@ var startShard = function(opts){
     var db = new Database(opts);
     db.start().then(function(){
         logger.warn('server started');
+    }, function(err){
+        logger.error(err.stack);
+        process.exit(1);
     });
 
     server.on('connection', function(socket){
@@ -65,6 +67,8 @@ var startShard = function(opts){
 
     var _isShutingDown = false;
     var shutdown = function(){
+        logger.warn('Received shutdown signal');
+
         if(_isShutingDown){
             return;
         }
@@ -146,13 +150,6 @@ if (require.main === module) {
     if(!shardId){
         console.error('Please specify shardId with --shard');
         process.exit(1);
-
-        // Main script, will start all shards via ssh
-        // Object.keys(shards).forEach(function(shardId){
-        //  var host = shards[shardId].host;
-        //  console.info('start %s via ssh... (TBD)', shardId);
-        //  // TODO: start shard
-        // });
     }
     else{
         // Start specific shard
@@ -163,29 +160,16 @@ if (require.main === module) {
         }
         delete conf.shards;
 
+        conf.shard = shardId;
+        // Override shard specific config
+        for(var key in shardConfig){
+            conf[key] = shardConfig[key];
+        }
+
         if(isDaemon){
-            console.warn('Daemon mode is not supported now');
-            isDaemon = false;
+            //Become daemon
+            require('daemon')();
         }
-
-        if(isDaemon && !argv.child){
-            var args = process.argv.slice(2);
-            args.push('--child');
-
-            forever.startDaemon(__filename, {
-                max : 1,
-                slient : true,
-                killTree : false,
-                args : args,
-            });
-        }
-        else{
-            // Override shard specific config
-            conf.shard = shardId;
-            for(var key in shardConfig){
-                conf[key] = shardConfig[key];
-            }
-            startShard(conf);
-        }
+        startShard(conf);
     }
 }

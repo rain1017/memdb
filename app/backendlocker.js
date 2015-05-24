@@ -5,8 +5,6 @@ var util = require('util');
 var redis = P.promisifyAll(require('redis'));
 var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
-var DEFAULT_SHARD_HEARTBEAT_TIMEOUT = 180 * 1000;
-
 /**
  * Lock document in backend for specific shard
  *
@@ -25,7 +23,7 @@ var BackendLocker = function(opts){
     this.client = redis.createClient(port, host, options);
     this.client.select(db);
 
-    this.shardHeartbeatTimeout = opts.shardHeartbeatTimeout || DEFAULT_SHARD_HEARTBEAT_TIMEOUT;
+    this.shardHeartbeatTimeout = opts.shardHeartbeatTimeout;
 };
 
 var proto = BackendLocker.prototype;

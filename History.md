@@ -1,3 +1,9 @@
+0.3.0 / 2015-06-01
+==================
+* Support more mongodb API
+* Complete documents
+* Cluster support for global mongodb and redis
+
 0.2.0 / 2015-04-11
 ==================
 * Standalone socket server mode

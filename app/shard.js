@@ -48,9 +48,9 @@ var DEFAULT_BACKEND_LOCK_RETRY_INTERVAL = 100;
 // timeout for locking doc
 var DEFAULT_LOCK_TIMEOUT = 10 * 1000;
 
-// heartbeat settings
-var DEFAULT_HEARTBEAT_INTERVAL = 60 * 1000;
-var DEFAULT_HEARTBEAT_TIMEOUT = 180 * 1000;
+// heartbeat settings, must be multiple 1000
+var DEFAULT_HEARTBEAT_INTERVAL =  1000;
+var DEFAULT_HEARTBEAT_TIMEOUT = 3 * 1000;
 
 /**
  * opts.locking - {host : '127.0.0.1', port : 6379} // Global Locking Redis
@@ -212,6 +212,14 @@ proto.start = function(){
 
     return P.bind(this)
     .then(function(){
+        return this.backendLocker.isShardAlive(this._id);
+    })
+    .then(function(alive){
+        if(alive){
+            throw new Error('Shard ' + this._id + ' is running in some other process');
+        }
+    })
+    .then(function(){
         logger.debug('backend start');
         return this.backend.start();
     })
@@ -226,10 +234,14 @@ proto.start = function(){
         }
     })
     .then(function(){
-        return this._heartbeat();
+        if(this.config.heartbeatInterval > 0){
+            return this._heartbeat();
+        }
     })
     .then(function(){
-        this.heartbeatInterval = setInterval(this._heartbeat.bind(this), this.config.heartbeatInterval);
+        if(this.config.heartbeatInterval > 0){
+            this.heartbeatInterval = setInterval(this._heartbeat.bind(this), this.config.heartbeatInterval);
+        }
         this.gcInterval = setInterval(this.gc.bind(this), this.config.gcInterval);
 
         this.state = STATE.RUNNING;

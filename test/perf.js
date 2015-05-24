@@ -2,7 +2,6 @@
 
 var P = require('bluebird');
 var _ = require('lodash');
-var clone = require('clone');
 var utils = require('../app/utils');
 var should = require('should');
 var env = require('./env');
