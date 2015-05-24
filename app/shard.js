@@ -48,11 +48,12 @@ var DEFAULT_BACKEND_LOCK_RETRY_INTERVAL = 100;
 // timeout for locking doc
 var DEFAULT_LOCK_TIMEOUT = 10 * 1000;
 
-// heartbeat settings, must be multiple 1000
-var DEFAULT_HEARTBEAT_INTERVAL =  1000;
-var DEFAULT_HEARTBEAT_TIMEOUT = 3 * 1000;
+// heartbeat settings, must be multiple of 1000
+var DEFAULT_HEARTBEAT_INTERVAL = 2 * 1000;
+var DEFAULT_HEARTBEAT_TIMEOUT = 5 * 1000;
 
 /**
+ * opts.shardId (required) - shard id
  * opts.locking - {host : '127.0.0.1', port : 6379} // Global Locking Redis
  * opts.event - {host : '127.0.0.1', port : 6379} //Global Event Redis
  * opts.backend - // Global backend storage
@@ -78,9 +79,9 @@ var Shard = function(opts){
     opts = opts || {};
     var self = this;
 
-    this._id = opts.shard;
+    this._id = opts.shardId;
     if(!this._id){
-        throw new Error('You must specify shard id');
+        throw new Error('You must specify shardId');
     }
 
     opts.locking = opts.locking || {};

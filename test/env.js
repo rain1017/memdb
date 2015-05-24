@@ -86,7 +86,7 @@ module.exports = {
 
     dbConfig : function(shardId){
         return {
-            shard : shardId,
+            shardId : shardId,
             locking : config.shards[shardId].locking,
             event : config.shards[shardId].event,
             backend : config.shards[shardId].backend,

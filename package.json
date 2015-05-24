@@ -22,6 +22,9 @@
     "engines": {
         "node": ">=0.10.x"
     },
+    "bin" : {
+        "memdb" : "./app/server.js"
+    },
     "scripts": {
         "start": "grunt",
         "test": "grunt test",
