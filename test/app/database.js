@@ -5,7 +5,7 @@ var _ = require('lodash');
 var should = require('should');
 var env = require('../env');
 var Database = require('../../app/database');
-var logger = require('pomelo-logger').getLogger('test', __filename);
+var logger = require('memdb-logger').getLogger('test', __filename);
 
 describe('database test', function(){
     beforeEach(env.flushdb);

@@ -6,7 +6,6 @@ var utils = require('./utils');
 var AsyncLock = require('async-lock');
 var EventEmitter = require('events').EventEmitter;
 var modifier = require('./modifier');
-var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 var DEFAULT_LOCK_TIMEOUT = 10 * 1000;
 
@@ -19,6 +18,8 @@ var DEFAULT_LOCK_TIMEOUT = 10 * 1000;
  */
 var Document = function(opts){ //jshint ignore:line
     opts = opts || {};
+
+    this.logger = opts.logger || require('memdb-logger').getLogger('memdb', __filename);
 
     var doc = opts.doc || null;
     if(typeof(doc) !== 'object'){
@@ -154,13 +155,13 @@ proto.modify = function(connectionId, cmd, param){
     for(indexKey in this.indexes){
         var value = this._getIndexValue(indexKey, this.indexes[indexKey]);
         if(oldValues[indexKey] !== value){
-            logger.trace('updateIndex %s %s %s', indexKey, oldValues[indexKey], value);
+            this.logger.trace('updateIndex %s %s %s', indexKey, oldValues[indexKey], value);
 
             this.emit('updateIndex', connectionId, indexKey, oldValues[indexKey], value);
         }
     }
 
-    logger.trace('%s %s %j => %j', this._id, cmd, param, this.changed);
+    this.logger.trace('%s %s %j => %j', this._id, cmd, param, this.changed);
 };
 
 proto.lock = function(connectionId){

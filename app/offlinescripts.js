@@ -11,7 +11,7 @@ var backends = require('./backends');
 var Document = require('./document'); //jshint ignore:line
 var Collection = require('./collection');
 var utils = require('./utils');
-var logger = require('pomelo-logger').getLogger('memdb', __filename);
+var logger = require('memdb-logger').getLogger('memdb', __filename);
 
 // dropIndex('field1 field2')
 exports.dropIndex = function(backendConf, collName, keys){

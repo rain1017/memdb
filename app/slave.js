@@ -3,11 +3,12 @@
 var P = require('bluebird');
 var redis = P.promisifyAll(require('redis'));
 var utils = require('./utils');
-var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
-var Slave = function(shard, opts){
+var Slave = function(opts){
     opts = opts || {};
-    this.shard = shard;
+
+    this.logger = opts.logger || require('memdb-logger').getLogger('memdb', __filename);
+    this.shardId = opts.shardId;
 
     var host = opts.host || '127.0.0.1';
     var port = opts.port || 6379;
@@ -101,7 +102,7 @@ proto.clear = function(){
  */
 
 proto._redisPrefix = function(){
-    return 'bak:' + this.shard._id + ':';
+    return 'bak:' + this.shardId + ':';
 };
 
 proto._redisKey = function(key){

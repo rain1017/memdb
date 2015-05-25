@@ -8,7 +8,7 @@ var env = require('./env');
 var memdb = require('../lib');
 var Database = require('../app/database');
 var AutoConnection = require('../lib/autoconnection');
-var logger = require('pomelo-logger').getLogger('test', __filename);
+var logger = require('memdb-logger').getLogger('test', __filename);
 
 describe.skip('performance test', function(){
     beforeEach(function(cb){

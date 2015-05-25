@@ -2,7 +2,7 @@
 
 var P = require('bluebird');
 var utils = require('./utils');
-utils.promiseSetLimit(P, 1024);
+utils.extendPromise(P);
 
 var util = require('util');
 var EventEmitter = require('events').EventEmitter;
@@ -11,39 +11,40 @@ var Connection = require('./connection');
 var Shard = require('./shard');
 var consts = require('./consts');
 var AsyncLock = require('async-lock');
-var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
-/**
- *
- */
 var Database = function(opts){
     // clone since we want to modify it
     opts = utils.clone(opts) || {};
 
-    this.shard = new Shard(opts);
+    this.logger = opts.logger || require('memdb-logger').getLogger('memdb', __filename, 'shard:' + opts.shardId);
+
     this.collections = {};
     this.connections = {};
     this.connectionLock = new AsyncLock({Promise : P});
 
-    // check and compile index config
+    // Parse index config
     opts.collections = opts.collections || {};
 
     Object.keys(opts.collections).forEach(function(name){
         var collection = opts.collections[name];
-        var compiledIndexes = {};
-
+        var indexes = {};
         (collection.indexes || []).forEach(function(index){
             var indexKey = JSON.stringify(index.keys.sort());
-            if(compiledIndexes[indexKey]){
-                throw new Error('duplicate index keys');
+            if(indexes[indexKey]){
+                throw new Error('Duplicate index keys - ' + indexKey);
             }
-            compiledIndexes[indexKey] = index;
+
             delete index.keys;
+            indexes[indexKey] = index;
         });
-        collection.indexes = compiledIndexes;
+        collection.indexes = indexes;
     });
 
-    logger.info('Parsed opts: %j', opts);
+    this.logger.info('parsed opts: %j', opts);
+
+    opts.logger = this.logger;
+
+    this.shard = new Shard(opts);
     this.config = opts;
 };
 
@@ -62,7 +63,7 @@ proto.stop = function(force){
 proto.connect = function(){
     var conn = new Connection({_id : utils.uuid()});
     this.connections[conn._id] = conn;
-    logger.info('shard[%s].connection[%s] created', this.shard._id, conn._id);
+    this.logger.info('[conn:%s] connection created', conn._id);
     return conn._id;
 };
 
@@ -72,7 +73,7 @@ proto.disconnect = function(connId){
         this.rollback(connId);
     }
     delete this.connections[connId];
-    logger.info('shard[%s].connection[%s] closed', this.shard._id, connId);
+    this.logger.info('[conn:%s] connection closed', connId);
 };
 
 proto.execute = function(connId, method, args){
@@ -83,11 +84,11 @@ proto.execute = function(connId, method, args){
             throw new Error();
         })
         .catch(function(err){
-            logger.warn('concurrent query on same connection, bug in client code? shard[%s].connection[%s].%s(%j)', self.shard._id, connId, method, args, err);
+            self.logger.warn('[conn:%s] concurrent query on same connection. %s(%j)', connId, method, args, err);
         });
     }
 
-    logger.debug('shard[%s].connection[%s].%s(%j)...', self.shard._id, connId, method, args);
+    this.logger.debug('[conn:%s] %s(%j)...', connId, method, args);
 
     return this.connectionLock.acquire(connId, function(){
         return P.try(function(){
@@ -98,10 +99,10 @@ proto.execute = function(connId, method, args){
             return func.apply(self, [connId].concat(args));
         })
         .then(function(ret){
-            logger.info('shard[%s].connection[%s].%s(%j) => %j', self.shard._id, connId, method, args, ret);
+            self.logger.info('[conn:%s] %s(%j) => %j', connId, method, args, ret);
             return ret;
         }, function(err){
-            logger.error('shard[%s].connection[%s].%s(%j) =>', self.shard._id, connId, method, args, err);
+            self.logger.error('[conn:%s] %s(%j) =>', connId, method, args, err.stack);
             self.rollback(connId);
             throw err;
         });
@@ -126,7 +127,7 @@ proto.commit = function(connId){
     })
     .then(function(){
         conn.clearLockedKeys();
-        logger.info('shard[%s].connection[%s] commited', this.shard._id, connId);
+        this.logger.info('[conn:%s] commited', connId);
     });
 };
 
@@ -137,7 +138,7 @@ proto.rollback = function(connId){
         self.shard.rollback(connId, key);
     });
     conn.clearLockedKeys();
-    logger.info('shard[%s].connection[%s] rolledback', this.shard._id, connId);
+    this.logger.info('[conn:%s] rolledback', connId);
 };
 
 proto.flushBackend = function(){
@@ -152,6 +153,7 @@ proto._collection = function(name){
             shard : this.shard,
             db : this,
             config : this.config.collections[name] || {},
+            logger : this.logger,
         });
         collection.on('lock', function(connId, id){
             var conn = self._connection(connId);

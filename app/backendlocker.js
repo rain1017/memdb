@@ -3,7 +3,6 @@
 var P = require('bluebird');
 var util = require('util');
 var redis = P.promisifyAll(require('redis'));
-var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 /**
  * Lock document in backend for specific shard
@@ -19,6 +18,7 @@ var BackendLocker = function(opts){
     var db = opts.db || 0;
     var options = opts.options || {};
 
+    this.logger = opts.logger || require('memdb-logger').getLogger('memdb', __filename);
     this.prefix = 'doc2shard:';
     this.client = redis.createClient(port, host, options);
     this.client.select(db);
@@ -44,7 +44,7 @@ proto.lock = function(docId, shardId){
         if(ret !== 1){
             throw new Error(docId + ' already locked by others');
         }
-        logger.debug('%s locked %s', shardId, docId);
+        this.logger.debug('locked %s', docId);
     });
 };
 
@@ -116,7 +116,7 @@ proto.unlock = function(docId){
         return this.client.delAsync(this._docKey(docId));
     })
     .then(function(){
-        logger.debug('unlocked %s', docId);
+        this.logger.debug('unlocked %s', docId);
     });
 };
 
@@ -124,27 +124,17 @@ proto.unlock = function(docId){
  * Mark the shard is alive
  */
 proto.shardHeartbeat = function(shardId){
-    return P.bind(this)
-    .then(function(){
-        var timeout = Math.floor(this.shardHeartbeatTimeout / 1000);
-        if(timeout <= 0){
-            timeout = 1;
-        }
-        return this.client.setexAsync(this._shardHeartbeatKey(shardId), timeout, 1);
-    })
-    .then(function(){
-        logger.debug('shard %s heartbeat', shardId);
-    });
+    var timeout = Math.floor(this.shardHeartbeatTimeout / 1000);
+    if(timeout <= 0){
+        timeout = 1;
+    }
+
+    this.logger.debug('%s heartbeat', shardId);
+    return this.client.setexAsync(this._shardHeartbeatKey(shardId), timeout, 1);
 };
 
 proto.shardStop = function(shardId){
-    return P.bind(this)
-    .then(function(){
-        return this.client.delAsync(this._shardHeartbeatKey(shardId));
-    })
-    .then(function(){
-        logger.debug('shard %s stop', shardId);
-    });
+    return this.client.delAsync(this._shardHeartbeatKey(shardId));
 };
 
 proto.isShardAlive = function(shardId){

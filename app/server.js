@@ -4,16 +4,18 @@ var P = require('bluebird');
 var minimist = require('minimist');
 var path = require('path');
 var fs = require('fs');
-var pomeloLogger = require('pomelo-logger');
-var logger = pomeloLogger.getLogger('memdb-server', __filename);
+var memdbLogger = require('memdb-logger');
+var logger = memdbLogger.getLogger('memdb', __filename);
 
 var startServer = function(opts){
+    logger = memdbLogger.getLogger('memdb', __filename, 'shard:' + opts.shardId);
+
     var Database = require('./database');
     var server = require('socket.io')();
 
     var db = new Database(opts);
     db.start().then(function(){
-        logger.warn('Server started');
+        logger.warn('server started');
     }, function(err){
         logger.error(err.stack);
         process.exit(1);
@@ -24,7 +26,7 @@ var startServer = function(opts){
         var remoteAddr = socket.conn.remoteAddress;
 
         socket.on('req', function(msg){
-            logger.info('[conn: %s] %s => %j', connId, remoteAddr, msg);
+            logger.info('[conn:%s] %s => %j', connId, remoteAddr, msg);
             var resp = {seq : msg.seq};
 
             P.try(function(){
@@ -47,7 +49,7 @@ var startServer = function(opts){
             .then(function(){
                 socket.emit('resp', resp);
                 var level = resp.err ? 'error' : 'info';
-                logger[level]('[conn: %s] %s <= %j', connId, remoteAddr, resp);
+                logger[level]('[conn:%s] %s <= %j', connId, remoteAddr, resp);
             })
             .catch(function(e){
                 logger.error(e.stack);
@@ -56,17 +58,17 @@ var startServer = function(opts){
 
         socket.on('disconnect', function(){
             db.disconnect(connId);
-            logger.info('%s disconnected', remoteAddr);
+            logger.info('[conn:%s] %s disconnected', connId, remoteAddr);
         });
 
-        logger.info('%s connected', remoteAddr);
+        logger.info('[conn:%s] %s connected', connId, remoteAddr);
     });
 
     server.listen(opts.port);
 
     var _isShutingDown = false;
     var shutdown = function(){
-        logger.warn('Receive shutdown signal');
+        logger.warn('receive shutdown signal');
 
         if(_isShutingDown){
             return;
@@ -82,7 +84,7 @@ var startServer = function(opts){
             logger.error(e.stack);
         })
         .finally(function(){
-            logger.warn('Server closed');
+            logger.warn('server closed');
             setTimeout(function(){
                 process.exit(0);
             }, 200);
@@ -156,16 +158,16 @@ if (require.main === module) {
         P.longStackTraces();
     }
 
-    // Configure logger
-    var loggerConf = conf.logger || {};
+    // Configure log
+    var logConf = conf.log || {};
 
-    var logPath = loggerConf.path || '/tmp';
+    var logPath = logConf.path || '/tmp';
     console.log('all output going to: %s/memdb*.log', logPath);
 
-    pomeloLogger.configure(path.join(__dirname, 'log4js.json'), {shardId : shardId, base : logPath});
+    memdbLogger.configure(path.join(__dirname, 'log4js.json'), {shardId : shardId, base : logPath});
 
-    var level = loggerConf.level || 'INFO';
-    pomeloLogger.setGlobalLogLevel(pomeloLogger.levels[level]);
+    var level = logConf.level || 'INFO';
+    memdbLogger.setGlobalLogLevel(memdbLogger.levels[level]);
 
     if(argv.d || argv.daemon){
         //Become daemon

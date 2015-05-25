@@ -2,7 +2,7 @@
 
 var P = require('bluebird');
 var should = require('should');
-var logger = require('pomelo-logger').getLogger('test', __filename);
+var logger = require('memdb-logger').getLogger('test', __filename);
 var BackendLocker = require('../../app/backendlocker');
 var env = require('../env');
 

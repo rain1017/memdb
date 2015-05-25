@@ -6,8 +6,8 @@ var child_process = require('child_process');
 var path = require('path');
 var redis = P.promisifyAll(require('redis'));
 var mongodb = P.promisifyAll(require('mongodb'));
-var pomeloLogger = require('pomelo-logger');
-var logger = pomeloLogger.getLogger('test', __filename);
+var memdbLogger = require('memdb-logger');
+var logger = memdbLogger.getLogger('test', __filename);
 
 var config = require('./memdb.json');
 
@@ -15,8 +15,8 @@ if(config.promise && config.promise.longStackTraces){
     P.longStackTraces();
 }
 
-if(config.logger && config.logger.level){
-    pomeloLogger.setGlobalLogLevel(pomeloLogger.levels[config.logger.level]);
+if(config.log && config.log.level){
+    memdbLogger.setGlobalLogLevel(memdbLogger.levels[config.log.level]);
 }
 
 var flushdb = function(cb){

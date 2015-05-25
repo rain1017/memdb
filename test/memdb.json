@@ -1,5 +1,5 @@
 {
-    "logger" : {
+    "log" : {
         "path" : "/tmp",
         "level" : "DEBUG"
     },

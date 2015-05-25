@@ -2,10 +2,11 @@
 
 var P = require('bluebird');
 var mongodb = P.promisifyAll(require('mongodb'));
-var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 var MongoBackend = function(opts){
     opts = opts || {};
+    this.logger = opts.logger || require('memdb-logger').getLogger('memdb', __filename);
+
     this._url = opts.url || 'mongodb://localhost/test';
     this._options = opts.options || {};
 };
@@ -26,30 +27,33 @@ proto.start = function(){
             }
         });
 
-        logger.info('backend mongodb connected to %s', this._url);
+        this.logger.info('backend mongodb connected to %s', this._url);
     });
 };
 
 proto.stop = function(){
-    return this.conn.closeAsync()
+    return P.bind(this)
     .then(function(){
-        logger.info('backend mongodb closed');
+        return this.conn.closeAsync();
+    })
+    .then(function(){
+        this.logger.info('backend mongodb closed');
     });
 };
 
 proto.get = function(name, id){
-    logger.debug('backend mongodb get %s %s', name, id);
+    this.logger.debug('backend mongodb get %s %s', name, id);
     return this.conn.collection(name).findOneAsync({_id : id});
 };
 
 // Return an async iterator with .next(cb) signature
 proto.getAll = function(name){
-    logger.debug('backend mongodb getAll %s', name);
+    this.logger.debug('backend mongodb getAll %s', name);
     return this.conn.collection(name).findAsync();
 };
 
 proto.set = function(name, id, doc){
-    logger.debug('backend mongodb set %s %s', name, id);
+    this.logger.debug('backend mongodb set %s %s', name, id);
     if(doc !== null && doc !== undefined){
         doc._id = id;
         return this.conn.collection(name).updateAsync({_id : id}, doc, {upsert : true});
@@ -63,7 +67,7 @@ proto.set = function(name, id, doc){
 proto.setMulti = function(items){
     var self = this;
 
-    logger.debug('backend mongodb setMulti');
+    this.logger.debug('backend mongodb setMulti');
     return P.mapLimit(items, function(item){
         return self.set(item.name, item.id, item.doc);
     });
@@ -71,7 +75,7 @@ proto.setMulti = function(items){
 
 // drop table or database
 proto.drop = function(name){
-    logger.debug('backend mongodb drop %s', name);
+    this.logger.debug('backend mongodb drop %s', name);
     if(!!name){
         return this.conn.collection(name).dropAsync()
         .catch(function(e){

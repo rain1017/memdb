@@ -5,7 +5,7 @@ var util = require('util');
 var should = require('should');
 var env = require('../env');
 var memdb = require('../../lib');
-var logger = require('pomelo-logger').getLogger('test', __filename);
+var logger = require('memdb-logger').getLogger('test', __filename);
 
 describe('mdbgoose test', function(){
     beforeEach(env.flushdb);

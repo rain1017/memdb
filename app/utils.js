@@ -3,24 +3,13 @@
 var _ = require('lodash');
 var P = require('bluebird');
 
-var exports = {};
-
-// Make sure err is instanceof Error
-exports.normalizecb = function(cb){
-    return function(err, ret){
-        if(!!err && !(err instanceof Error)){
-            err = new Error(err);
-        }
-        cb(err, ret);
-    };
-};
-
-// Add mapLimit to promise
-// not using concurrency = xxx option since it doesn't release memory
-exports.promiseSetLimit = function(P, defaultLimit){
+// Add some usefull promise methods
+exports.extendPromise = function(P){
+    // This is designed for large array
+    // The original map with concurrency option does not release memory
     P.mapLimit = function(items, fn, limit){
         if(!limit){
-            limit = defaultLimit;
+            limit = 1000;
         }
         var groups = [];
         var group = [];
@@ -51,40 +40,21 @@ exports.promiseSetLimit = function(P, defaultLimit){
             return results;
         });
     };
-};
 
-
-
-
-exports.injectLogger = function(pomeloLogger){
-    if(pomeloLogger.__memdb__){
-        return; // already injected
-    }
-    pomeloLogger.__memdb__ = true;
-
-    var getLogger = pomeloLogger.getLogger;
-
-    pomeloLogger.getLogger = function(){
-        var logger = getLogger.apply(this, arguments);
-        var methods = ['log', 'debug', 'info', 'warn', 'error', 'trace', 'fatal'];
-
-        methods.forEach(function(method){
-            var originMethod = logger[method];
-            logger[method] = function(){
-                var prefix = '';
-                if(process.domain && process.domain.__memdb__){
-                    prefix += '[trans:' + process.domain.__memdb__.trans + '] ';
-                }
-                if(arguments.length > 0){
-                    arguments[0] = prefix + arguments[0];
-                }
-                return originMethod.apply(this, arguments);
-            };
-        });
-
-        return logger;
+    P.mapSeries = function(items, fn){
+        var results = [];
+        return P.each(items, function(item){
+            return P.try(function(){
+                return fn(item);
+            })
+            .then(function(ret){
+                results.push(ret);
+            });
+        })
+        .thenReturn(results);
     };
 };
+
 
 exports.getObjPath = function(obj, path){
     var current = obj;
@@ -187,5 +157,3 @@ exports.mongoForEach = function(itor, func){
 
     return deferred.promise;
 };
-
-module.exports = exports;

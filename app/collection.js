@@ -4,7 +4,6 @@ var P = require('bluebird');
 var util = require('util');
 var utils = require('./utils');
 var EventEmitter = require('events').EventEmitter;
-var logger = require('pomelo-logger').getLogger('memdb', __filename);
 
 var MAX_INDEX_COLLISION = 10000;
 
@@ -17,8 +16,10 @@ var MAX_INDEX_COLLISION = 10000;
  * }
  */
 var Collection = function(opts){
+    opts = opts || {};
     var self = this;
 
+    this.logger = opts.logger || require('memdb-logger').getLogger('memdb', __filename);
     this.name = opts.name;
     this.shard = opts.shard;
     this.db = opts.db;
@@ -55,12 +56,12 @@ proto.insert = function(connId, docs){
     }
 
     var self = this;
-    return P.mapLimit(docs, function(doc){
+    return P.mapSeries(docs, function(doc){ //disable concurrent to avoid race condition
         if(!doc){
             throw new Error('doc is null');
         }
         return self._insertById(connId, doc._id, doc);
-    }, 1); //disable concurrent to avoid race condition
+    });
 };
 
 proto._insertById = function(connId, id, doc){
@@ -183,10 +184,10 @@ proto._findByIndex = function(connId, indexKey, indexValue, fields, opts){
         if(opts && opts.limit){
             ids = ids.slice(0, opts.limit);
         }
-        return P.mapLimit(ids, function(id64){
+        return P.mapSeries(ids, function(id64){
             var id = new Buffer(id64, 'base64').toString();
             return self.findById(connId, id, fields, opts);
-        }, 1);
+        });
     });
 };
 
@@ -220,9 +221,9 @@ proto.update = function(connId, query, modifier, opts){
                 return 1;
             });
         }
-        return P.mapLimit(ret, function(doc){
+        return P.each(ret, function(doc){
             return self._updateById(connId, doc._id, modifier, opts);
-        }, 1)
+        })
         .then(function(){
             return ret.length;
         });
@@ -256,9 +257,9 @@ proto.remove = function(connId, query, opts){
                 return 1;
             });
         }
-        return P.mapLimit(ret, function(doc){
+        return P.each(ret, function(doc){
             return self._removeById(connId, doc._id, opts);
-        }, 1)
+        })
         .then(function(){
             return ret.length;
         });
@@ -296,7 +297,7 @@ proto.lock = function(connId, id){
 
 // value is json encoded
 proto._insertIndex = function(connId, id, indexKey, indexValue){
-    logger.debug('insertIndex: %s %s %s', id, indexKey, indexValue);
+    this.logger.debug('insertIndex: %s %s %s', id, indexKey, indexValue);
 
     var indexCollection = this.db._collection(this._indexCollectionName(indexKey));
     var id64 = new Buffer(id).toString('base64');
@@ -333,7 +334,7 @@ proto._insertIndex = function(connId, id, indexKey, indexValue){
 
 // value is json encoded
 proto._removeIndex = function(connId, id, indexKey, indexValue){
-    logger.debug('removeIndex: %s %s %s', id, indexKey, indexValue);
+    this.logger.debug('removeIndex: %s %s %s', id, indexKey, indexValue);
 
     var indexCollection = this.db._collection(this._indexCollectionName(indexKey));
     var id64 = new Buffer(id).toString('base64');
@@ -363,9 +364,9 @@ proto._finishIndexTasks = function(id){
     // Save domain
     var d = process.domain;
     var self = this;
-    return P.mapLimit(self.pendingIndexTasks[id], function(promise){
+    return P.each(self.pendingIndexTasks[id], function(promise){
         return promise;
-    }, 1)
+    })
     .then(function(){
         delete self.pendingIndexTasks[id];
         // Restore domain

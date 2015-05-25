@@ -5,7 +5,7 @@ var _ = require('lodash');
 var should = require('should');
 var assert = require('assert');
 var Document = require('../../app/document'); // jshint ignore:line
-var logger = require('pomelo-logger').getLogger('test', __filename);
+var logger = require('memdb-logger').getLogger('test', __filename);
 
 describe('document test', function(){
     it('find', function(){
