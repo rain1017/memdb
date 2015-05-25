@@ -43,8 +43,8 @@ var Database = function(opts){
     this.logger.info('parsed opts: %j', opts);
 
     opts.logger = this.logger;
-
     this.shard = new Shard(opts);
+
     this.config = opts;
 };
 

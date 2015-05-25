@@ -2,6 +2,7 @@
 
 var _ = require('lodash');
 var P = require('bluebird');
+var uuid = require('node-uuid');
 
 // Add some usefull promise methods
 exports.extendPromise = function(P){
@@ -55,6 +56,9 @@ exports.extendPromise = function(P){
     };
 };
 
+exports.uuid = function(){
+    return uuid.v4();
+};
 
 exports.getObjPath = function(obj, path){
     var current = obj;
@@ -118,12 +122,6 @@ exports.cloneEx = function(obj){
         return copy;
     }
     throw new Error('unsupported type of obj: ' + obj);
-};
-
-exports.uuid = function(){
-    // return a short uuid, based on current tick and a random number
-    // result uuid like '2mnh1r3wb'
-    return ((Date.now() - 1422720000000) * 1000 + _.random(1000)).toString(36);
 };
 
 exports.isDict = function(obj){

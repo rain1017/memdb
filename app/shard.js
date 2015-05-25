@@ -13,7 +13,6 @@ var BackendLocker = require('./backendlocker');
 var Slave = require('./slave');
 var utils = require('./utils');
 
-
 var STATE = {
     INITED : 0,
     STARTING : 1,
