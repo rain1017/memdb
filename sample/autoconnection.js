@@ -9,7 +9,7 @@ var P = require('bluebird');
 // memdb's config
 var config = {
     //shard Id (Must unique and immutable for each shard)
-    shard : 's1',
+    shardId : 's1',
     // Global backend storage, all shards must connect to the same mongodb (or mongodb cluster)
     backend : {engine : 'mongodb', url : 'mongodb://localhost/memdb-test'},
     // Global locking redis, all shards must connect to the same redis (or redis cluster)

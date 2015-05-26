@@ -1,17 +1,19 @@
 'use strict';
 
 var P = require('bluebird');
+var Logger = require('memdb-logger');
 var redis = P.promisifyAll(require('redis'));
 
 var RedisBackend = function(opts){
     opts = opts || {};
-    this.logger = opts.logger || require('memdb-logger').getLogger('memdb', __filename);
 
     this._host = opts.host || '127.0.0.1';
     this._port = opts.port || 6379;
     this._db = opts.db || 0;
     this._options = opts.options || {};
     this.prefix = opts.prefix || '';
+
+    this.logger = Logger.getLogger('memdb', __filename, 'shard:' + opts.shardId);
 };
 
 var proto = RedisBackend.prototype;

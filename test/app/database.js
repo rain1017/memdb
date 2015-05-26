@@ -35,39 +35,39 @@ describe('database test', function(){
             return P.all([db1.start(), db2.start()]);
         })
         .then(function(){
-            conn1 = db1.connect();
-            conn2 = db2.connect();
+            conn1 = db1.getConnection(db1.connect());
+            conn2 = db2.getConnection(db2.connect());
         })
         .then(function(conn){
-            return db1.insert(conn1, collName, doc);
+            return conn1.insert(collName, doc);
         })
         .then(function(){
-            return db1.commit(conn1);
+            return conn1.commit();
         })
         .delay(500) // doc persistented
         .then(function(){
             // read from backend
-            return db2.findCached(conn2, collName, doc._id)
+            return conn2.findCached(collName, doc._id)
             .then(function(ret){
                 ret.should.eql(doc);
             });
         })
         .then(function(){
             // get from cache
-            return db2.findCached(conn2, collName, doc._id)
+            return conn2.findCached(collName, doc._id)
             .then(function(ret){
                 ret.should.eql(doc);
             });
         })
         .then(function(){
-            return db2.remove(conn2, collName, doc._id);
+            return conn2.remove(collName, doc._id);
         })
         .then(function(){
-            return db2.commit(conn2);
+            return conn2.commit();
         })
         .delay(500) // doc idle timed out, should persistented
         .then(function(){
-            return db1.findCached(conn1, collName, doc._id)
+            return conn1.findCached(collName, doc._id)
             .then(function(ret){
                 (ret === null).should.eql(true);
             });
@@ -80,7 +80,7 @@ describe('database test', function(){
 
     it('restore from slave', function(cb){
         var db1 = null, db2 = null;
-        var connId = null;
+        var conn = null;
         var player1 = {_id : 'p1', name : 'rain', age: 30};
         var player2 = {_id : 'p2', name : 'snow', age: 25};
 
@@ -92,16 +92,16 @@ describe('database test', function(){
             return db1.start();
         })
         .then(function(){
-            connId = db1.connect();
+            conn = db1.getConnection(db1.connect());
         })
         .then(function(){
-            return db1.insert(connId, 'player', player1);
+            return conn.insert('player', player1);
         })
         .then(function(){
-            return db1.insert(connId, 'player', player2);
+            return conn.insert('player', player2);
         })
         .then(function(){
-            return db1.commit(connId);
+            return conn.commit();
         })
         .then(function(){
             db1.shard.state = 4; // Db is suddenly stopped
@@ -112,11 +112,11 @@ describe('database test', function(){
             return db2.start();
         })
         .then(function(){
-            connId = db2.connect();
+            conn = db2.getConnection(db2.connect());
         })
         .then(function(){
             return P.try(function(){
-                return db2.find(connId, 'player', player1._id);
+                return conn.find('player', player1._id);
             })
             .then(function(ret){
                 ret.should.eql(player1);
@@ -124,7 +124,7 @@ describe('database test', function(){
         })
         .then(function(){
             return P.try(function(){
-                return db2.find(connId, 'player', player2._id);
+                return conn.find('player', player2._id);
             })
             .then(function(ret){
                 ret.should.eql(player2);

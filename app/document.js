@@ -1,6 +1,7 @@
 'use strict';
 
 var P = require('bluebird');
+var Logger = require('memdb-logger');
 var util = require('util');
 var utils = require('./utils');
 var AsyncLock = require('async-lock');
@@ -19,7 +20,7 @@ var DEFAULT_LOCK_TIMEOUT = 10 * 1000;
 var Document = function(opts){ //jshint ignore:line
     opts = opts || {};
 
-    this.logger = opts.logger || require('memdb-logger').getLogger('memdb', __filename);
+    this.logger = Logger.getLogger('memdb', __filename);
 
     var doc = opts.doc || null;
     if(typeof(doc) !== 'object'){

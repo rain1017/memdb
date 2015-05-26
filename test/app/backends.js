@@ -65,6 +65,7 @@ describe('backends test', function(){
         var opts = {
             engine : 'mongodb',
             url : env.config.shards.s1.backend.url,
+            shardId : 's1',
         };
         var backend = backends.create(opts);
         return testFunc(backend)
@@ -77,6 +78,7 @@ describe('backends test', function(){
             host : env.config.shards.s1.locking.host,
             port : env.config.shards.s1.locking.port,
             db : env.config.shards.s1.locking.db,
+            shardId : 's1',
         };
         var backend = backends.create(opts);
         return testFunc(backend)

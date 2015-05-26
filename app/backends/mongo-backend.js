@@ -1,14 +1,16 @@
 'use strict';
 
 var P = require('bluebird');
+var Logger = require('memdb-logger');
 var mongodb = P.promisifyAll(require('mongodb'));
 
 var MongoBackend = function(opts){
     opts = opts || {};
-    this.logger = opts.logger || require('memdb-logger').getLogger('memdb', __filename);
 
     this._url = opts.url || 'mongodb://localhost/test';
     this._options = opts.options || {};
+
+    this.logger = Logger.getLogger('memdb', __filename, 'shard:' + opts.shardId);
 };
 
 var proto = MongoBackend.prototype;

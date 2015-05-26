@@ -60,6 +60,13 @@ exports.uuid = function(){
     return uuid.v4();
 };
 
+exports.isEmpty = function(obj){
+    for(var key in obj){
+        return false;
+    }
+    return true;
+};
+
 exports.getObjPath = function(obj, path){
     var current = obj;
     path.split('.').forEach(function(field){

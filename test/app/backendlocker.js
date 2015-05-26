@@ -9,18 +9,20 @@ var env = require('../env');
 describe('backendlocker test', function(){
 
     it('lock/unlock', function(cb){
+        var docId = 'doc1', shardId = 's1';
+
         var locker = new BackendLocker({
                             host : env.config.shards.s1.locking.host,
                             port : env.config.shards.s1.locking.port,
                             db : env.config.shards.s1.locking.db,
+                            shardId : shardId,
                             });
 
-        var docId = 'doc1', shardId = 's1';
         return P.try(function(){
             return locker.unlockAll();
         })
         .then(function(){
-            return locker.lock(docId, shardId);
+            return locker.lock(docId);
         })
         .then(function(){
             return locker.getHolderId(docId)
@@ -35,17 +37,17 @@ describe('backendlocker test', function(){
             });
         })
         .then(function(ret){
-            return locker.isHeldBy(docId, shardId)
+            return locker.isHeld(docId)
             .then(function(ret){
                 ret.should.be.true; //jshint ignore:line
             });
         })
         .then(function(){
-            return locker.ensureHeldBy(docId, shardId);
+            return locker.ensureHeld(docId);
         })
         .then(function(){
             // Can't lock again
-            return locker.tryLock(docId, shardId)
+            return locker.tryLock(docId)
             .then(function(ret){
                 ret.should.be.false; //jshint ignore:line
             });
@@ -55,7 +57,7 @@ describe('backendlocker test', function(){
         })
         .then(function(){
             //Should throw error
-            return locker.ensureHeldBy(docId, shardId)
+            return locker.ensureHeld(docId)
             .then(function(){
                 throw new Error('Should throw error');
             }, function(e){

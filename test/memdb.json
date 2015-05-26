@@ -1,10 +1,10 @@
 {
     "log" : {
         "path" : "/tmp",
-        "level" : "DEBUG"
+        "level" : "INFO"
     },
     "promise" : {
-        "longStackTraces" : true
+        "longStackTraces" : false
     },
     "collections" : {
         "player" : {

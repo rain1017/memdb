@@ -1,20 +1,23 @@
 'use strict';
 
 var P = require('bluebird');
+var Logger = require('memdb-logger');
 var redis = P.promisifyAll(require('redis'));
 var utils = require('./utils');
 
 var Slave = function(opts){
     opts = opts || {};
 
-    this.logger = opts.logger || require('memdb-logger').getLogger('memdb', __filename);
     this.shardId = opts.shardId;
+    this.logger = Logger.getLogger('memdb', __filename, 'shard:' + this.shardId);
 
     var host = opts.host || '127.0.0.1';
     var port = opts.port || 6379;
     var db = opts.db || 0;
     this.client = redis.createClient(port, host);
     this.client.select(db);
+
+    this.logger.info('slave inited %s:%s:%s', host, port, db);
 };
 
 var proto = Slave.prototype;
@@ -25,6 +28,7 @@ proto.start = function(){
 
 proto.stop = function(){
     this.client.end();
+    this.logger.info('slave stoped');
 };
 
 proto.set = function(key, doc){
