@@ -20,7 +20,7 @@ var BackendLocker = function(opts){
     var options = opts.options || {};
 
     this.shardId = opts.shardId;
-    this.prefix = 'doc2shard:';
+    this.prefix = 'doc2shard$';
     this.client = redis.createClient(port, host, options);
     this.client.select(db);
 
@@ -173,7 +173,7 @@ proto._docKey = function(docId){
 };
 
 proto._shardHeartbeatKey = function(shardId){
-    return 'shardheartbeat:' + shardId;
+    return 'heartbeat$' + shardId;
 };
 
 module.exports = BackendLocker;

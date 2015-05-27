@@ -106,7 +106,7 @@ proto.clear = function(){
  */
 
 proto._redisPrefix = function(){
-    return 'bak:' + this.shardId + ':';
+    return 'bak$' + this.shardId + '$';
 };
 
 proto._redisKey = function(key){
@@ -114,8 +114,8 @@ proto._redisKey = function(key){
 };
 
 proto._extractKey = function(existKey){
-    var words = existKey.split(':');
-    return words.slice(2, words.length).join(':');
+    var words = existKey.split('$');
+    return words.slice(2, words.length).join('$');
 };
 
 module.exports = Slave;

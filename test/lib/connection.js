@@ -266,4 +266,50 @@ describe('connection test', function(){
         })
         .nodeify(cb);
     });
+
+    it('collection/field name restriction', function(cb){
+        var conn = null, Collection = null;
+        var errCount = 0;
+
+        return P.try(function(){
+            return memdb.startServer(env.dbConfig('s1'));
+        })
+        .then(function(){
+            return memdb.connect();
+        })
+        .then(function(ret){
+            conn = ret;
+
+            Collection = conn.collection('invalid$name');
+            return Collection.insert({_id : 1, name : 'rain'});
+        })
+        .catch(function(err){
+            errCount++;
+        })
+        .then(function(){
+            Collection = conn.collection('this is\\valid.coll:name');
+            return Collection.insert({_id : 1, name : 'this.is:valid$value'});
+        })
+        .then(function(){
+            return Collection.insert({_id : 2, 'invalid.field' : 'value'});
+        })
+        .catch(function(err){
+            errCount++;
+        })
+        .then(function(){
+            return Collection.insert({_id : 3, '$invalidfield' : 'value'});
+        })
+        .catch(function(err){
+            errCount++;
+        })
+        .then(function(){
+            errCount.should.eql(3);
+
+            return conn.close();
+        })
+        .finally(function(){
+            return memdb.stopServer();
+        })
+        .nodeify(cb);
+    });
 });

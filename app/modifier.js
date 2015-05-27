@@ -13,12 +13,30 @@ var clone = function(obj){
     return JSON.parse(json);
 };
 
+//http://docs.mongodb.org/manual/reference/limits/#Restrictions-on-Field-Names
+var verifyDoc = function(doc){
+    if(!utils.isDict(doc)){
+        return;
+    }
+
+    for(var key in doc){
+        if(key[0] === '$'){
+            throw new Error('Document fields can not start with "$"');
+        }
+        if(key.indexOf('.') !== -1){
+            throw new Error('Document fields can not contain "."');
+        }
+        verifyDoc(doc[key]);
+    }
+};
+
 module.exports = {
     $insert : function(doc, param){
         param = param || {};
         if(doc !== null){
             throw new Error('doc already exists');
         }
+        verifyDoc(param);
         return clone(param);
     },
     $replace : function(doc, param){
@@ -26,6 +44,7 @@ module.exports = {
         if(doc === null){
             throw new Error('doc not exist');
         }
+        verifyDoc(param);
         return clone(param);
     },
     $remove : function(doc, param){
@@ -39,6 +58,7 @@ module.exports = {
             throw new Error('doc not exist');
         }
         for(var path in param){
+            verifyDoc(param[path]);
             utils.setObjPath(doc, path, clone(param[path]));
         }
         return doc;
@@ -84,6 +104,7 @@ module.exports = {
             if(!Array.isArray(arr)){
                 throw new Error('not an array');
             }
+            verifyDoc(param[path]);
             arr.push(clone(param[path]));
         }
         return doc;
@@ -106,6 +127,7 @@ module.exports = {
                 items = [items];
             }
             for(var i in items){
+                verifyDoc(items[i]);
                 arr.push(clone(items[i]));
             }
         }
@@ -133,6 +155,7 @@ module.exports = {
                 }
             }
             if(!exist){
+                verifyDoc(value);
                 arr.push(clone(value));
             }
         }

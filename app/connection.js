@@ -8,14 +8,13 @@ var Collection = require('./collection');
 var Connection = function(opts){
     opts = opts || {};
 
-    this.config = opts.config;
-
     this._id = opts._id;
     this.shard = opts.shard;
+
+    this.config = opts.config || {};
     this.collections = {};
 
     this.lockedKeys = {};
-    this._dirty = false;
 
     this.logger = Logger.getLogger('memdb', __filename, 'shard:' + this.shard._id);
 };
@@ -23,7 +22,7 @@ var Connection = function(opts){
 var proto = Connection.prototype;
 
 proto.close = function(){
-    if(this._dirty){
+    if(this.isDirty()){
         this.rollback();
     }
 
@@ -35,11 +34,10 @@ proto.close = function(){
 consts.collMethods.forEach(function(method){
     proto[method] = function(name){
         var collection = this.getCollection(name);
-
         // remove 'name' arg
         var args = [].slice.call(arguments, 1);
-        this.logger.debug('[conn:%s] %s.%s(%j)', this._id, name, method, args);
 
+        this.logger.debug('[conn:%s] %s.%s(%j)', this._id, name, method, args);
         return collection[method].apply(collection, args);
     };
 });
@@ -51,7 +49,6 @@ proto.commit = function(){
     })
     .then(function(){
         self.lockedKeys = {};
-        self._dirty = false;
 
         self.logger.debug('[conn:%s] commited', self._id);
     });
@@ -59,9 +56,7 @@ proto.commit = function(){
 
 proto.rollback = function(){
     this.shard.rollback(this._id, Object.keys(this.lockedKeys));
-
     this.lockedKeys = {};
-    this._dirty = false;
 
     this.logger.debug('[conn:%s] rolledback', this._id);
 };
@@ -70,7 +65,11 @@ proto.flushBackend = function(){
     return this.shard.flushBackend(this._id);
 };
 
-proto.getCollection = function(name){
+proto.getCollection = function(name, isIndex){
+    if(!isIndex && name && name.indexOf('index.') === 0){
+        throw new Error('Collection name can not begin with "index."');
+    }
+
     var self = this;
     if(!this.collections[name]){
         var collection = new Collection({
@@ -78,16 +77,21 @@ proto.getCollection = function(name){
             shard : this.shard,
             conn : this,
             config : this.config.collections[name] || {},
-            logger : this.logger,
         });
+
         collection.on('lock', function(id){
-            self._dirty = true;
-            var key = name + ':' + id;
+            var key = name + '$' + id;
             self.lockedKeys[key] = true;
         });
+
         this.collections[name] = collection;
     }
     return this.collections[name];
+};
+
+
+proto.isDirty = function(){
+    return Object.keys(this.lockedKeys).length > 0;
 };
 
 module.exports = Connection;

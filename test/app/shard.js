@@ -13,7 +13,7 @@ describe('shard test', function(){
 
     it('load/unload/find/update/insert/remove/commit/rollback', function(cb){
         var shard = new Shard(env.dbConfig('s1'));
-        var connId = 'c1', key = 'user:1', doc = {_id : '1', name : 'rain', age : 30};
+        var connId = 'c1', key = 'user$1', doc = {_id : '1', name : 'rain', age : 30};
 
         return P.try(function(){
             return shard.start();
@@ -34,7 +34,7 @@ describe('shard test', function(){
         })
         .then(function(){
             // request to unload doc
-            shard.globalEvent.emit('request:' + shard._id, key);
+            shard.globalEvent.emit('request$' + shard._id, key);
         })
         .delay(20)
         .then(function(){
@@ -81,7 +81,7 @@ describe('shard test', function(){
         })
         .then(function(){
             // request to unload
-            shard.globalEvent.emit('request:' + shard._id, key);
+            shard.globalEvent.emit('request$' + shard._id, key);
         })
         .delay(100)
         .then(function(){
@@ -105,7 +105,7 @@ describe('shard test', function(){
         var shard1 = new Shard(config);
         var shard2 = new Shard(env.dbConfig('s2'));
 
-        var key = 'user:1', doc = {_id : '1', name : 'rain', age : 30};
+        var key = 'user$1', doc = {_id : '1', name : 'rain', age : 30};
         return P.try(function(){
             return P.all([shard1.start(), shard2.start()]);
         })
@@ -171,14 +171,14 @@ describe('shard test', function(){
             return shard.start();
         })
         .then(function(){
-            shard.globalEvent.emit('request:s1', 'player:1');
+            shard.globalEvent.emit('request$s1', 'player$1');
         })
         .delay(100)
         .then(function(){
             return shard.stop();
         })
         .then(function(){
-            shard.globalEvent.emit('request:s1', 'player:1');
+            shard.globalEvent.emit('request$s1', 'player$1');
         })
         .delay(100)
         .nodeify(cb);

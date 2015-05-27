@@ -72,8 +72,8 @@ exports.rebuildIndex = function(backendConf, collName, keys, opts){
                     throw new Error('Duplicate value for unique key ' + indexKey);
                 }
 
-                var id64 = new Buffer(item._id).toString('base64');
-                doc.ids[id64] = 1;
+                var id = utils.escapeField(item._id);
+                doc.ids[id] = 1;
                 doc.count++;
                 return backend.set(indexCollName, indexValue, doc);
             });

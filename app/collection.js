@@ -6,31 +6,25 @@ var util = require('util');
 var utils = require('./utils');
 var EventEmitter = require('events').EventEmitter;
 
-var MAX_INDEX_COLLISION = 10000;
+var DEFAULT_MAX_COLLISION = 10000;
 
-/**
- * opts.config = {
- *  indexes : {
- *   '["key1"]' : indexOptions,
- *   '["key2", "key3"]' : indexOptions,
- *  }
- * }
- */
 var Collection = function(opts){
     opts = opts || {};
-    var self = this;
 
     this.name = opts.name;
+    this._checkName(this.name);
+
     this.shard = opts.shard;
     this.conn = opts.conn;
     this.config = opts.config || {};
-    this.logger = Logger.getLogger('memdb', __filename, 'shard:' + this.shard._id);
 
     this.pendingIndexTasks = {}; //{id, [Promise]}
 
-    this.shard.on('updateIndex:' + this.name + ':' + this.conn._id, function(id, indexKey, oldValue, newValue){
+    var self = this;
 
-        if(!self.config.indexes[indexKey]){
+    this.onUpdateIndex = function(id, indexKey, oldValue, newValue){
+        var config = self.config.indexes[indexKey];
+        if(!config){
             return;
         }
 
@@ -38,12 +32,16 @@ var Collection = function(opts){
             self.pendingIndexTasks[id] = [];
         }
         if(oldValue !== null){
-            self.pendingIndexTasks[id].push(self._removeIndex(id, indexKey, oldValue));
+            self.pendingIndexTasks[id].push(self._removeIndex(id, indexKey, oldValue, config));
         }
         if(newValue !== null){
-            self.pendingIndexTasks[id].push(self._insertIndex(id, indexKey, newValue));
+            self.pendingIndexTasks[id].push(self._insertIndex(id, indexKey, newValue, config));
         }
-    });
+    };
+    this.updateIndexEvent = 'updateIndex$' + this.name + '$' + this.conn._id;
+    this.shard.on(this.updateIndexEvent, this.onUpdateIndex);
+
+    this.logger = Logger.getLogger('memdb', __filename, 'shard:' + this.shard._id);
 
     EventEmitter.call(this);
 };
@@ -53,7 +51,7 @@ util.inherits(Collection, EventEmitter);
 var proto = Collection.prototype;
 
 proto.close = function(){
-    this.shard.removeAllListeners('updateIndex:' + this.name + ':' + this.conn._id);
+    this.shard.removeListener(this.updateIndexEvent, this.onUpdateIndex);
 };
 
 proto.insert = function(docs){
@@ -63,10 +61,7 @@ proto.insert = function(docs){
 
     var self = this;
     return P.mapSeries(docs, function(doc){ //disable concurrent to avoid race condition
-        if(!doc){
-            throw new Error('doc is null');
-        }
-        return self._insertById(doc._id, doc);
+        return self._insertById(doc && doc._id, doc);
     });
 };
 
@@ -99,7 +94,7 @@ proto.find = function(query, fields, opts){
         return this.findById(query, fields, opts);
     }
 
-    if(query === null || typeof(query) !== 'object'){
+    if(!utils.isDict(query)){
         throw new Error('invalid query');
     }
 
@@ -166,18 +161,17 @@ proto.findCached = function(id){
     id = this._checkId(id);
 
     var self = this;
-    return P.try(function(){
+    return P.try(function(){ // wrap with promise
         return self.shard.findCached(self.conn._id, self._key(id));
     });
 };
 
-// value is object
 proto._findByIndex = function(indexKey, indexValue, fields, opts){
     if(!this.config.indexes[indexKey]){
-        throw new Error('You must create index for ' + indexKey);
+        throw new Error('No index found for keys - ' + indexKey);
     }
 
-    var indexCollection = this.conn.getCollection(this._indexCollectionName(indexKey));
+    var indexCollection = this.conn.getCollection(this._indexCollectionName(indexKey), true);
 
     var self = this;
     return P.try(function(){
@@ -188,9 +182,15 @@ proto._findByIndex = function(indexKey, indexValue, fields, opts){
         if(opts && opts.limit){
             ids = ids.slice(0, opts.limit);
         }
-        return P.mapSeries(ids, function(id64){
-            var id = new Buffer(id64, 'base64').toString();
-            return self.findById(id, fields, opts);
+        return P.mapSeries(ids, function(id){
+            id = utils.unescapeField(id);
+            return self.findById(id, fields, opts)
+            .then(function(doc){
+                if(!doc){
+                    throw new Error('index - ' + indexKey + ' is corrupted, please rebuild index');
+                }
+                return doc;
+            });
         });
     });
 };
@@ -214,23 +214,17 @@ proto.update = function(query, modifier, opts){
             .then(function(id){
                 return self._updateById(id, modifier, opts);
             })
-            .then(function(){
-                return 1;
-            });
+            .thenReturn(1);
         }
 
         if(!Array.isArray(ret)){
             return self._updateById(ret._id, modifier, opts)
-            .then(function(){
-                return 1;
-            });
+            .thenReturn(1);
         }
         return P.each(ret, function(doc){
             return self._updateById(doc._id, modifier, opts);
         })
-        .then(function(){
-            return ret.length;
-        });
+        .thenReturn(ret.length);
     });
 };
 
@@ -252,21 +246,17 @@ proto.remove = function(query, opts){
         return self.find(query, '_id', {lock : true});
     })
     .then(function(ret){
-        if(!ret){
+        if(!ret || ret.length === 0){
             return 0;
         }
         if(!Array.isArray(ret)){
             return self._removeById(ret._id, opts)
-            .then(function(){
-                return 1;
-            });
+            .thenReturn(1);
         }
         return P.each(ret, function(doc){
             return self._removeById(doc._id, opts);
         })
-        .then(function(){
-            return ret.length;
-        });
+        .thenReturn(ret.length);
     });
 };
 
@@ -284,7 +274,6 @@ proto._removeById = function(id, opts){
 
 proto.lock = function(id){
     id = this._checkId(id);
-
     if(this.shard.isLocked(this.conn._id, this._key(id))){
         return;
     }
@@ -299,19 +288,22 @@ proto.lock = function(id){
     });
 };
 
-// value is json encoded
-proto._insertIndex = function(id, indexKey, indexValue){
-    var indexCollection = this.conn.getCollection(this._indexCollectionName(indexKey));
-    var id64 = new Buffer(id).toString('base64');
+// indexKey: json encoded sorted fields array
+// indexValue: json encoded sorted fields value
+proto._insertIndex = function(id, indexKey, indexValue, config){
+    // Escape id since field name can not contain '$' or '.'
+    id = utils.escapeField(id);
 
-    if(this.config.indexes[indexKey].unique){
+    var indexCollection = this.conn.getCollection(this._indexCollectionName(indexKey), true);
+
+    if(config.unique){
         var doc = {_id : indexValue, 'ids' : {}, 'count' : 1};
-        doc.ids[id64] = 1;
+        doc.ids[id] = 1;
 
         return indexCollection.insert(doc)
         .catch(function(err){
             if(err.message === 'doc already exists'){
-                throw new Error('Duplicate value for unique key ' + indexKey);
+                throw new Error('duplicate value for unique key - ' + indexKey);
             }
             throw err;
         });
@@ -321,36 +313,41 @@ proto._insertIndex = function(id, indexKey, indexValue){
         $set : {},
         $inc : {count : 1},
     };
-    param.$set['ids.' + id64] = 1;
+    param.$set['ids.' + id] = 1;
 
+    var self = this;
     return P.try(function(){
         return indexCollection.find(indexValue, 'count');
     })
     .then(function(ret){
-        if(ret && ret.count >= MAX_INDEX_COLLISION){
-            throw new Error('Too many duplicate values on same index');
+        if(ret && ret.count >= (config.maxCollision || DEFAULT_MAX_COLLISION)){
+            throw new Error('too many documents have value - ' + indexValue + ' for index - ' + indexKey);
         }
         return indexCollection.update(indexValue, param, {upsert : true});
     });
 };
 
 // value is json encoded
-proto._removeIndex = function(id, indexKey, indexValue){
-    var indexCollection = this.conn.getCollection(this._indexCollectionName(indexKey));
-    var id64 = new Buffer(id).toString('base64');
+proto._removeIndex = function(id, indexKey, indexValue, config){
+    id = utils.escapeField(id);
+
+    var indexCollection = this.conn.getCollection(this._indexCollectionName(indexKey), true);
 
     return P.try(function(){
         var param = {
             $unset : {},
             $inc: {count : -1}
         };
-        param.$unset['ids.' + id64] = 1;
+        param.$unset['ids.' + id] = 1;
         return indexCollection.update(indexValue, param);
     })
     .then(function(){
         return indexCollection.find(indexValue, 'count');
     })
     .then(function(ret){
+        if(!ret){ // This should not happen
+            throw new Error('index - ' + indexKey + ' corrputed, please rebuild index');
+        }
         if(ret.count === 0){
             return indexCollection.remove(indexValue);
         }
@@ -367,30 +364,49 @@ proto._finishIndexTasks = function(id){
     return P.each(self.pendingIndexTasks[id], function(promise){
         return promise;
     })
-    .then(function(){
+    .finally(function(){
         delete self.pendingIndexTasks[id];
         // Restore domain
         process.domain = d;
     });
 };
 
+// 'index.name.key1.key2'
 proto._indexCollectionName = function(indexKey){
-    //'__index.name.key1.key2'
-    return '__index.' + this.name + '.' + JSON.parse(indexKey).join('.');
+    var keys = JSON.parse(indexKey).map(function(key){
+        return utils.escapeField(key);
+    });
+    return 'index.' + utils.escapeField(this.name) + '.' + keys.join('.');
 };
 
 proto._key = function(id){
-    return this.name + ':' + id;
+    return this.name + '$' + id;
 };
 
 proto._checkId = function(id){
-    if(typeof(id) === 'number'){
-        return id.toString();
-    }
-    else if(typeof(id) === 'string'){
+    if(typeof(id) === 'string'){
         return id;
     }
+    else if(typeof(id) === 'number'){
+        return id.toString();
+    }
     throw new Error('id must be number or string');
+};
+
+//http://docs.mongodb.org/manual/reference/limits/#Restriction-on-Collection-Names
+proto._checkName = function(name){
+    if(!name){
+        throw new Error('Collection name can not empty');
+    }
+    if(typeof(name) !== 'string'){
+        throw new Error('Collection name must be string');
+    }
+    if(name.indexOf('$') !== -1){
+        throw new Error('Collection name can not contain "$"');
+    }
+    if(name.indexOf('system.') === 0){
+        throw new Error('Collection name can not begin with "system."');
+    }
 };
 
 module.exports = Collection;

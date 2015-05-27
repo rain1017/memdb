@@ -71,7 +71,7 @@ var DEFAULT_HEARTBEAT_TIMEOUT = 5 * 1000;
  * opts.slave - {host : '127.0.0.1', port : 6379} (redis slave for data replication)
  *
  * Events:
- * updateIndex:collName:connId - (docId, indexKey, oldValue, newValue)
+ * updateIndex$collName$connId - (docId, indexKey, oldValue, newValue)
  */
 var Shard = function(opts){
     EventEmitter.call(this);
@@ -82,6 +82,9 @@ var Shard = function(opts){
     this._id = opts.shardId;
     if(!this._id){
         throw new Error('You must specify shardId');
+    }
+    if(this._id.indexOf('$') !== -1){
+        throw new Error('shardId can not contain "$"');
     }
 
     this.logger = Logger.getLogger('memdb', __filename, 'shard:' + this._id);
@@ -204,7 +207,7 @@ var Shard = function(opts){
             self.logger.error(err.stack);
         }
     };
-    this.globalEvent.on('request:' + this._id, this.onRequestKey);
+    this.globalEvent.on('request$' + this._id, this.onRequestKey);
 
     // Cached readonly docs {key : doc} (raw doc, not document object)
     this.cachedDocs = {};
@@ -269,7 +272,7 @@ proto.stop = function(){
     clearInterval(this.heartbeatInterval);
     clearInterval(this.gcInterval);
 
-    this.globalEvent.removeAllListeners('request:' + this._id);
+    this.globalEvent.removeAllListeners('request$' + this._id);
     this.globalEvent.quit();
     this.logger.info('global event closed');
 
@@ -538,7 +541,7 @@ proto._addDoc = function(key, doc){
 
     var res = this._resolveKey(key);
     doc.on('updateIndex', function(connId, indexKey, oldValue, newValue){
-        self.emit('updateIndex:' + res.name + ':' + connId, res.id, indexKey, oldValue, newValue);
+        self.emit('updateIndex$' + res.name + '$' + connId, res.id, indexKey, oldValue, newValue);
     });
 
     // Loaded at this instant
@@ -642,7 +645,7 @@ proto._lockBackend = function(key){
                 }
                 // request the holder for the key
                 // Emit request key event
-                this.globalEvent.emit('request:' + shardId, key);
+                this.globalEvent.emit('request$' + shardId, key);
                 this.logger.trace('request shard[%s] for key %s', shardId, key);
             })
             .delay(wait / 2 + _.random(wait))
@@ -810,9 +813,9 @@ proto._isLoaded = function(key){
     return !!this.docs[key];
 };
 
-// key - collectionName:docId
+// key - collectionName$docId
 proto._resolveKey = function(key){
-    var i = key.indexOf(':');
+    var i = key.indexOf('$');
     if(i === -1){
         throw new Error('invalid key: ' + key);
     }

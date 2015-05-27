@@ -15,13 +15,13 @@ describe('slave test', function(){
         var shard = {_id : 's1'};
         var slave = new Slave(shard, env.config.shards.s1.slave);
 
-        var key1 = 'player:1';
+        var key1 = 'player$1';
         var doc1 = {name : 'rain', age : 30};
-        var key2 = 'player:2';
+        var key2 = 'player$2';
         var doc2 = null;
         var changes = {
-            'player:1' : {name : 'snow', age : undefined},
-            'player:2' : {name : 'tina'},
+            'player$1' : {name : 'snow', age : undefined},
+            'player$2' : {name : 'tina'},
         };
 
         return P.try(function(){
@@ -72,9 +72,9 @@ describe('slave test', function(){
         var shard = {_id : 's1'};
         var slave = new Slave(shard, env.config.shards.s1.slave);
 
-        var key1 = 'player:1';
+        var key1 = 'player$1';
         var doc1 = {name : 'rain', age : 30};
-        var key2 = 'player:2';
+        var key2 = 'player$2';
         var doc2 = null;
 
         return P.try(function(){

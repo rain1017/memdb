@@ -93,8 +93,6 @@ proto.disconnect = function(connId){
 proto.execute = function(connId, method, args){
     var self = this;
 
-    var conn = this.getConnection(connId);
-
     // Query in the same connection must execute in series
     // This is usually a client bug here
     if(this.connectionLock.isBusy(connId)){
@@ -107,12 +105,12 @@ proto.execute = function(connId, method, args){
         });
     }
 
-    this.logger.debug('[conn:%s] start %s(%j)...', connId, method, args);
-
     // Ensure series execution in same connection
     return this.connectionLock.acquire(connId, function(){
-        // Get conn again
-        conn = self.getConnection(connId);
+
+        self.logger.debug('[conn:%s] start %s(%j)...', connId, method, args);
+
+        var conn = self.getConnection(connId);
 
         return P.try(function(){
             var func = conn[method];

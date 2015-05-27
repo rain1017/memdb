@@ -135,6 +135,16 @@ exports.isDict = function(obj){
     return typeof(obj) === 'object' && obj !== null && !Array.isArray(obj);
 };
 
+// escape '$' and '.' in field name
+// '$abc.def\\g' => '\\u0024abc\\u002edef\\\\g'
+exports.escapeField = function(str){
+    return str.replace(/\\/g, '\\\\').replace(/\$/g, '\\u0024').replace(/\./g, '\\u002e');
+};
+
+exports.unescapeField = function(str){
+    return str.replace(/\\u002e/g, '.').replace(/\\u0024/g, '$').replace(/\\\\/g, '\\');
+};
+
 // Async foreach for mongo's cursor
 exports.mongoForEach = function(itor, func){
     var deferred = P.defer();
