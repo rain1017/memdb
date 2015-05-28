@@ -9,21 +9,24 @@ var Slave = function(opts){
     opts = opts || {};
 
     this.shardId = opts.shardId;
+
+    this.config = {
+        host : opts.host || '127.0.0.1',
+        port : opts.port || 6379,
+        db : opts.db || 0,
+        options : opts.options || {},
+    };
+
+    this.client = redis.createClient(this.config.port, this.config.host, this.config.options);
+    this.client.select(this.config.db);
+
     this.logger = Logger.getLogger('memdb', __filename, 'shard:' + this.shardId);
-
-    var host = opts.host || '127.0.0.1';
-    var port = opts.port || 6379;
-    var db = opts.db || 0;
-    this.client = redis.createClient(port, host);
-    this.client.select(db);
-
-    this.logger.info('slave inited %s:%s:%s', host, port, db);
 };
 
 var proto = Slave.prototype;
 
 proto.start = function(){
-
+    this.logger.info('slave started %s:%s:%s', this.config.host, this.config.port, this.config.db);
 };
 
 proto.stop = function(){
@@ -32,14 +35,19 @@ proto.stop = function(){
 };
 
 proto.set = function(key, doc){
+    this.logger.debug('slave set %s', key);
     return this.client.setAsync(this._redisKey(key), JSON.stringify(doc));
 };
 
 proto.del = function(key){
+    this.logger.debug('slave del %s', key);
     return this.client.delAsync(this._redisKey(key));
 };
 
+// docs - {key : doc}
 proto.setMulti = function(docs){
+    this.logger.debug('slave setMulti');
+
     var multi = this.client.multi();
     for(var key in docs){
         var doc = docs[key];
@@ -48,7 +56,10 @@ proto.setMulti = function(docs){
     return multi.execAsync();
 };
 
-proto.findMulti = function(keys){
+// returns - {key : doc}
+proto.getMulti = function(keys){
+    this.logger.debug('slave getMulti');
+
     var self = this;
     var multi = this.client.multi();
     keys.forEach(function(key){
@@ -72,9 +83,11 @@ proto.findMulti = function(keys){
 };
 
 proto.getAllKeys = function(){
+    this.logger.debug('slave getAllKeys');
+
     return P.bind(this)
     .then(function(){
-        return this.client.keysAsync(this._redisPrefix() + '*');
+        return this.client.keysAsync(this._redisKey('*'));
     })
     .then(function(keys){
         var self = this;
@@ -84,11 +97,12 @@ proto.getAllKeys = function(){
     });
 };
 
-// Clear all data in this shard
 proto.clear = function(){
+    this.logger.debug('slave clear');
+
     return P.bind(this)
     .then(function(){
-        return this.client.keysAsync(this._redisPrefix() + '*');
+        return this.client.keysAsync(this._redisKey('*'));
     })
     .then(function(keys){
         var multi = this.client.multi();
@@ -99,18 +113,8 @@ proto.clear = function(){
     });
 };
 
-/**
- * Redis format
- *
- * bak:shardId:key -> JSON.stringify(doc)
- */
-
-proto._redisPrefix = function(){
-    return 'bk$' + this.shardId + '$';
-};
-
 proto._redisKey = function(key){
-    return this._redisPrefix() + key;
+    return 'bk$' + this.shardId + '$' + key;
 };
 
 proto._extractKey = function(existKey){

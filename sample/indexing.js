@@ -31,7 +31,7 @@ var config = {
                     // Values that exclude from index
                     // Since some default value occurs too often, which can make index too large
                     valueIgnore : {
-                        areaId : ['', -1, null],
+                        areaId : ['', -1],
                     }
                 },
                 // Unique index for compound keys [deviceType, deviceId]

@@ -37,9 +37,7 @@ exports.extendPromise = function(P){
                 });
             });
         });
-        return promise.then(function(){
-            return results;
-        });
+        return promise.thenReturn(results);
     };
 
     P.mapSeries = function(items, fn){
@@ -90,7 +88,7 @@ exports.setObjPath = function(obj, path, value){
         }
         current = current[field];
         if(typeof(current) !== 'object'){
-            throw new Error('path is exist and not a object');
+            throw new Error('field ' + path + ' exists and not a object');
         }
     });
     current[finalField] = value;
@@ -117,20 +115,6 @@ exports.clone = function(obj){
     return JSON.parse(JSON.stringify(obj));
 };
 
-exports.cloneEx = function(obj){
-    if(obj === null || obj === undefined || typeof(obj) === 'number' || typeof(obj) === 'string' || typeof(obj) === 'boolean'){
-        return obj;
-    }
-    if(typeof(obj) === 'object'){
-        var copy = Array.isArray(obj) ? new Array(obj.length) : {};
-        for(var key in obj){
-            copy[key] = exports.clone(obj[key]);
-        }
-        return copy;
-    }
-    throw new Error('unsupported type of obj: ' + obj);
-};
-
 exports.isDict = function(obj){
     return typeof(obj) === 'object' && obj !== null && !Array.isArray(obj);
 };
@@ -153,7 +137,6 @@ exports.mongoForEach = function(itor, func){
         if(err){
             return deferred.reject(err);
         }
-
         // async iterator with .next(cb)
         itor.next(function(err, value){
             if(err){

@@ -13,7 +13,7 @@
                     "keys" : ["areaId"],
                     "unique" : false,
                     "valueIgnore" : {
-                        "areaId" : ["", -1, null]
+                        "areaId" : ["", -1]
                     }
                 },
                 {

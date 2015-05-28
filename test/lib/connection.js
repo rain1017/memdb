@@ -104,6 +104,7 @@ describe('connection test', function(){
     it('index test', function(cb){
         var conn = null;
         var Player = null;
+        var errCount = 0;
 
         return P.try(function(){
             return memdb.startServer(env.dbConfig('s1'));
@@ -164,18 +165,20 @@ describe('connection test', function(){
         .then(function(){
             // Should ignore the index
             return Player.find({areaId : -1})
-            .then(function(players){
-                players.length.should.eql(0);
+            .catch(function(err){
+                errCount++;
             });
         })
         .then(function(){
             // invalid index value
-            return Player.update('1', {$set : {areaId : ['invalid value']}})
+            return Player.update('1', {$set : {areaId : ['invalid value']}}, {upsert : true})
             .catch(function(err){
-                logger.debug(err);
+                errCount++;
             });
         })
         .then(function(){
+            errCount.should.eql(2);
+
             return conn.close();
         })
         .finally(function(){

@@ -55,7 +55,7 @@ exports.rebuildIndex = function(backendConf, collName, keys, opts){
     })
     .then(function(itor){
         return utils.mongoForEach(itor, function(item){
-            var indexValue = Document.prototype._getIndexValue.call({changed : item}, indexKey, opts);
+            var indexValue = Document.prototype._getIndexValue.call({_getChanged : function(){return item;}}, indexKey, opts);
             if(!indexValue){
                 return;
             }

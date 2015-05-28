@@ -25,9 +25,9 @@ var config = {
 var playerSchema = new mdbgoose.Schema({
     _id : String,
     name : String,
-    areaId : {type : Number, index : true, indexIgnore : [-1, null]},
-    deviceType : {type : Number, indexIgnore : [-1, null]},
-    deviceId : {type : String, indexIgnore : ['', null]},
+    areaId : {type : Number, index : true, indexIgnore : [-1]},
+    deviceType : {type : Number, indexIgnore : [-1]},
+    deviceId : {type : String, indexIgnore : ['']},
     items : [mdbgoose.SchemaTypes.Mixed],
 }, {collection : 'player'});
 // Define a compound unique index

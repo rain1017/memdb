@@ -10,17 +10,9 @@ var modifier = require('./modifier');
 
 var DEFAULT_LOCK_TIMEOUT = 10 * 1000;
 
-/**
- *
- * Events:
- *
- * updateIndex - (connectionId, indexKey, oldValue, newValue)
- * Used for internal index update (won't fire on commit or rollback)
- */
+
 var Document = function(opts){ //jshint ignore:line
     opts = opts || {};
-
-    this.logger = Logger.getLogger('memdb', __filename);
 
     var doc = opts.doc || null;
     if(typeof(doc) !== 'object'){
@@ -29,13 +21,18 @@ var Document = function(opts){ //jshint ignore:line
 
     this._id = opts._id;
     this.commited = doc;
-    this.changed = undefined; // undefined means no change (while null means removed)
+    this.changed = undefined; // undefined means no change, while null means removed
+    this.connId = null; // Connection that hold the document lock
+
+    this._lock = new AsyncLock({
+                                Promise : P,
+                                timeout : opts.lockTimeout || DEFAULT_LOCK_TIMEOUT
+                                });
+    this.releaseCallback = null;
 
     this.indexes = opts.indexes || {};
 
-    this.connectionId = null; // Connection that hold the document lock
-    this._lock = new AsyncLock({Promise : P, timeout : opts.lockTimeout || DEFAULT_LOCK_TIMEOUT});
-    this.releaseCallback = null;
+    this.logger = Logger.getLogger('memdb', __filename, 'shard:' + opts.shardId);
 
     EventEmitter.call(this);
 };
@@ -44,11 +41,8 @@ util.inherits(Document, EventEmitter);
 
 var proto = Document.prototype;
 
-/**
- * connectionId - current connection
- */
-proto.find = function(connectionId, fields){
-    var doc = this.isLocked(connectionId) ? this.changed : this.commited;
+proto.find = function(connId, fields){
+    var doc = this.isLocked(connId) ? this._getChanged() : this.commited;
 
     if(doc === null){
         return null;
@@ -95,46 +89,40 @@ proto.find = function(connectionId, fields){
     return ret;
 };
 
-proto.exists = function(connectionId){
-    return this.isLocked(connectionId) ? this.changed !== null: this.commited !== null;
+proto.exists = function(connId){
+    return this.isLocked(connId) ? this._getChanged() !== null: this.commited !== null;
 };
 
-proto.insert = function(connectionId, doc){
-    this.modify(connectionId, '$insert',  doc);
+proto.insert = function(connId, doc){
+    this.modify(connId, '$insert',  doc);
 };
 
-proto.remove = function(connectionId){
-    this.modify(connectionId, '$remove');
+proto.remove = function(connId){
+    this.modify(connId, '$remove');
 };
 
-proto.update = function(connectionId, doc, opts){
+proto.update = function(connId, doc, opts){
     opts = opts || {};
     doc = doc || {};
 
-    if(this.changed === null && opts.upsert){
-        this.modify(connectionId, '$insert', {});
-    }
-
     var isModify = false;
     for(var field in doc){
-        if(field.slice(0, 1) === '$'){
-            isModify = true;
-            break;
-        }
+        isModify = (field[0] === '$');
+        break;
     }
 
     if(!isModify){
-        this.modify(connectionId, '$replace', doc);
+        this.modify(connId, '$replace', doc);
     }
     else{
         for(var cmd in doc){
-            this.modify(connectionId, cmd, doc[cmd]);
+            this.modify(connId, cmd, doc[cmd]);
         }
     }
 };
 
-proto.modify = function(connectionId, cmd, param){
-    this.ensureLocked(connectionId);
+proto.modify = function(connId, cmd, param){
+    this.ensureLocked(connId);
 
     var oldValues = {};
     for(var indexKey in this.indexes){
@@ -146,6 +134,9 @@ proto.modify = function(connectionId, cmd, param){
         throw new Error('invalid modifier - ' + cmd);
     }
 
+    if(this.changed === undefined){ //copy on write
+        this.changed = utils.clone(this.commited);
+    }
     this.changed = modifyFunc(this.changed, param);
 
     // id is immutable
@@ -155,31 +146,30 @@ proto.modify = function(connectionId, cmd, param){
 
     for(indexKey in this.indexes){
         var value = this._getIndexValue(indexKey, this.indexes[indexKey]);
-        if(oldValues[indexKey] !== value){
-            this.logger.trace('updateIndex %s %s %s', indexKey, oldValues[indexKey], value);
 
-            this.emit('updateIndex', connectionId, indexKey, oldValues[indexKey], value);
+        if(oldValues[indexKey] !== value){
+            this.logger.trace('%s.updateIndex(%s, %s, %s)', this._id, indexKey, oldValues[indexKey], value);
+            this.emit('updateIndex', connId, indexKey, oldValues[indexKey], value);
         }
     }
 
-    this.logger.trace('%s %s %j => %j', this._id, cmd, param, this.changed);
+    this.logger.trace('%s.modify(%s, %j) => %j', this._id, cmd, param, this.changed);
 };
 
-proto.lock = function(connectionId){
-    var self = this;
-    if(connectionId === null || connectionId === undefined){
-        throw new Error('connectionId is null');
+proto.lock = function(connId){
+    if(connId === null || connId === undefined){
+        throw new Error('connId is null');
     }
 
     var deferred = P.defer();
-    if(self.isLocked(connectionId)){
+    if(this.isLocked(connId)){
         deferred.resolve();
     }
     else{
-        self._lock.acquire('', function(release){
-            self.connectionId = connectionId;
+        var self = this;
+        this._lock.acquire('', function(release){
+            self.connId = connId;
             self.releaseCallback = release;
-            self.changed = utils.clone(self.commited);
 
             self.emit('lock');
             deferred.resolve();
@@ -203,15 +193,17 @@ proto._waitUnlock = function(){
 };
 
 proto._unlock = function(){
-    if(this.connectionId === null){
+    if(this.connId === null){
         return;
     }
-    this.connectionId = null;
+    this.connId = null;
     var releaseCallback = this.releaseCallback;
     this.releaseCallback = null;
 
+    releaseCallback();
     this.emit('unlock');
-    process.nextTick(releaseCallback);
+
+    //process.nextTick(releaseCallback);
 };
 
 proto._getChanged = function(){
@@ -222,45 +214,47 @@ proto._getCommited = function(){
     return this.commited;
 };
 
-proto.commit = function(connectionId){
-    this.ensureLocked(connectionId);
+proto.commit = function(connId){
+    this.ensureLocked(connId);
 
     this.commited = this.changed;
     this.changed = undefined;
 
-    this._unlock();
     this.emit('commit');
+    this._unlock();
 };
 
-proto.rollback = function(connectionId){
-    this.ensureLocked(connectionId);
+proto.rollback = function(connId){
+    this.ensureLocked(connId);
 
     this.changed = undefined;
 
-    this._unlock();
     this.emit('rollback');
+    this._unlock();
 };
 
-proto.ensureLocked = function(connectionId){
-    if(!this.isLocked(connectionId)){
-        throw new Error('doc not locked by ' + connectionId);
+proto.ensureLocked = function(connId){
+    if(!this.isLocked(connId)){
+        throw new Error('doc not locked by ' + connId);
     }
 };
 
-proto.isLocked = function(connectionId){
-    return this.connectionId === connectionId && connectionId !== null && connectionId !== undefined;
+proto.isLocked = function(connId){
+    return this.connId === connId && connId !== null && connId !== undefined;
 };
 
 proto.isFree = function(){
-    return this.connectionId === null;
+    return this.connId === null;
 };
 
 proto._getIndexValue = function(indexKey, opts){
     opts = opts || {};
 
     var self = this;
-    var indexValue = JSON.parse(indexKey).map(function(key){
-        var value = !!self.changed ? self.changed[key] : undefined;
+    var indexValue = JSON.parse(indexKey).sort().map(function(key){
+        var doc = self._getChanged();
+        var value = !!doc ? doc[key] : undefined;
+        // null and undefined is not included in index
         if(value === null || value === undefined){
             return undefined;
         }

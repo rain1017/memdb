@@ -31,10 +31,9 @@ describe('document test', function(){
             return doc.lock('c1');
         })
         .then(function(){
-            //upsert
             should(doc.update.bind(doc, 'c1', {k1 : 1})).throw();
 
-            doc.update('c1', {k1 : 1}, {upsert : true});
+            doc.insert('c1', {k1 : 1});
             doc.find('c1').should.eql({k1 : 1});
 
             //replace doc

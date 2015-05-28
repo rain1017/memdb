@@ -106,11 +106,28 @@ proto.find = function(query, fields, opts){
     }
 
     var keys = Object.keys(query).sort();
-    var values = keys.map(function(key){
-        return query[key];
-    });
+    var indexKey = JSON.stringify(keys);
 
-    return this._findByIndex(JSON.stringify(keys), JSON.stringify(values), fields, opts);
+    var indexConfig = this.config.indexes[indexKey];
+    if(!indexConfig){
+        throw new Error('No index configured for keys - ' + indexKey);
+    }
+
+    var valueIgnore = indexConfig.valueIgnore || {};
+    var values = keys.map(function(key){
+        var value = query[key];
+        if(value === null || value === undefined){
+            throw new Error('query value can not be null or undefined');
+        }
+        var ignores = valueIgnore[key] || [];
+        if(ignores.indexOf(value) !== -1){
+            throw new Error('value ' + value + ' for key ' + key + ' is ignored in index');
+        }
+        return value;
+    });
+    var indexValue = JSON.stringify(values);
+
+    return this._findByIndex(indexKey, indexValue, fields, opts);
 };
 
 proto.findOne = function(query, fields, opts){
@@ -167,10 +184,6 @@ proto.findCached = function(id){
 };
 
 proto._findByIndex = function(indexKey, indexValue, fields, opts){
-    if(!this.config.indexes[indexKey]){
-        throw new Error('No index found for keys - ' + indexKey);
-    }
-
     var indexCollection = this.conn.getCollection(this._indexCollectionName(indexKey), true);
 
     var self = this;

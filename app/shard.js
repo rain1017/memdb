@@ -122,7 +122,6 @@ var Shard = function(opts){
         gcCount : opts.gcCount || DEFAULT_GC_COUNT,
         gcInterval : opts.gcInterval || DEFAULT_GC_INTERVAL,
 
-        // only for test, DO NOT disable slave in production
         disableSlave : opts.disableSlave || false,
 
         collections : opts.collections || {},
@@ -767,7 +766,7 @@ proto._restoreFromSlave = function(){
 
         return P.bind(this)
         .then(function(){
-            return this.slave.findMulti(keys);
+            return this.slave.getMulti(keys);
         })
         .then(function(items){
             for(var key in items){
@@ -808,7 +807,14 @@ proto._createDoc = function(key, doc){
     var coll = this.config.collections[res.name];
     var indexes = coll ? coll.indexes || {}: {};
 
-    return new Document({_id : res.id, doc: doc, indexes: indexes, lockTimeout : this.config.lockTimeout});
+    var opts = {
+        _id : res.id,
+        doc: doc,
+        indexes: indexes,
+        lockTimeout : this.config.lockTimeout,
+        shardId : this._id,
+    };
+    return new Document(opts);
 };
 
 proto._ensureState = function(state){

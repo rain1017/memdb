@@ -12,8 +12,9 @@ describe('slave test', function(){
     after(env.flushdb);
 
     it('set/del', function(cb){
-        var shard = {_id : 's1'};
-        var slave = new Slave(shard, env.config.shards.s1.slave);
+        var opts = env.config.shards.s1.slave;
+        opts.shardId = 's1';
+        var slave = new Slave(opts);
 
         var key1 = 'player$1';
         var doc1 = {name : 'rain', age : 30};
@@ -34,7 +35,7 @@ describe('slave test', function(){
             return slave.set(key2, doc2);
         })
         .then(function(){
-            return slave.findMulti([key1, key2])
+            return slave.getMulti([key1, key2])
             .then(function(docs){
                 docs[key1].should.eql(doc1);
                 (docs[key2] === null).should.eql(true);
@@ -44,7 +45,7 @@ describe('slave test', function(){
             return slave.setMulti(changes);
         })
         .then(function(){
-            return slave.findMulti([key1, key2])
+            return slave.getMulti([key1, key2])
             .then(function(docs){
                 docs[key1].should.eql({name : 'snow'});
                 docs[key2].should.eql({name : 'tina'});
@@ -57,7 +58,7 @@ describe('slave test', function(){
             return slave.del(key1);
         })
         .then(function(){
-            return slave.findMulti([key1, key2])
+            return slave.getMulti([key1, key2])
             .then(function(docs){
                 Object.keys(docs).length.should.eql(0);
             });
@@ -69,8 +70,9 @@ describe('slave test', function(){
     });
 
     it('getAll/clear', function(cb){
-        var shard = {_id : 's1'};
-        var slave = new Slave(shard, env.config.shards.s1.slave);
+        var opts = env.config.shards.s1.slave;
+        opts.shardId = 's1';
+        var slave = new Slave(opts);
 
         var key1 = 'player$1';
         var doc1 = {name : 'rain', age : 30};
@@ -100,6 +102,37 @@ describe('slave test', function(){
             .then(function(keys){
                 keys.length.should.eql(0);
             });
+        })
+        .nodeify(cb);
+    });
+
+    it.skip('huge data', function(cb){
+        this.timeout(180 * 1000);
+
+        var opts = env.config.shards.s1.slave;
+        opts.shardId = 's1';
+        var slave = new Slave(opts);
+
+        var count = 200000;
+        var docs = {};
+        for(var i=0; i<count; i++){
+            docs['key' + i] = {_id : i, key : 'value' + i};
+        }
+
+        return P.try(function(){
+            return slave.start();
+        })
+        .then(function(){
+            return slave.setMulti(docs);
+        })
+        .then(function(){
+            return slave.getAllKeys();
+        })
+        .then(function(keys){
+            return slave.getMulti(keys);
+        })
+        .then(function(ret){
+            Object.keys(ret).length.should.eql(count);
         })
         .nodeify(cb);
     });
