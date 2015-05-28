@@ -8,7 +8,7 @@ var env = require('../env');
 
 describe('backendlocker test', function(){
 
-    it('lock/unlock', function(cb){
+    it('locker / heartbeat', function(cb){
         var docKey = 'player$p1', shardId = 's1';
 
         var locker = new BackendLocker({
@@ -16,13 +16,15 @@ describe('backendlocker test', function(){
                             port : env.config.shards.s1.locking.port,
                             db : env.config.shards.s1.locking.db,
                             shardId : shardId,
+                            heartbeatTimeout : 2000,
+                            heartbeatInterval : 1000,
                             });
 
         return P.try(function(){
-            return locker.unlockAll();
+            return locker.start();
         })
         .then(function(){
-            return locker.lock(docKey);
+            return locker.tryLock(docKey);
         })
         .then(function(){
             return locker.getHolderId(docKey)
@@ -30,20 +32,11 @@ describe('backendlocker test', function(){
                 ret.should.eql(shardId);
             });
         })
-        .then(function(){
-            return locker.getHolderIdMulti([docKey, 'nonExistDoc'])
-            .then(function(ret){
-                ret.should.eql([shardId, null]);
-            });
-        })
         .then(function(ret){
             return locker.isHeld(docKey)
             .then(function(ret){
                 ret.should.be.true; //jshint ignore:line
             });
-        })
-        .then(function(){
-            return locker.ensureHeld(docKey);
         })
         .then(function(){
             // Can't lock again
@@ -55,21 +48,8 @@ describe('backendlocker test', function(){
         .then(function(){
             return locker.unlock(docKey);
         })
-        .then(function(){
-            //Should throw error
-            return locker.ensureHeld(docKey)
-            .then(function(){
-                throw new Error('Should throw error');
-            }, function(e){
-                //expected
-            });
-        })
         .finally(function(){
-            return P.try(function(){
-                return locker.unlockAll();
-            }).then(function(){
-                locker.close();
-            });
+            return locker.stop();
         })
         .nodeify(cb);
     });

@@ -5,89 +5,86 @@ var Logger = require('memdb-logger');
 var util = require('util');
 var redis = P.promisifyAll(require('redis'));
 
-/**
- * Lock document in backend for specific shard
- *
- * Redis format:
- * bl:docId - shardId
- *
- */
 var BackendLocker = function(opts){
     opts = opts || {};
-    var host = opts.host || '127.0.0.1';
-    var port = opts.port || 6379;
-    var db = opts.db || 0;
-    var options = opts.options || {};
 
     this.shardId = opts.shardId;
-    this.prefix = 'doc2shard$';
-    this.client = redis.createClient(port, host, options);
-    this.client.select(db);
+    this.config = {
+        host : opts.host || '127.0.0.1',
+        port : opts.port || 6379,
+        db : opts.db || 0,
+        options : opts.options || {},
+        prefix : opts.prefix || 'bl$',
+        heartbeatPrefix  : opts.heartbeatPrefix || 'hb$',
+        heartbeatTimeout : opts.heartbeatTimeout,
+        heartbeatInterval : opts.heartbeatInterval,
+    };
 
-    this.shardHeartbeatTimeout = opts.shardHeartbeatTimeout;
+    this.client = redis.createClient(this.config.port, this.config.host, this.config.options);
+    this.client.select(this.config.db);
+
+    this.heartbeatInterval = null;
 
     this.logger = Logger.getLogger('memdb', __filename, 'shard:' + this.shardId);
-
-    this.logger.info('backend locker inited %s:%s:%s', host, port, db);
 };
 
 var proto = BackendLocker.prototype;
 
-proto.close = function(){
-    this.client.end();
-    this.logger.info('backend locker close');
-};
-
-/**
- * Lock a doc, throw exception on failure
- */
-proto.lock = function(docId){
-    var self = this;
-
-    return this.client.setnxAsync(this._docKey(docId), this.shardId)
+proto.start = function(){
+    return P.bind(this)
+    .then(function(){
+        return this.isAlive();
+    })
     .then(function(ret){
-        if(ret !== 1){
-            throw new Error(docId + ' already locked by other shards');
+        if(ret){
+            throw new Error('Current shard is running in some other process');
         }
-        self.logger.debug('locked %s', docId);
+    })
+    .then(function(){
+        if(this.config.heartbeatInterval > 0){
+            return this.heartbeat();
+        }
+    })
+    .then(function(){
+        if(this.config.heartbeatInterval > 0){
+            this.heartbeatInterval = setInterval(this.heartbeat.bind(this), this.config.heartbeatInterval);
+        }
+        this.logger.info('backendLocker started %s:%s:%s', this.config.host, this.config.port, this.config.db);
     });
 };
 
-/**
- * Lock a doc, return true on success, false on failure
- */
+proto.stop = function(){
+    return P.bind(this)
+    .then(function(){
+        clearInterval(this.heartbeatInterval);
+        return this.clearHeartbeat();
+    })
+    .then(function(){
+        this.client.end();
+        this.logger.info('backendLocker stoped');
+    });
+};
+
 proto.tryLock = function(docId){
     this.logger.debug('tryLock %s', docId);
 
     var self = this;
-    return this.lock(docId)
-    .then(function(){
-        return true;
-    }, function(err){
-        return false;
+    return this.client.setnxAsync(this._docKey(docId), this.shardId)
+    .then(function(ret){
+        if(ret === 1){
+            self.logger.debug('locked %s', docId);
+            return true;
+        }
+        else{
+            return false;
+        }
     });
 };
 
-/**
- * Get lock holder shardId
- */
 proto.getHolderId = function(docId){
     return this.client.getAsync(this._docKey(docId));
 };
 
-/**
- * Get lock holder shardIds for each docId
- */
-proto.getHolderIdMulti = function(docIds){
-    var self = this;
-    var multi = self.client.multi();
-    docIds.forEach(function(docId){
-        multi = multi.get(self._docKey(docId));
-    });
-    return multi.execAsync();
-};
-
-// Whether docId is held by shardId
 proto.isHeld = function(docId){
     return P.bind(this)
     .then(function(){
@@ -98,82 +95,42 @@ proto.isHeld = function(docId){
     });
 };
 
-// Throw execption if docId not held by shardId
-proto.ensureHeld = function(docId){
-    return P.bind(this)
-    .then(function(){
-        return this.isHeld(docId);
-    })
-    .then(function(ret){
-        if(!ret){
-            throw new Error(docId + ' not held');
-        }
-    });
-};
-
-/**
- * unlock a doc
- * Caller must make sure it owned the doc
- */
 proto.unlock = function(docId){
-    var self = this;
+    this.logger.debug('unlock %s', docId);
 
-    return this.client.delAsync(this._docKey(docId))
-    .then(function(){
-        self.logger.debug('unlocked %s', docId);
-    });
+    return this.client.delAsync(this._docKey(docId));
 };
 
-/**
- * Mark the shard is alive
- */
-proto.shardHeartbeat = function(){
-    var timeout = Math.floor(this.shardHeartbeatTimeout / 1000);
+proto.heartbeat = function(){
+    var timeout = Math.floor(this.config.heartbeatTimeout / 1000);
     if(timeout <= 0){
         timeout = 1;
     }
 
     this.logger.debug('heartbeat');
-    return this.client.setexAsync(this._shardHeartbeatKey(this.shardId), timeout, 1);
+    return this.client.setexAsync(this._heartbeatKey(this.shardId), timeout, 1);
 };
 
-proto.shardStop = function(){
-    return this.client.delAsync(this._shardHeartbeatKey(this.shardId));
+proto.clearHeartbeat = function(){
+    return this.client.delAsync(this._heartbeatKey(this.shardId));
 };
 
-proto.isShardAlive = function(shardId){
+proto.isAlive = function(shardId){
     if(!shardId){
         shardId = this.shardId;
     }
-
-    return this.client.existsAsync(this._shardHeartbeatKey(shardId))
+    return this.client.existsAsync(this._heartbeatKey(shardId))
     .then(function(ret){
         return !!ret;
     });
 };
 
-// clear all locks
-// Not atomic!
-proto.unlockAll = function(){
-    return P.bind(this)
-    .then(function(){
-        return this.client.keysAsync(this.prefix + '*');
-    })
-    .then(function(docIds){
-        var multi = this.client.multi();
-        docIds.forEach(function(docId){
-            multi = multi.del(docId);
-        });
-        return multi.execAsync();
-    });
-};
-
 proto._docKey = function(docId){
-    return this.prefix + docId;
+    return this.config.prefix + docId;
 };
 
-proto._shardHeartbeatKey = function(shardId){
-    return 'heartbeat$' + shardId;
+proto._heartbeatKey = function(shardId){
+    return this.config.heartbeatPrefix + shardId;
 };
 
 module.exports = BackendLocker;

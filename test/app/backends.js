@@ -51,9 +51,6 @@ describe('backends test', function(){
             });
         })
         .then(function(){
-            return backend.drop('test');
-        })
-        .then(function(){
             return backend.drop();
         })
         .finally(function(){

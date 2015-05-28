@@ -7,8 +7,11 @@ var mongodb = P.promisifyAll(require('mongodb'));
 var MongoBackend = function(opts){
     opts = opts || {};
 
-    this._url = opts.url || 'mongodb://localhost/test';
-    this._options = opts.options || {};
+    this.config = {
+        url : opts.url || 'mongodb://localhost/test',
+        options : opts.options || {},
+    };
+    this.conn = null;
 
     this.logger = Logger.getLogger('memdb', __filename, 'shard:' + opts.shardId);
 };
@@ -18,18 +21,11 @@ var proto = MongoBackend.prototype;
 proto.start = function(){
     return P.bind(this)
     .then(function(){
-        return P.promisify(mongodb.MongoClient.connect)(this._url, this._options);
+        return P.promisify(mongodb.MongoClient.connect)(this.config.url, this.config.options);
     })
     .then(function(ret){
         this.conn = ret;
-
-        Object.defineProperty(this, 'connection', {
-            get : function(){
-                return ret;
-            }
-        });
-
-        this.logger.info('backend mongodb connected to %s', this._url);
+        this.logger.info('backend mongodb connected to %s', this.config.url);
     });
 };
 
@@ -44,19 +40,22 @@ proto.stop = function(){
 };
 
 proto.get = function(name, id){
-    this.logger.debug('backend mongodb get %s %s', name, id);
+    this.logger.debug('backend mongodb get(%s, %s)', name, id);
+
     return this.conn.collection(name).findOneAsync({_id : id});
 };
 
 // Return an async iterator with .next(cb) signature
 proto.getAll = function(name){
-    this.logger.debug('backend mongodb getAll %s', name);
+    this.logger.debug('backend mongodb getAll(%s)', name);
+
     return this.conn.collection(name).findAsync();
 };
 
 proto.set = function(name, id, doc){
-    this.logger.debug('backend mongodb set %s %s', name, id);
-    if(doc !== null && doc !== undefined){
+    this.logger.debug('backend mongodb set(%s, %s)', name, id);
+
+    if(!!doc){
         doc._id = id;
         return this.conn.collection(name).updateAsync({_id : id}, doc, {upsert : true});
     }
@@ -67,9 +66,9 @@ proto.set = function(name, id, doc){
 
 // items : [{name, id, doc}]
 proto.setMulti = function(items){
-    var self = this;
-
     this.logger.debug('backend mongodb setMulti');
+
+    var self = this;
     return P.mapLimit(items, function(item){
         return self.set(item.name, item.id, item.doc);
     });
@@ -78,6 +77,7 @@ proto.setMulti = function(items){
 // drop table or database
 proto.drop = function(name){
     this.logger.debug('backend mongodb drop %s', name);
+
     if(!!name){
         return this.conn.collection(name).dropAsync()
         .catch(function(e){

@@ -134,7 +134,8 @@ var Shard = function(opts){
                                 port : this.config.locking.port,
                                 db : this.config.locking.db,
                                 options : this.config.locking.options,
-                                shardHeartbeatTimeout : this.config.heartbeatTimeout,
+                                heartbeatTimeout : this.config.heartbeatTimeout,
+                                heartbeatInterval : this.config.heartbeatInterval,
                             });
 
     var backendConf = this.config.backend;
@@ -159,8 +160,6 @@ var Shard = function(opts){
 
     // Doc persistent timeout
     this.persistentTimeouts = {}; // {key : timeout}
-    // heartbeat interval
-    this.heartbeatInterval = null;
 
     // Lock async tasks for each key
     this.keyLock = new AsyncLock({Promise : P});
@@ -225,12 +224,7 @@ proto.start = function(){
 
     return P.bind(this)
     .then(function(){
-        return this.backendLocker.isShardAlive(this._id);
-    })
-    .then(function(alive){
-        if(alive){
-            throw new Error('Current shard is running in some other process');
-        }
+        return this.backendLocker.start();
     })
     .then(function(){
         return this.backend.start();
@@ -246,14 +240,6 @@ proto.start = function(){
         }
     })
     .then(function(){
-        if(this.config.heartbeatInterval > 0){
-            return this._heartbeat();
-        }
-    })
-    .then(function(){
-        if(this.config.heartbeatInterval > 0){
-            this.heartbeatInterval = setInterval(this._heartbeat.bind(this), this.config.heartbeatInterval);
-        }
         this.gcInterval = setInterval(this.gc.bind(this), this.config.gcInterval);
 
         this.state = STATE.RUNNING;
@@ -269,7 +255,6 @@ proto.stop = function(){
     // All commited data will be saved, while uncommited will be rolled back
     this.state = STATE.STOPING;
 
-    clearInterval(this.heartbeatInterval);
     clearInterval(this.gcInterval);
 
     this.globalEvent.removeAllListeners('request$' + this._id);
@@ -303,7 +288,7 @@ proto.stop = function(){
         return this.backend.stop();
     })
     .then(function(){
-        return this.backendLocker.shardStop(this._id);
+        return this.backendLocker.stop();
     })
     .then(function(){
         this.state = STATE.STOPED;
@@ -624,7 +609,7 @@ proto._unload = function(key){
 proto._lockBackend = function(key){
     return P.bind(this)
     .then(function(){
-        return this.backendLocker.tryLock(key, this._id);
+        return this.backendLocker.tryLock(key);
     })
     .then(function(success){
         if(success){
@@ -650,7 +635,7 @@ proto._lockBackend = function(key){
             })
             .delay(wait / 2 + _.random(wait))
             .then(function(){
-                return this.backendLocker.tryLock(key, this._id);
+                return this.backendLocker.tryLock(key);
             })
             .then(function(success){
                 if(success){
@@ -765,11 +750,6 @@ proto.gc = function(){
     .catch(function(e){
         self.logger.error(e.stack);
     });
-};
-
-
-proto._heartbeat = function(){
-    return this.backendLocker.shardHeartbeat(this._id);
 };
 
 proto._restoreFromSlave = function(){

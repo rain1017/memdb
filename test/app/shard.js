@@ -20,7 +20,7 @@ describe('shard test', function(){
         })
         .then(function(){
             // pre create collection for performance
-            return shard.backend.connection.createCollectionAsync('user');
+            return shard.backend.conn.createCollectionAsync('user');
         })
         .then(function(){
             // should auto load
@@ -111,7 +111,7 @@ describe('shard test', function(){
         })
         .then(function(){
             // pre create collection for performance
-            return shard1.backend.connection.createCollectionAsync('user');
+            return shard1.backend.conn.createCollectionAsync('user');
         })
         .then(function(){
             return P.all([

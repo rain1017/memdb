@@ -3,8 +3,6 @@
 var MongoBackend = require('./mongo-backend');
 var RedisBackend = require('./redis-backend');
 
-var exports = {};
-
 exports.create = function(config){
     config = config || {};
     var engine = config.engine || 'mongodb';
@@ -19,5 +17,3 @@ exports.create = function(config){
         throw new Error('Invalid backend engine');
     }
 };
-
-module.exports = exports;

@@ -7,11 +7,14 @@ var redis = P.promisifyAll(require('redis'));
 var RedisBackend = function(opts){
     opts = opts || {};
 
-    this._host = opts.host || '127.0.0.1';
-    this._port = opts.port || 6379;
-    this._db = opts.db || 0;
-    this._options = opts.options || {};
-    this.prefix = opts.prefix || '';
+    this.config = {
+        host : opts.host || '127.0.0.1',
+        port : opts.port || 6379,
+        db : opts.db || 0,
+        options : opts.option || {},
+        prefix : opts.prefix || '',
+    };
+    this.conn = null;
 
     this.logger = Logger.getLogger('memdb', __filename, 'shard:' + opts.shardId);
 };
@@ -19,25 +22,23 @@ var RedisBackend = function(opts){
 var proto = RedisBackend.prototype;
 
 proto.start = function(){
-    this.client = redis.createClient(this._port, this._host, this._options);
-    this.client.select(this._db);
+    this.conn = redis.createClient(this.config.port, this.config.host, this.config.options);
+    this.conn.select(this.config.db);
 
-    var self = this;
-    Object.defineProperty(self, 'connection', {
-        get : function(){
-            return self.client;
-        }
-    });
+    this.logger.debug('backend redis connected to %s:%s:%s', this.config.host, this.config.port, this.config.db);
 };
 
 proto.stop = function(){
-    this.client.end();
+    this.conn.end();
+    this.logger.debug('backend redis closed');
 };
 
 proto.get = function(name, id){
+    this.logger.debug('backend redis get(%s, %s)', name, id);
+
     return P.bind(this)
     .then(function(){
-        return this.client.hmgetAsync(this.prefix + name, id);
+        return this.conn.hmgetAsync(this.config.prefix + name, id);
     })
     .then(function(ret){
         ret = ret[0];
@@ -47,30 +48,34 @@ proto.get = function(name, id){
 
 // Return an async iterator with .next(cb) signature
 proto.getAll = function(name){
-    throw new Error('Not implemented');
+    throw new Error('not implemented');
 };
 
 // delete when doc is null
 proto.set = function(name, id, doc){
-    if(doc !== null && doc !== undefined){
-        return this.client.hmsetAsync(this.prefix + name, id, JSON.stringify(doc));
+    this.logger.debug('backend redis set(%s, %s)', name, id);
+
+    if(!!doc){
+        return this.conn.hmsetAsync(this.config.prefix + name, id, JSON.stringify(doc));
     }
     else{
-        return this.client.hdelAsync(this.prefix + name, id);
+        return this.conn.hdelAsync(this.config.prefix + name, id);
     }
 };
 
 // items : [{name, id, doc}]
 proto.setMulti = function(items){
-    var multi = this.client.multi();
+    this.logger.debug('backend redis setMulti');
+
+    var multi = this.conn.multi();
 
     var self = this;
     items.forEach(function(item){
-        if(item.doc !== null && item.doc !== undefined){
-            multi = multi.hmset(self.prefix + item.name, item.id, JSON.stringify(item.doc));
+        if(!!item.doc){
+            multi = multi.hmset(self.config.prefix + item.name, item.id, JSON.stringify(item.doc));
         }
         else{
-            multi = multi.hdel(self.prefix + item.name, item.id);
+            multi = multi.hdel(self.config.prefix + item.name, item.id);
         }
     });
     return multi.execAsync();
@@ -78,16 +83,19 @@ proto.setMulti = function(items){
 
 // drop table or database
 proto.drop = function(name){
+    this.logger.debug('backend redis drop %s', name);
+
     if(!!name){
-        this.client.delAsync(this.prefix + name);
+        throw new Error('not implemented');
+        //this.conn.delAsync(this.config.prefix + name);
     }
     else{
-        this.client.flushdbAsync();
+        this.conn.flushdbAsync();
     }
 };
 
 proto.getCollectionNames = function(){
-    throw new Error('Not implemented');
+    throw new Error('not implemented');
 };
 
 module.exports = RedisBackend;

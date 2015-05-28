@@ -106,7 +106,7 @@ proto.clear = function(){
  */
 
 proto._redisPrefix = function(){
-    return 'bak$' + this.shardId + '$';
+    return 'bk$' + this.shardId + '$';
 };
 
 proto._redisKey = function(key){
