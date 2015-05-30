@@ -89,6 +89,11 @@ proto.find = function(connId, fields){
     return ret;
 };
 
+proto.findReadOnly = function(connId){
+    // return reference rather than deepcopy
+    return this.isLocked(connId) ? this._getChanged() : this.commited;
+};
+
 proto.exists = function(connId){
     return this.isLocked(connId) ? this._getChanged() !== null: this.commited !== null;
 };

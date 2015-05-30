@@ -34,7 +34,7 @@ describe('shard test', function(){
         })
         .then(function(){
             // request to unload doc
-            shard.globalEvent.emit('request$' + shard._id, key);
+            shard.globalEvent.emit('key$' + key, 'unload');
         })
         .delay(20)
         .then(function(){
@@ -75,7 +75,7 @@ describe('shard test', function(){
         })
         .then(function(){
             // request to unload
-            shard.globalEvent.emit('request$' + shard._id, key);
+            shard.globalEvent.emit('key$' + key, 'unload');
         })
         .delay(100)
         .then(function(){
@@ -159,22 +159,42 @@ describe('shard test', function(){
         .nodeify(cb);
     });
 
-    it('globalEvent register/unregister', function(cb){
-        var shard = new Shard(env.dbConfig('s1'));
+    it('backendLock timeout, check key', function(cb){
+        var shard1 = new Shard(env.dbConfig('s1'));
+        var config = env.dbConfig('s2');
+        config.backendLockTimeout = 500;
+        var shard2 = new Shard(config);
+
+        var key = 'user$1', doc = {_id : '1', name : 'rain', age : 30};
+        var errCount = 0;
+
         return P.try(function(){
-            return shard.start();
+            return P.all([shard1.start(), shard2.start()]);
         })
         .then(function(){
-            shard.globalEvent.emit('request$s1', 'player$1');
+            return P.try(function(){
+                // shard1 get a redundant lock
+                return shard1.backendLocker.tryLock(key);
+            })
+            .then(function(){
+                return shard2.lock('c1', key);
+            })
+            .catch(function(e){
+                // should timeout and then notify shard1
+                errCount++;
+            })
+            .then(function(){
+                errCount.should.eql(1);
+            })
+            .delay(200) // wait for shart1 release lock
+            .then(function(){
+                // should success
+                return shard2.lock('c2', key);
+            });
         })
-        .delay(100)
         .then(function(){
-            return shard.stop();
+            return P.all([shard1.stop(), shard2.stop()]);
         })
-        .then(function(){
-            shard.globalEvent.emit('request$s1', 'player$1');
-        })
-        .delay(100)
         .nodeify(cb);
     });
 });

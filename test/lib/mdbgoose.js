@@ -11,7 +11,7 @@ describe('mdbgoose test', function(){
     beforeEach(env.flushdb);
     after(env.flushdb);
 
-    it('mdbgoose (standalone mode)', function(cb){
+    it('mdbgoose', function(cb){
         var mdbgoose = memdb.goose;
         var Schema = mdbgoose.Schema;
         var types = mdbgoose.SchemaTypes;
@@ -29,14 +29,11 @@ describe('mdbgoose test', function(){
 
         var Player = mdbgoose.model('player', playerSchema);
 
-        var serverProcess = null;
-
         return P.try(function(){
-            return env.startServer('s1');
+            return memdb.startServer(env.dbConfig('s1'));
         })
         .then(function(ret){
-            serverProcess = ret;
-            return mdbgoose.connectAsync({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
+            return mdbgoose.connectAsync();
         })
         .then(function(){
             // connect to backend mongodb
@@ -192,12 +189,12 @@ describe('mdbgoose test', function(){
             return memdb.close();
         })
         .finally(function(){
-            return env.stopServer(serverProcess);
+            return memdb.stopServer();
         })
         .nodeify(cb);
     });
 
-    it('mdbgoose', function(cb){
+    it('mdbgoose (standalone mode)', function(cb){
         var mdbgoose = memdb.goose;
         var Schema = mdbgoose.Schema;
         var types = mdbgoose.SchemaTypes;
@@ -214,11 +211,14 @@ describe('mdbgoose test', function(){
 
         var Player = mdbgoose.model('player', playerSchema);
 
+        var serverProcess = null;
+
         return P.try(function(){
-            return memdb.startServer(env.dbConfig('s1'));
+            return env.startServer('s1');
         })
-        .then(function(){
-            return mdbgoose.connectAsync();
+        .then(function(ret){
+            serverProcess = ret;
+            return mdbgoose.connectAsync({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
         })
         .then(function(){
             return mdbgoose.transaction(function(){
@@ -240,7 +240,7 @@ describe('mdbgoose test', function(){
             });
         })
         .finally(function(){
-            return memdb.stopServer();
+            return env.stopServer(serverProcess);
         })
         .nodeify(cb);
     });

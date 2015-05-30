@@ -151,9 +151,6 @@ var Shard = function(opts){
     // Cached readonly docs {key : doc} (raw doc, not document object)
     this.cachedDocs = {};
 
-    // Current onRequest keys, avoid concurrency
-    this.requestingKeys = {};
-
     // Current concurrent commiting processes
     this.commitingCount = 0;
 
@@ -188,7 +185,7 @@ proto.start = function(){
     .then(function(){
         this.gcInterval = setInterval(this.gc.bind(this), this.config.gcInterval);
 
-        this.globalEvent.on('request$' + this._id, this._onRequestKey.bind(this));
+        this.globalEvent.on('shard$' + this._id, this.onShardEvent.bind(this));
 
         this.state = STATE.RUNNING;
         this.emit('start');
@@ -205,7 +202,7 @@ proto.stop = function(){
 
     clearInterval(this.gcInterval);
 
-    this.globalEvent.removeAllListeners('request$' + this._id);
+    this.globalEvent.removeAllListeners('shard$' + this._id);
     this.globalEvent.quit();
     this.logger.info('global event closed');
 
@@ -381,20 +378,26 @@ proto.findReadOnly = function(connId, key){
     this._ensureState(STATE.RUNNING);
 
     if(this.cachedDocs.hasOwnProperty(key)){
-        this.logger.debug('[conn:%s] findReadOnly(%s) => hit cache', connId, key);
+        this.logger.debug('[conn:%s] findReadOnly(%s) => (hit cache)', connId, key);
         return P.resolve(this.cachedDocs[key]);
     }
 
     return P.bind(this)
     .then(function(){
         if(!!this.docs[key]){
-            return this.docs[key].find(connId);
+            return this._doc(key).findReadOnly(connId, key);
         }
-        else{
-            // TODO: request holder shard to save backend to avoid data delay
+
+        return P.bind(this)
+        .then(function(){
+            // notify holder to persistent change
+            return this.globalEvent.emit('key$' + key, 'persistent');
+        })
+        .delay(this.config.backendLockRetryInterval)
+        .then(function(){
             var res = this._resolveKey(key);
             return this.backend.get(res.name, res.id);
-        }
+        });
     })
     .then(function(doc){
         if(!this.cachedDocs.hasOwnProperty(key)){
@@ -409,7 +412,7 @@ proto.findReadOnly = function(connId, key){
             }
         }
 
-        this.logger.debug('[conn:%s] findReadOnly(%s) => miss cache', connId, key);
+        this.logger.debug('[conn:%s] findReadOnly(%s) => (miss cache) %j', connId, key, doc);
         return doc;
     });
 };
@@ -418,36 +421,60 @@ proto.isLocked = function(connId, key){
     return this.docs[key] && this.docs[key].isLocked(connId);
 };
 
-proto._onRequestKey = function(key){
+proto.onKeyEvent = function(key, arg){
     this._ensureState(STATE.RUNNING);
-    this.logger.debug('on request %s', key);
-
-    // concurrency
-    if(this.requestingKeys[key]){
-        return;
-    }
-    this.requestingKeys[key] = true;
+    this.logger.debug('onKeyEvent(%s, %j)', key, arg);
 
     var self = this;
-    return this.keyLock.acquire(key, function(){
-        if(!self.docs[key]){
-            // This may caused by unsuccessful unload, or concurrency issue
-            self.logger.warn('request key %s is not held', key);
-
-            return P.try(function(){
-                return self.slave.del(key);
-            })
-            .then(function(){
-                return self._unlockBackend(key);
+    P.try(function(){
+        if(arg === 'unload'){
+            return self.keyLock.acquire(key, function(){
+                return self._unload(key);
             });
         }
-        return self._unload(key);
+        else if(arg === 'persistent'){
+            return self.keyLock.acquire(key, function(){
+                return self._persistent(key);
+            });
+        }
+        else{
+            throw new Error('invalid key event arg - ' + arg);
+        }
     })
     .catch(function(e){
         self.logger.error(e.stack);
+    });
+};
+
+proto.onShardEvent = function(method, arg){
+    this._ensureState(STATE.RUNNING);
+    this.logger.debug('onShardEvent(%s, %j)', method, arg);
+
+    var self = this;
+    P.try(function(){
+        if(method === 'checkKey'){
+            // this event is triggered by other shards
+            // possibly a redundant backend lock is held
+            // may caused by unsuccessful unload
+            var key = arg;
+
+            return self.keyLock.acquire(key, function(){
+                if(!self.docs[key]){
+                    return P.try(function(){
+                        return self.slave.del(key);
+                    })
+                    .then(function(){
+                        return self._unlockBackend(key);
+                    });
+                }
+            });
+        }
+        else{
+            throw new Error('invalid shard event method - ' + method);
+        }
     })
-    .finally(function(){
-        delete self.requestingKeys[key];
+    .catch(function(e){
+        self.logger.error(e.stack);
     });
 };
 
@@ -532,6 +559,9 @@ proto._addDoc = function(key, obj){
         self.emit('updateIndex$' + res.name + '$' + connId, res.id, indexKey, oldValue, newValue);
     });
 
+    // TODO: this may fail
+    this.globalEvent.on('key$' + key, this.onKeyEvent.bind(this, key));
+
     // Loaded at this instant
     this.docs[key] = doc;
 };
@@ -543,6 +573,8 @@ proto._unload = function(key){
     }
 
     this.logger.debug('start unload %s', key);
+
+    this.globalEvent.removeAllListeners('key$' + key);
 
     var doc = this.docs[key];
 
@@ -601,36 +633,35 @@ proto._lockBackend = function(key){
         var startTick = Date.now();
 
         var tryLock = function(wait){
+
             return P.try(function(){
-                return self.backendLocker.getHolderId(key);
+                // notify holder to unload the doc
+                return self.globalEvent.emit('key$' + key, 'unload');
             })
-            .then(function(shardId){
-                //already locked by current shard
-                if(shardId === self._id){
+            .delay(wait / 2 + _.random(wait))
+            .then(function(){
+                return self.backendLocker.tryLock(key);
+            })
+            .then(function(success){
+                if(success){
                     return;
                 }
 
-                return P.try(function(){
-                    // currently locked by others
-                    if(shardId !== null){
-                        // request the holder for the key
-                        self.globalEvent.emit('request$' + shardId, key);
-                        self.logger.trace('request shard[%s] for key %s', shardId, key);
-                    }
-                })
-                .delay(wait / 2 + _.random(wait))
-                .then(function(){
-                    return self.backendLocker.tryLock(key);
-                })
-                .then(function(success){
-                    if(success){
-                        return;
-                    }
-                    if(Date.now() - startTick >= self.config.backendLockTimeout){
-                        throw new Error('lock backend doc ' + key + ' timed out');
-                    }
-                    return tryLock(wait);
-                });
+                if(Date.now() - startTick >= self.config.backendLockTimeout){
+                    // timeout. Possibly in bad state, notify holder to check
+                    return P.try(function(){
+                        return self.backendLocker.getHolderId(key);
+                    })
+                    .then(function(shardId){
+                        if(shardId){
+                            return self.globalEvent.emit('shard$' + shardId, 'checkKey', key);
+                        }
+                    })
+                    .then(function(){
+                        throw new Error('lock backend doc - ' + key + ' timed out');
+                    });
+                }
+                return tryLock(wait);
             });
         };
 
