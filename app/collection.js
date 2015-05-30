@@ -145,42 +145,35 @@ proto.findOne = function(query, fields, opts){
 proto.findById = function(id, fields, opts){
     id = this._checkId(id);
 
+    if(opts && opts.readonly){
+        return this.shard.findReadOnly(this.conn._id, this._key(id));
+    }
+
     var self = this;
     return P.try(function(){
-        if(opts && opts.lock){
-            return self.lock(id);
-        }
+        return self.lock(id);
     })
     .then(function(){
         return self.shard.find(self.conn._id, self._key(id), fields, opts);
     });
 };
 
-proto.findLocked = function(query, fields, opts){
+proto.findReadOnly = function(query, fields, opts){
     opts = opts || {};
-    opts.lock = true;
+    opts.readonly = true;
     return this.find(query, fields, opts);
 };
 
-proto.findOneLocked = function(query, fields, opts){
+proto.findOneReadOnly = function(query, fields, opts){
     opts = opts || {};
-    opts.lock = true;
+    opts.readonly = true;
     return this.findOne(query, fields, opts);
 };
 
-proto.findByIdLocked = function(id, fields, opts){
+proto.findByIdReadOnly = function(id, fields, opts){
     opts = opts || {};
-    opts.lock = true;
+    opts.readonly = true;
     return this.findById(id, fields, opts);
-};
-
-proto.findCached = function(id){
-    id = this._checkId(id);
-
-    var self = this;
-    return P.try(function(){ // wrap with promise
-        return self.shard.findCached(self.conn._id, self._key(id));
-    });
 };
 
 proto._findByIndex = function(indexKey, indexValue, fields, opts){

@@ -86,19 +86,25 @@ proto.getHolderId = function(docId){
 };
 
 proto.isHeld = function(docId){
-    return P.bind(this)
-    .then(function(){
-        return this.getHolderId(docId);
-    })
+    var self = this;
+    return this.getHolderId(docId)
     .then(function(ret){
-        return ret === this.shardId;
+        return ret === self.shardId;
     });
 };
 
+// concurrency safe between shards
+// not concurrency safe in same shard
 proto.unlock = function(docId){
     this.logger.debug('unlock %s', docId);
 
-    return this.client.delAsync(this._docKey(docId));
+    var self = this;
+    return this.isHeld(docId)
+    .then(function(held){
+        if(held){
+            return self.client.delAsync(self._docKey(docId));
+        }
+    });
 };
 
 proto.heartbeat = function(){

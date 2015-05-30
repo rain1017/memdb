@@ -15,7 +15,7 @@ var clone = function(obj){
 
 //http://docs.mongodb.org/manual/reference/limits/#Restrictions-on-Field-Names
 var verifyDoc = function(doc){
-    if(!utils.isDict(doc)){
+    if(doc === null || typeof(doc) !== 'object'){
         return;
     }
 
@@ -30,165 +30,166 @@ var verifyDoc = function(doc){
     }
 };
 
-module.exports = {
-    $insert : function(doc, param){
-        param = param || {};
-        if(doc !== null){
-            throw new Error('doc already exists');
+exports.$insert = function(doc, param){
+    param = param || {};
+    if(doc !== null){
+        throw new Error('doc already exists');
+    }
+    verifyDoc(param);
+    return clone(param);
+};
+
+exports.$replace = function(doc, param){
+    param = param || {};
+    if(doc === null){
+        throw new Error('doc not exist');
+    }
+    verifyDoc(param);
+    return clone(param);
+};
+
+exports.$remove = function(doc, param){
+    if(doc === null){
+        throw new Error('doc not exist');
+    }
+    return null;
+};
+
+exports.$set = function(doc, param){
+    if(doc === null){
+        throw new Error('doc not exist');
+    }
+    for(var path in param){
+        verifyDoc(param[path]);
+        utils.setObjPath(doc, path, clone(param[path]));
+    }
+    return doc;
+};
+
+exports.$unset = function(doc, param){
+    if(doc === null){
+        throw new Error('doc not exist');
+    }
+    for(var path in param){
+        if(!!param[path]){
+            utils.deleteObjPath(doc, path);
         }
-        verifyDoc(param);
-        return clone(param);
-    },
-    $replace : function(doc, param){
-        param = param || {};
-        if(doc === null){
-            throw new Error('doc not exist');
+    }
+    return doc;
+};
+
+exports.$inc = function(doc, param){
+    if(doc === null){
+        throw new Error('doc not exist');
+    }
+    for(var path in param){
+        var value = utils.getObjPath(doc, path);
+        var delta = param[path];
+        if(value === undefined){
+            value = 0;
         }
-        verifyDoc(param);
-        return clone(param);
-    },
-    $remove : function(doc, param){
-        if(doc === null){
-            throw new Error('doc not exist');
+        if(typeof(value) !== 'number' || typeof(delta) !== 'number'){
+            throw new Error('$inc non-number');
         }
-        return null;
-    },
-    $set : function(doc, param){
-        if(doc === null){
-            throw new Error('doc not exist');
+        utils.setObjPath(doc, path, value + delta);
+    }
+    return doc;
+};
+
+exports.$push = function(doc, param){
+    if(doc === null){
+        throw new Error('doc not exist');
+    }
+    for(var path in param){
+        var arr = utils.getObjPath(doc, path);
+        if(arr === undefined){
+            utils.setObjPath(doc, path, []);
+            arr = utils.getObjPath(doc, path);
         }
-        for(var path in param){
-            verifyDoc(param[path]);
-            utils.setObjPath(doc, path, clone(param[path]));
+        if(!Array.isArray(arr)){
+            throw new Error('$push to non-array');
         }
-        return doc;
-    },
-    $unset : function(doc, param){
-        if(doc === null){
-            throw new Error('doc not exist');
+        verifyDoc(param[path]);
+        arr.push(clone(param[path]));
+    }
+    return doc;
+};
+
+exports.$pushAll = function(doc, param){
+    if(doc === null){
+        throw new Error('doc not exist');
+    }
+    for(var path in param){
+        var arr = utils.getObjPath(doc, path);
+        if(arr === undefined){
+            utils.setObjPath(doc, path, []);
+            arr = utils.getObjPath(doc, path);
         }
-        for(var path in param){
-            if(!!param[path]){
-                utils.deleteObjPath(doc, path);
-            }
+        if(!Array.isArray(arr)){
+            throw new Error('$push to non-array');
         }
-        return doc;
-    },
-    $inc : function(doc, param){
-        if(doc === null){
-            throw new Error('doc not exist');
+        var items = param[path];
+        if(!Array.isArray(items)){
+            items = [items];
         }
-        for(var path in param){
-            var value = utils.getObjPath(doc, path);
-            var delta = param[path];
-            if(value === undefined){
-                value = 0;
-            }
-            if(typeof(value) !== 'number' || typeof(delta) !== 'number'){
-                throw new Error('not a number');
-            }
-            utils.setObjPath(doc, path, value + delta);
+        for(var i in items){
+            verifyDoc(items[i]);
+            arr.push(clone(items[i]));
         }
-        return doc;
-    },
-    $push : function(doc, param){
-        if(doc === null){
-            throw new Error('doc not exist');
+    }
+    return doc;
+};
+
+exports.$addToSet = function(doc, param){
+    if(doc === null){
+        throw new Error('doc not exist');
+    }
+    for(var path in param){
+        var arr = utils.getObjPath(doc, path);
+        if(arr === undefined){
+            utils.setObjPath(doc, path, []);
+            arr = utils.getObjPath(doc, path);
         }
-        for(var path in param){
-            var arr = utils.getObjPath(doc, path);
-            if(arr === undefined){
-                utils.setObjPath(doc, path, []);
-                arr = utils.getObjPath(doc, path);
-            }
-            if(!Array.isArray(arr)){
-                throw new Error('not an array');
-            }
-            verifyDoc(param[path]);
-            arr.push(clone(param[path]));
+        if(!Array.isArray(arr)){
+            throw new Error('$addToSet to non-array');
         }
-        return doc;
-    },
-    $pushAll : function(doc, param){
-        if(doc === null){
-            throw new Error('doc not exist');
+        var value = param[path];
+        if(arr.indexOf(value) === -1){
+            verifyDoc(value);
+            arr.push(clone(value));
         }
-        for(var path in param){
-            var arr = utils.getObjPath(doc, path);
-            if(arr === undefined){
-                utils.setObjPath(doc, path, []);
-                arr = utils.getObjPath(doc, path);
-            }
-            if(!Array.isArray(arr)){
-                throw new Error('not an array');
-            }
-            var items = param[path];
-            if(!Array.isArray(items)){
-                items = [items];
-            }
-            for(var i in items){
-                verifyDoc(items[i]);
-                arr.push(clone(items[i]));
-            }
+    }
+    return doc;
+};
+
+exports.$pop = function(doc, param){
+    if(doc === null){
+        throw new Error('doc not exist');
+    }
+    for(var path in param){
+        var arr = utils.getObjPath(doc, path);
+        if(Array.isArray(arr)){
+            arr.pop();
         }
-        return doc;
-    },
-    $addToSet : function(doc, param){
-        if(doc === null){
-            throw new Error('doc not exist');
-        }
-        for(var path in param){
-            var arr = utils.getObjPath(doc, path);
-            if(arr === undefined){
-                utils.setObjPath(doc, path, []);
-                arr = utils.getObjPath(doc, path);
-            }
-            if(!Array.isArray(arr)){
-                throw new Error('not an array');
-            }
+    }
+    return doc;
+};
+
+exports.$pull = function(doc, param){
+    if(doc === null){
+        throw new Error('doc not exist');
+    }
+    for(var path in param){
+        var arr = utils.getObjPath(doc, path);
+        if(Array.isArray(arr)){
             var value = param[path];
-            var exist = false;
             for(var i in arr){
                 if(arr[i] === value){
-                    exist = true;
+                    arr.splice(i, 1);
                     break;
                 }
             }
-            if(!exist){
-                verifyDoc(value);
-                arr.push(clone(value));
-            }
         }
-        return doc;
-    },
-    $pop : function(doc, param){
-        if(doc === null){
-            throw new Error('doc not exist');
-        }
-        for(var path in param){
-            var arr = utils.getObjPath(doc, path);
-            if(Array.isArray(arr)){
-                arr.pop();
-            }
-        }
-        return doc;
-    },
-    $pull : function(doc, param){
-        if(doc === null){
-            throw new Error('doc not exist');
-        }
-        for(var path in param){
-            var arr = utils.getObjPath(doc, path);
-            if(Array.isArray(arr)){
-                var value = param[path];
-                for(var i in arr){
-                    if(arr[i] === value){
-                        arr.splice(i, 1);
-                        break;
-                    }
-                }
-            }
-        }
-        return doc;
-    },
+    }
+    return doc;
 };

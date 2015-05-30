@@ -97,25 +97,28 @@ describe('mdbgoose test', function(){
                     });
                 })
                 .then(function(){
-                    return Player.findLockedAsync({_id : 'p1'})
+                    return Player.findReadOnlyAsync({_id : 'p1'})
                     .then(function(players){
                         players.length.should.eql(1);
                         players[0]._id.should.eql('p1');
                     });
                 })
                 .then(function(){
-                    return Player.findOneLockedAsync({_id : 'p1'})
+                    return Player.findOneReadOnlyAsync({_id : 'p1'})
                     .then(function(player){
                         player._id.should.eql('p1');
                     });
                 })
                 .then(function(){
-                    return Player.findByIdLockedAsync('p1');
+                    return Player.findByIdReadOnlyAsync('p1')
+                    .then(function(player){
+                        player._id.should.eql('p1');
+                    });
+                })
+                .then(function(){
+                    return Player.findAsync('p1');
                 })
                 .then(function(player){
-                    logger.debug('%j', player);
-                    player.name.should.eql('rain');
-
                     player.name = 'snow';
                     player.areaId = 'a1';
                     player.fullname.first = 'changed first';
@@ -160,7 +163,7 @@ describe('mdbgoose test', function(){
                     });
                 })
                 .then(function(){
-                    return Player.findCachedAsync('p1')
+                    return Player.findReadOnlyAsync('p1')
                     .then(function(ret){
                         logger.debug('%j', ret);
                     });

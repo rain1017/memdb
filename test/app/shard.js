@@ -48,14 +48,8 @@ describe('shard test', function(){
             // should unloaded now and saved to backend
             shard._isLoaded(key).should.eql(false);
 
-            // auto load again
-            return P.try(function(){
-                return shard.find(connId, key);
-            })
-            .then(function(ret){
-                // should read saved data
-                ret.should.eql(doc);
-            });
+            // load again
+            return shard.lock(connId, key);
         })
         .then(function(){
             // Already loaded, should return immediately
@@ -87,10 +81,11 @@ describe('shard test', function(){
         .then(function(){
             // load again
             return P.try(function(){
-                return shard.find(connId, key);
+                return shard.lock(connId, key);
             })
-            .then(function(ret){
-                (ret === null).should.be.true; // jshint ignore:line
+            .then(function(){
+                var doc = shard.find(connId, key);
+                (doc === null).should.be.true; // jshint ignore:line
             });
         })
         .then(function(){
@@ -135,13 +130,12 @@ describe('shard test', function(){
                 P.delay(20) // shard1 should load first
                 .then(function(){
                     // This will block until shard1 unload the key
-                    return shard2.find('c1', key);
-                })
-                .then(function(ret){
-                    ret.should.eql(doc);
                     return shard2.lock('c1', key);
                 })
                 .then(function(){
+                    var doc = shard2.find('c1', key);
+                    doc.should.eql(doc);
+
                     shard2.remove('c1', key);
                     return shard2.commit('c1', key);
                 }),

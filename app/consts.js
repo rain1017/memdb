@@ -2,8 +2,9 @@
 
 var exports = {};
 
-exports.collMethods = ['find', 'findOne', 'findById', 'findLocked', 'findOneLocked', 'findByIdLocked',
-                    'insert', 'update', 'remove', 'lock', 'findCached'];
+exports.collMethods = ['find', 'findOne', 'findById',
+                    'findReadOnly', 'findOneReadOnly', 'findByIdReadOnly',
+                    'insert', 'update', 'remove', 'lock'];
 
 exports.connMethods = ['commit', 'rollback', 'flushBackend'];
 

@@ -19,7 +19,7 @@ describe('database test', function(){
     //  //tested in ../lib/connection
     // });
 
-    it('persistent / idle timeout / find cached', function(cb){
+    it('persistent / idle timeout / find readonly', function(cb){
         var config1 = env.dbConfig('s1');
         config1.persistentDelay = 100;
         var db1 = new Database(config1);
@@ -47,14 +47,14 @@ describe('database test', function(){
         .delay(500) // doc persistented
         .then(function(){
             // read from backend
-            return conn2.findCached(collName, doc._id)
+            return conn2.findReadOnly(collName, doc._id)
             .then(function(ret){
                 ret.should.eql(doc);
             });
         })
         .then(function(){
             // get from cache
-            return conn2.findCached(collName, doc._id)
+            return conn2.findReadOnly(collName, doc._id)
             .then(function(ret){
                 ret.should.eql(doc);
             });
@@ -67,7 +67,7 @@ describe('database test', function(){
         })
         .delay(500) // doc idle timed out, should persistented
         .then(function(){
-            return conn1.findCached(collName, doc._id)
+            return conn1.findReadOnly(collName, doc._id)
             .then(function(ret){
                 (ret === null).should.eql(true);
             });

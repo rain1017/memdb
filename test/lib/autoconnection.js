@@ -45,7 +45,7 @@ describe('autoconnection test', function(){
                         var level = null;
 
                         return P.try(function(){
-                            return User.findLocked(user1._id, 'level');
+                            return User.find(user1._id, 'level');
                         })
                         .then(function(ret){
                             level = ret.level;

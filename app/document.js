@@ -202,8 +202,6 @@ proto._unlock = function(){
 
     releaseCallback();
     this.emit('unlock');
-
-    //process.nextTick(releaseCallback);
 };
 
 proto._getChanged = function(){

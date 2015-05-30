@@ -25,22 +25,25 @@ var STATE = {
 // memory limit 1024MB
 var DEFAULT_MEMORY_LIMIT = 1024;
 
-// unload doc count per GC cycle
-var DEFAULT_GC_COUNT = 100;
-
 // GC check interval
 var DEFAULT_GC_INTERVAL = 1000;
 
-// Idle time before doc is unloaded, adjust to balance memory usage
+// unload doc count per GC cycle
+var DEFAULT_GC_COUNT = 100;
+
+// Idle time before doc is unloaded
+// tune this to balance memory usage and performance
 var DEFAULT_IDLE_TIMEOUT = 600 * 1000;
 
-// Persistent delay after doc has commited
-var DEFAULT_PERSISTENT_DELAY = 60 * 1000;
+// Persistent delay after doc has commited (in ms)
+// tune this to balance backend data delay and performance
+// set 0 to never
+var DEFAULT_PERSISTENT_DELAY = 300 * 1000;
 
-// Timeout for readonly cache
-var DEFAULT_DOC_CACHE_TIMEOUT = 60 * 1000;
+// Timeout for readonly doc cache
+var DEFAULT_CACHE_TIMEOUT = 60 * 1000;
 
-// timeout for start locking backend doc
+// timeout for locking backend doc
 var DEFAULT_BACKEND_LOCK_TIMEOUT = 10 * 1000;
 // retry interval for backend lock
 var DEFAULT_BACKEND_LOCK_RETRY_INTERVAL = 100;
@@ -52,36 +55,15 @@ var DEFAULT_LOCK_TIMEOUT = 10 * 1000;
 var DEFAULT_HEARTBEAT_INTERVAL = 2 * 1000;
 var DEFAULT_HEARTBEAT_TIMEOUT = 5 * 1000;
 
-/**
- * opts.shardId (required) - shard id
- * opts.locking - {host : '127.0.0.1', port : 6379} // Global Locking Redis
- * opts.event - {host : '127.0.0.1', port : 6379} //Global Event Redis
- * opts.backend - // Global backend storage
- *  {
- *      engine : 'mongodb',
- *      url : 'mongodb://localhost',
- *      options : {...},
- *  }
- *  or
- *  {
- *      engine : 'redis',
- *      host : '127.0.0.1',
- *      port : 6379,
- *  }
- * opts.slave - {host : '127.0.0.1', port : 6379} (redis slave for data replication)
- *
- * Events:
- * updateIndex$collName$connId - (docId, indexKey, oldValue, newValue)
- */
+
 var Shard = function(opts){
     EventEmitter.call(this);
 
     opts = opts || {};
-    var self = this;
 
     this._id = opts.shardId;
     if(!this._id){
-        throw new Error('You must specify shardId');
+        throw new Error('shardId is empty');
     }
     if(this._id.indexOf('$') !== -1){
         throw new Error('shardId can not contain "$"');
@@ -89,34 +71,21 @@ var Shard = function(opts){
 
     this.logger = Logger.getLogger('memdb', __filename, 'shard:' + this._id);
 
-    opts.locking = opts.locking || {};
-    opts.event = opts.event || {};
-
     this.config = {
-        locking : {
-            host : opts.locking.host || '127.0.0.1',
-            port : opts.locking.port || 6379,
-            db : opts.locking.db || 0,
-            options : opts.locking.options || {},
-        },
-        event : {
-            host : opts.event.host || '127.0.0.1',
-            port : opts.event.port || 6379,
-            db : opts.event.db || 0,
-            options : opts.event.options || {},
-        },
+        locking : opts.locking || {},
+        event : opts.event || {},
         backend : opts.backend || {},
         slave : opts.slave || {},
 
-        persistentDelay : opts.persistentDelay || DEFAULT_PERSISTENT_DELAY,
+        idleTimeout : opts.hasOwnProperty('idleTimeout') ? opts.idleTimeout : DEFAULT_IDLE_TIMEOUT,
+        persistentDelay : opts.hasOwnProperty('persistentDelay') ?  opts.persistentDelay : DEFAULT_PERSISTENT_DELAY,
+        cacheTimeout : opts.hasOwnProperty('cacheTimeout') ? opts.cacheTimeout : DEFAULT_CACHE_TIMEOUT,
+
         heartbeatInterval : opts.heartbeatInterval || DEFAULT_HEARTBEAT_INTERVAL,
         heartbeatTimeout : opts.heartbeatTimeout || DEFAULT_HEARTBEAT_TIMEOUT,
-        docCacheTimeout : opts.docCacheTimeout || DEFAULT_DOC_CACHE_TIMEOUT,
         backendLockTimeout : opts.backendLockTimeout || DEFAULT_BACKEND_LOCK_TIMEOUT,
         backendLockRetryInterval : opts.backendLockRetryInterval || DEFAULT_BACKEND_LOCK_RETRY_INTERVAL,
         lockTimeout : opts.lockTimeout || DEFAULT_LOCK_TIMEOUT,
-
-        idleTimeout : opts.idleTimeout || DEFAULT_IDLE_TIMEOUT,
 
         memoryLimit : opts.memoryLimit || DEFAULT_MEMORY_LIMIT,
         gcCount : opts.gcCount || DEFAULT_GC_COUNT,
@@ -127,88 +96,66 @@ var Shard = function(opts){
         collections : opts.collections || {},
     };
 
-    this.backendLocker = new BackendLocker({
-                                shardId : this._id,
-                                host : this.config.locking.host,
-                                port : this.config.locking.port,
-                                db : this.config.locking.db,
-                                options : this.config.locking.options,
-                                heartbeatTimeout : this.config.heartbeatTimeout,
-                                heartbeatInterval : this.config.heartbeatInterval,
-                            });
+    // global locking
+    var lockerConf = this.config.locking;
+    lockerConf.shardId = this._id;
+    lockerConf.heartbeatTimeout = this.config.heartbeatTimeout;
+    lockerConf.heartbeatInterval = this.config.heartbeatInterval;
+    this.backendLocker = new BackendLocker(lockerConf);
 
+    // backend storage
     var backendConf = this.config.backend;
     backendConf.shardId = this._id;
     this.backend = backends.create(backendConf);
 
-    // Redis slave for data backup
+    // slave redis
     var slaveConf = this.config.slave;
     slaveConf.shardId = this._id;
     this.slave = new Slave(slaveConf);
 
+    // global event
+    var eventConf = {
+        port : this.config.event.port || 6379,
+        host : this.config.event.host || '127.0.0.1',
+        db : this.config.event.db || 0,
+        options : this.config.event.options || {},
+    };
+    var pubClient = redis.createClient(eventConf.port, eventConf.host, eventConf.options);
+    var subClient = redis.createClient(eventConf.port, eventConf.host, eventConf.options);
+    pubClient.select(eventConf.db);
+    subClient.select(eventConf.db);
+    this.globalEvent = new GlobalEventEmitter({pub : pubClient, sub: subClient});
+    this.logger.info('global event inited %s:%s:%s', eventConf.host, eventConf.port, eventConf.db);
+
     // Document storage {key : doc}
     this.docs = {};
+
     // Newly commited docs (for incremental _save)
     this.commitedKeys = {}; // {key : true}
 
     // Idle timeout before unload
     this.idleTimeouts = {}; // {key : timeout}
 
-    // GC interval
-    this.gcInterval = null;
-
     // Doc persistent timeout
     this.persistentTimeouts = {}; // {key : timeout}
 
-    // Lock async tasks for each key
+    // GC interval
+    this.gcInterval = null;
+
+    // Lock async operations for each key
     this.keyLock = new AsyncLock({Promise : P});
-    // task Locker
+
+    // Task locker
     this.taskLock = new AsyncLock({Promise : P});
-
-    // For sending messages between shards
-    var pubClient = redis.createClient(this.config.event.port, this.config.event.host, this.config.event.options);
-    var subClient = redis.createClient(this.config.event.port, this.config.event.host, this.config.event.options);
-    pubClient.select(this.config.event.db);
-    subClient.select(this.config.event.db);
-    this.globalEvent = new GlobalEventEmitter({pub : pubClient, sub: subClient});
-
-    this.logger.info('global event inited %s:%s:%s', this.config.event.host, this.config.event.port, this.config.event.db);
-
-    // Request for unlock backend key
-    this.requestingKeys = {};
-    this.onRequestKey = function(key){
-        try{
-            self._ensureState(STATE.RUNNING);
-
-            self.logger.debug('on request %s', key);
-            if(self.requestingKeys[key]){
-                return;
-            }
-            self.requestingKeys[key] = true;
-
-            self.keyLock.acquire(key, function(){
-                if(!self.docs[key]){
-                    self.logger.warn('shard not hold the request key %s', key);
-                    return self._unlockBackend(key)
-                    .catch(function(e){});
-                }
-                return self._unload(key);
-            })
-            .catch(function(e){
-                self.logger.error(e.stack);
-            })
-            .finally(function(){
-                delete self.requestingKeys[key];
-            });
-        }
-        catch(err){
-            self.logger.error(err.stack);
-        }
-    };
-    this.globalEvent.on('request$' + this._id, this.onRequestKey);
 
     // Cached readonly docs {key : doc} (raw doc, not document object)
     this.cachedDocs = {};
+
+    // Current onRequest keys, avoid concurrency
+    this.requestingKeys = {};
+
+    // Current concurrent commiting processes
+    this.commitingCount = 0;
 
     this.state = STATE.INITED;
 };
@@ -235,11 +182,13 @@ proto.start = function(){
     })
     .then(function(){
         if(!this.config.disableSlave){
-            return this._restoreFromSlave();
+            return this.restoreFromSlave();
         }
     })
     .then(function(){
         this.gcInterval = setInterval(this.gc.bind(this), this.config.gcInterval);
+
+        this.globalEvent.on('request$' + this._id, this._onRequestKey.bind(this));
 
         this.state = STATE.RUNNING;
         this.emit('start');
@@ -250,8 +199,8 @@ proto.start = function(){
 proto.stop = function(){
     this._ensureState(STATE.RUNNING);
 
-    // This will prevent any further request from clients
-    // All commited data will be saved, while uncommited will be rolled back
+    // This will prevent any further requests
+    // All commited data will be saved, while uncommited data will be rolled back
     this.state = STATE.STOPING;
 
     clearInterval(this.gcInterval);
@@ -262,13 +211,26 @@ proto.stop = function(){
 
     return P.bind(this)
     .then(function(){
-        // Wait for running task finish
-        return this.taskLock.acquire(['gc', 'flushBackend'], function(){
-        });
+        // Wait for all running task finish
+        return this.taskLock.acquire('', function(){});
+    })
+    .then(function(){
+        // Wait for all commit process finish
+        var deferred = P.defer();
+        var self = this;
+        var check = function(){
+            if(self.commitingCount <= 0){
+                deferred.resolve();
+            }
+            else{
+                setTimeout(check, 200);
+            }
+        };
+        check();
+        return deferred.promise;
     })
     .then(function(){
         var self = this;
-
         return P.mapLimit(Object.keys(this.docs), function(key){
             return self.keyLock.acquire(key, function(){
                 if(self.docs[key]){
@@ -299,34 +261,15 @@ proto.stop = function(){
 proto.find = function(connId, key, fields){
     this._ensureState(STATE.RUNNING);
 
-    if(this.docs[key]){
-        if(this.docs[key].isFree()){
-            // restart idle timer if doc doesn't locked by anyone
-            this._cancelIdleTimeout(key);
-            this._startIdleTimeout(key);
-        }
-        return this.docs[key].find(connId, fields);
-    }
-
-    var self = this;
-    return this.keyLock.acquire(key, function(){
-        return P.try(function(){
-            return self._load(key);
-        })
-        .then(function(){
-            return self.docs[key].find(connId, fields);
-        });
-    })
-    .then(function(doc){
-        self.logger.debug('[conn:%s] find(%s, %j) => %j', connId, key, fields, doc);
-        return doc;
-    });
+    // Since lock is called before, so doc is loaded for sure
+    var ret = this._doc(key).find(connId, fields);
+    this.logger.debug('[conn:%s] find(%s, %j) => %j', connId, key, fields, ret);
+    return ret;
 };
 
 proto.update = function(connId, key, doc, opts){
     this._ensureState(STATE.RUNNING);
 
-    // Since lock is called before, so doc is loaded for sure
     var ret = this._doc(key).update(connId, doc, opts);
     this.logger.debug('[conn:%s] update(%s, %j, %j) => %s', connId, key, doc, opts, ret);
     return ret;
@@ -370,7 +313,6 @@ proto.lock = function(connId, key){
         return;
     }
 
-    // New lock will be blocked even if doc is loaded while _unloading
     var self = this;
     return this.keyLock.acquire(key, function(){
         return P.try(function(){
@@ -396,6 +338,17 @@ proto.commit = function(connId, keys){
     }
 
     var self = this;
+
+    keys.forEach(function(key){
+        if(!self.isLocked(connId, key)){
+            throw new Error('[conn:%s] %s not locked', connId, key);
+        }
+    });
+
+    this.commitingCount++;
+
+    // commit is not concurrency safe for same connection.
+    // but database.js guarantee that every request from same connection are in series.
     return P.try(function(){
         if(self.config.disableSlave){
             return;
@@ -406,6 +359,9 @@ proto.commit = function(connId, keys){
             docs[key] = self._doc(key)._getChanged();
         });
         return self.slave.setMulti(docs);
+
+        //TODO: possibly loss consistency
+        //      if setMulti return failed but actually sccuess
     })
     .then(function(){
         // Real Commit
@@ -414,23 +370,19 @@ proto.commit = function(connId, keys){
         });
 
         self.logger.debug('[conn:%s] commit(%j)', connId, keys);
+    })
+    .finally(function(){
+        self.commitingCount--;
     });
 };
 
-proto.isLocked = function(connId, key){
+// Readonly find without locking backend (data may not up-to-date)
+proto.findReadOnly = function(connId, key){
     this._ensureState(STATE.RUNNING);
-    return this.docs[key] && this.docs[key].isLocked(connId);
-};
 
-/**
- * Find doc from cache (without triggering doc transfer)
- * The data may not up to date (has some legacy on change)
- * Use this when you only need readonly access and not requiring realtime data
- */
-proto.findCached = function(connId, key){
-    this._ensureState(STATE.RUNNING);
-    if(this.cachedDocs.hasOwnProperty(key)){ //The doc can be null
-        return this.cachedDocs[key];
+    if(this.cachedDocs.hasOwnProperty(key)){
+        this.logger.debug('[conn:%s] findReadOnly(%s) => hit cache', connId, key);
+        return P.resolve(this.cachedDocs[key]);
     }
 
     return P.bind(this)
@@ -439,6 +391,7 @@ proto.findCached = function(connId, key){
             return this.docs[key].find(connId);
         }
         else{
+            // TODO: request holder shard to save backend to avoid data delay
             var res = this._resolveKey(key);
             return this.backend.get(res.name, res.id);
         }
@@ -446,30 +399,68 @@ proto.findCached = function(connId, key){
     .then(function(doc){
         if(!this.cachedDocs.hasOwnProperty(key)){
             this.cachedDocs[key] = doc;
-            var self = this;
-            setTimeout(function(){
-                delete self.cachedDocs[key];
-                self.logger.debug('remove cached doc %s', key);
-            }, this.config.docCacheTimeout);
+
+            if(this.config.cacheTimeout > 0){
+                var self = this;
+                setTimeout(function(){
+                    delete self.cachedDocs[key];
+                    self.logger.debug('remove cached doc %s', key);
+                }, this.config.cacheTimeout);
+            }
         }
-        this.logger.debug('[conn:%s] findCached(%s) => %j', connId, key, doc);
+
+        this.logger.debug('[conn:%s] findReadOnly(%s) => miss cache', connId, key);
         return doc;
     });
 };
 
-/**
- * Lock backend and load doc from backend to memory
- * Not concurrency safe and must called with lock
- */
+proto.isLocked = function(connId, key){
+    return this.docs[key] && this.docs[key].isLocked(connId);
+};
+
+proto._onRequestKey = function(key){
+    this._ensureState(STATE.RUNNING);
+    this.logger.debug('on request %s', key);
+
+    // concurrency
+    if(this.requestingKeys[key]){
+        return;
+    }
+    this.requestingKeys[key] = true;
+
+    var self = this;
+    return this.keyLock.acquire(key, function(){
+        if(!self.docs[key]){
+            // This may caused by unsuccessful unload, or concurrency issue
+            self.logger.warn('request key %s is not held', key);
+
+            return P.try(function(){
+                return self.slave.del(key);
+            })
+            .then(function(){
+                return self._unlockBackend(key);
+            });
+        }
+        return self._unload(key);
+    })
+    .catch(function(e){
+        self.logger.error(e.stack);
+    })
+    .finally(function(){
+        delete self.requestingKeys[key];
+    });
+};
+
+// internal method, not concurrency safe
 proto._load = function(key){
-    if(this.docs[key]){
+    if(this.docs[key]){ // already loaded
         return;
     }
 
     this.logger.debug('start load %s', key);
 
-    var doc = null;
-    // Not using keyLock here since load is always called in other task
+    var obj = null;
+
     return P.bind(this)
     .then(function(){
         // get backend lock
@@ -480,38 +471,34 @@ proto._load = function(key){
         return this.backend.get(res.name, res.id);
     })
     .then(function(ret){
-        doc = this._createDoc(key, ret);
+        obj = ret;
         if(!this.config.disableSlave){
             // Sync data to slave
-            return this.slave.set(key, ret);
+            return this.slave.set(key, obj);
         }
     })
     .then(function(){
-        this._addDoc(key, doc);
+        this._addDoc(key, obj);
 
         this.logger.info('loaded %s', key);
     });
 };
 
-proto._addDoc = function(key, doc){
+proto._addDoc = function(key, obj){
     var self = this;
 
-    doc.on('commit', function(){
-        // Mark newly commited docs
-        self.commitedKeys[key] = true;
+    var res = this._resolveKey(key);
+    var coll = this.config.collections[res.name];
+    var indexes = (coll && coll.indexes) || {};
 
-        if(!self.persistentTimeouts.hasOwnProperty(key)){
-            self.persistentTimeouts[key] = setTimeout(function(){
-                delete self.persistentTimeouts[key];
-                return self.keyLock.acquire(key, function(){
-                    return self.persistent(key);
-                })
-                .catch(function(err){
-                    self.logger.error(err.stack);
-                });
-            }, self.config.persistentDelay);
-        }
-    });
+    var opts = {
+        _id : res.id,
+        doc: obj,
+        indexes: indexes,
+        lockTimeout : this.config.lockTimeout,
+        shardId : this._id,
+    };
+    var doc = new Document(opts);
 
     this._startIdleTimeout(key);
 
@@ -523,8 +510,25 @@ proto._addDoc = function(key, doc){
         self._startIdleTimeout(key);
     });
 
-    var res = this._resolveKey(key);
+    doc.on('commit', function(){
+        self.commitedKeys[key] = true;
+
+        // delay sometime and persistent to backend
+        if(!self.persistentTimeouts.hasOwnProperty(key) && self.config.persistentDelay > 0){
+            self.persistentTimeouts[key] = setTimeout(function(){
+                delete self.persistentTimeouts[key];
+                return self.keyLock.acquire(key, function(){
+                    return self._persistent(key);
+                })
+                .catch(function(err){
+                    self.logger.error(err.stack);
+                });
+            }, self.config.persistentDelay);
+        }
+    });
+
     doc.on('updateIndex', function(connId, indexKey, oldValue, newValue){
+        // pass event to collection
         self.emit('updateIndex$' + res.name + '$' + connId, res.id, indexKey, oldValue, newValue);
     });
 
@@ -532,28 +536,9 @@ proto._addDoc = function(key, doc){
     this.docs[key] = doc;
 };
 
-proto._startIdleTimeout = function(key){
-    var self = this;
-    this.idleTimeouts[key] = setTimeout(function(){
-        return self.keyLock.acquire(key, function(){
-            if(self.docs[key]){
-                self.logger.debug('%s idle timed out, will unload', key);
-                return self._unload(key);
-            }
-        });
-    }, this.config.idleTimeout);
-};
-
-proto._cancelIdleTimeout = function(key){
-    clearTimeout(this.idleTimeouts[key]);
-    delete this.idleTimeouts[key];
-};
-
-/**
- * Not concurrency safe and must called with lock
- */
+// internal method, not concurrency safe
 proto._unload = function(key){
-    if(!this.docs[key]){
+    if(!this.docs[key]){ //already unloaded
         return;
     }
 
@@ -567,18 +552,15 @@ proto._unload = function(key){
         return doc._waitUnlock();
     })
     .then(function(){
-        // The doc is read only now
+        this._cancelIdleTimeout(key);
 
-        // Remove persistent timeout
         if(this.persistentTimeouts.hasOwnProperty(key)){
             clearTimeout(this.persistentTimeouts[key]);
             delete this.persistentTimeouts[key];
         }
 
-        this._cancelIdleTimeout(key);
-
         // Persistent immediately
-        return this.persistent(key);
+        return this._persistent(key);
     })
     .then(function(){
         if(!this.config.disableSlave){
@@ -589,65 +571,70 @@ proto._unload = function(key){
     .then(function(){
         doc.removeAllListeners('commit');
         doc.removeAllListeners('updateIndex');
+        doc.removeAllListeners('lock');
+        doc.removeAllListeners('unlock');
 
         // _unloaded at this instant
         delete this.docs[key];
 
-        return P.bind(this)
-        .then(function(){
-            // Release backend lock
-            return this._unlockBackend(key);
-        })
-        .then(function(){
-            this.logger.info('unloaded %s', key);
-        })
-        .delay(this.config.backendLockRetryInterval); // Can't load again immediately, prevent 'locking hungry' in other shards
-    });
+        // Release backend lock
+        return this._unlockBackend(key);
+    })
+    .then(function(){
+        this.logger.info('unloaded %s', key);
+    })
+    // Can't load again immediately, prevent 'locking hungry' from other shards
+    .delay(this.config.backendLockRetryInterval);
 };
 
+// internal method, not concurrency safe
 proto._lockBackend = function(key){
-    return P.bind(this)
-    .then(function(){
-        return this.backendLocker.tryLock(key);
+    var self = this;
+    return P.try(function(){
+        return self.backendLocker.tryLock(key);
     })
     .then(function(success){
         if(success){
             return;
         }
         // Wait and try
-        var self = this;
         var startTick = Date.now();
+
         var tryLock = function(wait){
-            return P.bind(self)
-            .then(function(){
-                return this.backendLocker.getHolderId(key);
+            return P.try(function(){
+                return self.backendLocker.getHolderId(key);
             })
             .then(function(shardId){
-                if(shardId === null){
-                    // unlocked
-                    return;
-                }
-                // request the holder for the key
-                // Emit request key event
-                this.globalEvent.emit('request$' + shardId, key);
-                this.logger.trace('request shard[%s] for key %s', shardId, key);
-            })
-            .delay(wait / 2 + _.random(wait))
-            .then(function(){
-                return this.backendLocker.tryLock(key);
-            })
-            .then(function(success){
-                if(success){
+                //already locked by current shard
+                if(shardId === self._id){
                     return;
                 }
 
-                if(Date.now() - startTick >= this.config.backendLockTimeout){
-                    throw new Error('lock backend doc ' + key + ' timed out');
-                }
-                return tryLock(wait);
+                return P.try(function(){
+                    // currently locked by others
+                    if(shardId !== null){
+                        // request the holder for the key
+                        self.globalEvent.emit('request$' + shardId, key);
+                        self.logger.trace('request shard[%s] for key %s', shardId, key);
+                    }
+                })
+                .delay(wait / 2 + _.random(wait))
+                .then(function(){
+                    return self.backendLocker.tryLock(key);
+                })
+                .then(function(success){
+                    if(success){
+                        return;
+                    }
+                    if(Date.now() - startTick >= self.config.backendLockTimeout){
+                        throw new Error('lock backend doc ' + key + ' timed out');
+                    }
+                    return tryLock(wait);
+                });
             });
         };
-        return tryLock(this.config.backendLockRetryInterval);
+
+        return tryLock(self.config.backendLockRetryInterval);
     });
 };
 
@@ -655,33 +642,52 @@ proto._unlockBackend = function(key){
     return this.backendLocker.unlock(key);
 };
 
-/**
- * Persistent one doc (if changed) to backend
- */
-proto.persistent = function(key){
+// internal method, not concurrency safe
+proto._persistent = function(key){
     if(!this.commitedKeys.hasOwnProperty(key)){
-        return;
+        return; // no change
     }
 
-    // Get reference to commited doc obj.
-    // actually doc.commited is immutable
     var doc = this._doc(key)._getCommited();
     // Doc may changed again during persistent, so delete the flag now.
     delete this.commitedKeys[key];
 
-    return P.bind(this)
+    var self = this;
+    var res = this._resolveKey(key);
+
+    return this.backend.set(res.name, res.id, doc)
     .then(function(){
-        var res = this._resolveKey(key);
-        return this.backend.set(res.name, res.id, doc);
-    })
-    .then(function(){
-        this.logger.debug('persistented %s', key);
+        self.logger.debug('persistented %s', key);
     }, function(e){
         // Persistent failed, reset the changed flag
-        this.commitedKeys[key] = true;
+        self.commitedKeys[key] = true;
         // rethrow
         throw e;
     });
+};
+
+proto._startIdleTimeout = function(key){
+    if(!this.config.idleTimeout){
+        return;
+    }
+
+    var self = this;
+    this.idleTimeouts[key] = setTimeout(function(){
+        return self.keyLock.acquire(key, function(){
+            if(self.docs[key]){
+                self.logger.debug('%s idle timed out, will unload', key);
+                return self._unload(key);
+            }
+        })
+        .catch(function(e){
+            self.logger.error(e.stack);
+        });
+    }, this.config.idleTimeout);
+};
+
+proto._cancelIdleTimeout = function(key){
+    clearTimeout(this.idleTimeouts[key]);
+    delete this.idleTimeouts[key];
 };
 
 // Flush changes to backend storage
@@ -689,10 +695,10 @@ proto.flushBackend = function(connId){
     this._ensureState(STATE.RUNNING);
     var self = this;
 
-    return this.taskLock.acquire('flushBackend', function(){
+    return this.taskLock.acquire('', function(){
         return P.mapLimit(Object.keys(self.commitedKeys), function(key){
             return self.keyLock.acquire(key, function(){
-                return self.persistent(key);
+                return self._persistent(key);
             });
         });
     })
@@ -706,12 +712,12 @@ proto.gc = function(){
     if(this.state !== STATE.RUNNING){
         return;
     }
-    if(this.taskLock.isBusy('gc')){
+    if(this.taskLock.isBusy('')){
         return;
     }
 
     var self = this;
-    return this.taskLock.acquire('gc', function(){
+    return this.taskLock.acquire('', function(){
         var usage = process.memoryUsage();
         var memSize = usage.heapUsed;
 
@@ -723,6 +729,9 @@ proto.gc = function(){
         self.logger.warn('Start GC. Memory usage is too high, please reduce idleTimeout. %j', usage);
 
         var startTick = Date.now();
+
+        // remove all cached docs
+        self.cachedDocs = {};
 
         // remove some doc
         var keys = [], count = 0;
@@ -751,7 +760,7 @@ proto.gc = function(){
     });
 };
 
-proto._restoreFromSlave = function(){
+proto.restoreFromSlave = function(){
     this._ensureState(STATE.STARTING);
 
     return P.bind(this)
@@ -762,6 +771,7 @@ proto._restoreFromSlave = function(){
         if(keys.length === 0){
             return;
         }
+
         this.logger.error('Server not stopped properly, will restore data from slave');
 
         return P.bind(this)
@@ -769,20 +779,22 @@ proto._restoreFromSlave = function(){
             return this.slave.getMulti(keys);
         })
         .then(function(items){
-            for(var key in items){
-                var item = items[key];
-                var doc = this._createDoc(key, item);
-                this._addDoc(key, doc);
-                // Set all keys as unsaved
-                this.commitedKeys[key] = true;
-            }
+            var self = this;
+            return P.mapLimit(Object.keys(items), function(key){
+                self._addDoc(key, items[key]);
+                // persistent all docs to backend
+                self.commitedKeys[key] = true;
+                return self._persistent(key);
+            });
+        })
+        .then(function(){
             this.logger.warn('restored %s keys from slave', keys.length);
         });
     });
 };
 
 proto._doc = function(key){
-    if(!this.docs[key]){
+    if(!this.docs.hasOwnProperty(key)){
         throw new Error(key + ' is not loaded');
     }
     return this.docs[key];
@@ -798,23 +810,7 @@ proto._resolveKey = function(key){
     if(i === -1){
         throw new Error('invalid key: ' + key);
     }
-    return {name : key.slice(0, i), id : key.slice(i+1)};
-};
-
-
-proto._createDoc = function(key, doc){
-    var res = this._resolveKey(key);
-    var coll = this.config.collections[res.name];
-    var indexes = coll ? coll.indexes || {}: {};
-
-    var opts = {
-        _id : res.id,
-        doc: doc,
-        indexes: indexes,
-        lockTimeout : this.config.lockTimeout,
-        shardId : this._id,
-    };
-    return new Document(opts);
+    return {name : key.slice(0, i), id : key.slice(i + 1)};
 };
 
 proto._ensureState = function(state){
