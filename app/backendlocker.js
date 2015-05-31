@@ -20,9 +20,7 @@ var BackendLocker = function(opts){
         heartbeatInterval : opts.heartbeatInterval,
     };
 
-    this.client = redis.createClient(this.config.port, this.config.host, this.config.options);
-    this.client.select(this.config.db);
-
+    this.client = null;
     this.heartbeatInterval = null;
 
     this.logger = Logger.getLogger('memdb', __filename, 'shard:' + this.shardId);
@@ -32,6 +30,14 @@ var proto = BackendLocker.prototype;
 
 proto.start = function(){
     return P.bind(this)
+    .then(function(){
+        this.client = redis.createClient(this.config.port, this.config.host, this.config.options);
+        var self = this;
+        this.client.on('error', function(err){
+            self.logger.error(err.stack);
+        });
+        return this.client.selectAsync(this.config.db);
+    })
     .then(function(){
         return this.isAlive();
     })
@@ -60,7 +66,9 @@ proto.stop = function(){
         return this.clearHeartbeat();
     })
     .then(function(){
-        this.client.end();
+        return this.client.quitAsync();
+    })
+    .then(function(){
         this.logger.info('backendLocker stoped');
     });
 };

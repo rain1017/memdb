@@ -57,8 +57,15 @@ var startServer = function(opts){
         });
 
         socket.on('disconnect', function(){
-            db.disconnect(connId);
-            logger.info('[conn:%s] %s disconnected', connId, remoteAddr);
+            P.try(function(){
+                return db.disconnect(connId);
+            })
+            .then(function(){
+                logger.info('[conn:%s] %s disconnected', connId, remoteAddr);
+            })
+            .catch(function(e){
+                logger.error(e.stack);
+            });
         });
 
         logger.info('[conn:%s] %s connected', connId, remoteAddr);

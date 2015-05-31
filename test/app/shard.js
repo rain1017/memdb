@@ -120,7 +120,8 @@ describe('shard test', function(){
                     // should unloading now (wait for unlock)
                     // already locked, so will not block
                     return shard1.lock('c1', key);
-                }).then(function(){
+                })
+                .then(function(){
                     shard1.insert('c1', key, doc);
                     return shard1.commit('c1', key);
                     // unlocked, unloading should continue
@@ -150,6 +151,9 @@ describe('shard test', function(){
                 .then(function(){
                     // should read shard2 saved value
                     (shard1.find('c2', key) === null).should.be.true; // jshint ignore:line
+                })
+                .then(function(){
+                    return shard1.commit('c2', key);
                 })
             ]);
         })

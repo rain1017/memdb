@@ -23,6 +23,12 @@ var proto = RedisBackend.prototype;
 
 proto.start = function(){
     this.conn = redis.createClient(this.config.port, this.config.host, this.config.options);
+
+    var self = this;
+    this.conn.on('error', function(err){
+        self.logger.error(err.stack);
+    });
+
     this.conn.select(this.config.db);
 
     this.logger.debug('backend redis connected to %s:%s:%s', this.config.host, this.config.port, this.config.db);

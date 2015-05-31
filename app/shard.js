@@ -6,8 +6,8 @@ var Logger = require('memdb-logger');
 var util = require('util');
 var redis = require('redis');
 var AsyncLock = require('async-lock');
-var GlobalEventEmitter = require('global-events').EventEmitter;
 var EventEmitter = require('events').EventEmitter;
+var GlobalEvent = require('./globalevent');
 var backends = require('./backends');
 var Document = require('./document'); //jshint ignore:line
 var BackendLocker = require('./backendlocker');
@@ -114,18 +114,9 @@ var Shard = function(opts){
     this.slave = new Slave(slaveConf);
 
     // global event
-    var eventConf = {
-        port : this.config.event.port || 6379,
-        host : this.config.event.host || '127.0.0.1',
-        db : this.config.event.db || 0,
-        options : this.config.event.options || {},
-    };
-    var pubClient = redis.createClient(eventConf.port, eventConf.host, eventConf.options);
-    var subClient = redis.createClient(eventConf.port, eventConf.host, eventConf.options);
-    pubClient.select(eventConf.db);
-    subClient.select(eventConf.db);
-    this.globalEvent = new GlobalEventEmitter({pub : pubClient, sub: subClient});
-    this.logger.info('global event inited %s:%s:%s', eventConf.host, eventConf.port, eventConf.db);
+    var eventConf = this.config.event;
+    eventConf.shardId = this._id;
+    this.globalEvent = new GlobalEvent(eventConf);
 
     // Document storage {key : doc}
     this.docs = {};
@@ -154,6 +145,9 @@ var Shard = function(opts){
     // Current concurrent commiting processes
     this.commitingCount = 0;
 
+    // Current key unloading task
+    this.unloadingKeys = {};
+
     this.state = STATE.INITED;
 };
 
@@ -166,6 +160,9 @@ proto.start = function(){
     this.state = STATE.STARTING;
 
     return P.bind(this)
+    .then(function(){
+        return this.globalEvent.start();
+    })
     .then(function(){
         return this.backendLocker.start();
     })
@@ -183,9 +180,10 @@ proto.start = function(){
         }
     })
     .then(function(){
+        return this.globalEvent.addListener('shard$' + this._id, this.onShardEvent.bind(this));
+    })
+    .then(function(){
         this.gcInterval = setInterval(this.gc.bind(this), this.config.gcInterval);
-
-        this.globalEvent.on('shard$' + this._id, this.onShardEvent.bind(this));
 
         this.state = STATE.RUNNING;
         this.emit('start');
@@ -201,10 +199,6 @@ proto.stop = function(){
     this.state = STATE.STOPING;
 
     clearInterval(this.gcInterval);
-
-    this.globalEvent.removeAllListeners('shard$' + this._id);
-    this.globalEvent.quit();
-    this.logger.info('global event closed');
 
     return P.bind(this)
     .then(function(){
@@ -241,6 +235,9 @@ proto.stop = function(){
         if(!this.config.disableSlave){
             return this.slave.stop();
         }
+    })
+    .then(function(){
+        return this.globalEvent.stop();
     })
     .then(function(){
         return this.backend.stop();
@@ -317,10 +314,10 @@ proto.lock = function(connId, key){
         })
         .then(function(){
             return self.docs[key].lock(connId);
+        })
+        .then(function(){
+            self.logger.debug('[conn:%s] lock(%s)', connId, key);
         });
-    })
-    .then(function(){
-        self.logger.debug('[conn:%s] lock(%s)', connId, key);
     });
 };
 
@@ -422,60 +419,63 @@ proto.isLocked = function(connId, key){
 };
 
 proto.onKeyEvent = function(key, arg){
-    this._ensureState(STATE.RUNNING);
+    if(this.state !== STATE.RUNNING){
+        return;
+    }
+
     this.logger.debug('onKeyEvent(%s, %j)', key, arg);
 
     var self = this;
-    P.try(function(){
-        if(arg === 'unload'){
+    if(arg === 'unload'){
+        if(!this.unloadingKeys[key]){
+            this.unloadingKeys[key] = true;
+
             return self.keyLock.acquire(key, function(){
                 return self._unload(key);
+            })
+            .finally(function(){
+                delete self.unloadingKeys[key];
             });
         }
-        else if(arg === 'persistent'){
-            return self.keyLock.acquire(key, function(){
-                return self._persistent(key);
-            });
-        }
-        else{
-            throw new Error('invalid key event arg - ' + arg);
-        }
-    })
-    .catch(function(e){
-        self.logger.error(e.stack);
-    });
+    }
+    else if(arg === 'persistent'){
+        return self.keyLock.acquire(key, function(){
+            return self._persistent(key);
+        });
+    }
+    else{
+        throw new Error('invalid key event arg - ' + arg);
+    }
 };
 
 proto.onShardEvent = function(method, arg){
-    this._ensureState(STATE.RUNNING);
+    if(this.state !== STATE.RUNNING){
+        return;
+    }
+
     this.logger.debug('onShardEvent(%s, %j)', method, arg);
 
     var self = this;
-    P.try(function(){
-        if(method === 'checkKey'){
-            // this event is triggered by other shards
-            // possibly a redundant backend lock is held
-            // may caused by unsuccessful unload
-            var key = arg;
+    if(method === 'checkKey'){
+        // this event is triggered by other shards
+        // possibly a redundant backend lock is held
+        // may caused by unsuccessful unload
+        var key = arg;
 
-            return self.keyLock.acquire(key, function(){
-                if(!self.docs[key]){
-                    return P.try(function(){
-                        return self.slave.del(key);
-                    })
-                    .then(function(){
-                        return self._unlockBackend(key);
-                    });
-                }
-            });
-        }
-        else{
-            throw new Error('invalid shard event method - ' + method);
-        }
-    })
-    .catch(function(e){
-        self.logger.error(e.stack);
-    });
+        return self.keyLock.acquire(key, function(){
+            if(!self.docs[key]){
+                return P.try(function(){
+                    return self.slave.del(key);
+                })
+                .then(function(){
+                    return self._unlockBackend(key);
+                });
+            }
+        });
+    }
+    else{
+        throw new Error('invalid shard event method - ' + method);
+    }
 };
 
 // internal method, not concurrency safe
@@ -505,8 +505,9 @@ proto._load = function(key){
         }
     })
     .then(function(){
-        this._addDoc(key, obj);
-
+        return this._addDoc(key, obj);
+    })
+    .then(function(){
         this.logger.info('loaded %s', key);
     });
 };
@@ -559,11 +560,11 @@ proto._addDoc = function(key, obj){
         self.emit('updateIndex$' + res.name + '$' + connId, res.id, indexKey, oldValue, newValue);
     });
 
-    // TODO: this may fail
-    this.globalEvent.on('key$' + key, this.onKeyEvent.bind(this, key));
-
-    // Loaded at this instant
-    this.docs[key] = doc;
+    return this.globalEvent.addListener('key$' + key, this.onKeyEvent.bind(this, key))
+    .then(function(){
+        // Loaded at this instant
+        self.docs[key] = doc;
+    });
 };
 
 // internal method, not concurrency safe
@@ -573,8 +574,6 @@ proto._unload = function(key){
     }
 
     this.logger.debug('start unload %s', key);
-
-    this.globalEvent.removeAllListeners('key$' + key);
 
     var doc = this.docs[key];
 
@@ -593,6 +592,9 @@ proto._unload = function(key){
 
         // Persistent immediately
         return this._persistent(key);
+    })
+    .then(function(){
+        return this.globalEvent.removeAllListeners('key$' + key);
     })
     .then(function(){
         if(!this.config.disableSlave){
@@ -812,10 +814,14 @@ proto.restoreFromSlave = function(){
         .then(function(items){
             var self = this;
             return P.mapLimit(Object.keys(items), function(key){
-                self._addDoc(key, items[key]);
-                // persistent all docs to backend
-                self.commitedKeys[key] = true;
-                return self._persistent(key);
+                return P.try(function(){
+                    return self._addDoc(key, items[key]);
+                })
+                .then(function(){
+                    // persistent all docs to backend
+                    self.commitedKeys[key] = true;
+                    return self._persistent(key);
+                });
             });
         })
         .then(function(){

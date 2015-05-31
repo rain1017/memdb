@@ -17,21 +17,35 @@ var Slave = function(opts){
         options : opts.options || {},
     };
 
-    this.client = redis.createClient(this.config.port, this.config.host, this.config.options);
-    this.client.select(this.config.db);
-
+    this.client = null;
     this.logger = Logger.getLogger('memdb', __filename, 'shard:' + this.shardId);
 };
 
 var proto = Slave.prototype;
 
 proto.start = function(){
-    this.logger.info('slave started %s:%s:%s', this.config.host, this.config.port, this.config.db);
+    return P.bind(this)
+    .then(function(){
+        this.client = redis.createClient(this.config.port, this.config.host, this.config.options);
+        var self = this;
+        this.client.on('error', function(err){
+            self.logger.error(err.stack);
+        });
+        return this.client.selectAsync(this.config.db);
+    })
+    .then(function(){
+        this.logger.info('slave started %s:%s:%s', this.config.host, this.config.port, this.config.db);
+    });
 };
 
 proto.stop = function(){
-    this.client.end();
-    this.logger.info('slave stoped');
+    return P.bind(this)
+    .then(function(){
+        return this.client.quitAsync();
+    })
+    .then(function(){
+        this.logger.info('slave stoped');
+    });
 };
 
 proto.set = function(key, doc){

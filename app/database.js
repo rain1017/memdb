@@ -83,10 +83,15 @@ proto.connect = function(){
 
 proto.disconnect = function(connId){
     var conn = this.getConnection(connId);
-    conn.close();
-    delete this.connections[connId];
 
-    this.logger.info('[conn:%s] connection closed', connId);
+    return P.bind(this)
+    .then(function(){
+        this.execute(connId, 'close');
+    })
+    .then(function(){
+        delete this.connections[connId];
+        this.logger.info('[conn:%s] connection closed', connId);
+    });
 };
 
 // Execute a command

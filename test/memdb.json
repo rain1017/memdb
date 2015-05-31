@@ -1,7 +1,7 @@
 {
     "log" : {
         "path" : "/tmp",
-        "level" : "DEBUG"
+        "level" : "TRACE"
     },
     "promise" : {
         "longStackTraces" : true

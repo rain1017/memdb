@@ -239,7 +239,10 @@ describe('mdbgoose test', function(){
                 });
             });
         })
-        .finally(function(){
+        .then(function(){
+            return mdbgoose.disconnectAsync();
+        })
+        .then(function(){
             return env.stopServer(serverProcess);
         })
         .nodeify(cb);

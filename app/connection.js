@@ -25,7 +25,6 @@ proto.close = function(){
     if(this.isDirty()){
         this.rollback();
     }
-
     for(var name in this.collections){
         this.collections[name].close();
     }
