@@ -34,7 +34,7 @@ describe('shard test', function(){
         })
         .then(function(){
             // request to unload doc
-            shard.globalEvent.emit('key$' + key, 'unload');
+            shard.globalEvent.emit('shard$s1', 'unload', key);
         })
         .delay(20)
         .then(function(){
@@ -75,7 +75,7 @@ describe('shard test', function(){
         })
         .then(function(){
             // request to unload
-            shard.globalEvent.emit('key$' + key, 'unload');
+            shard.globalEvent.emit('shard$s1', 'unload', key);
         })
         .delay(100)
         .then(function(){
@@ -163,7 +163,7 @@ describe('shard test', function(){
         .nodeify(cb);
     });
 
-    it('backendLock timeout, check key', function(cb){
+    it('backendLock consistency fix', function(cb){
         var shard1 = new Shard(env.dbConfig('s1'));
         var config = env.dbConfig('s2');
         config.backendLockTimeout = 500;
@@ -181,19 +181,8 @@ describe('shard test', function(){
                 return shard1.backendLocker.tryLock(key);
             })
             .then(function(){
+                // should also access
                 return shard2.lock('c1', key);
-            })
-            .catch(function(e){
-                // should timeout and then notify shard1
-                errCount++;
-            })
-            .then(function(){
-                errCount.should.eql(1);
-            })
-            .delay(200) // wait for shart1 release lock
-            .then(function(){
-                // should success
-                return shard2.lock('c2', key);
             });
         })
         .then(function(){
