@@ -26,12 +26,9 @@ describe.skip('performance test', function(){
         var player = {_id : 1, name : 'rain', exp : 0};
 
         var incPlayerExp = function(){
+            var Player = autoconn.collection('player');
             return autoconn.transaction(function(){
-                var Player = autoconn.collection('player');
                 return Player.update(player._id, {$inc : {exp : 1}});
-            })
-            .catch(function(e){
-                logger.error(e);
             });
         };
 
@@ -81,7 +78,7 @@ describe.skip('performance test', function(){
     it('write single doc in one transcation', function(cb){
         this.timeout(30 * 1000);
 
-        var count = 100000;
+        var count = 50000;
         var autoconn = null;
 
         var startTick = null;
@@ -127,7 +124,8 @@ describe.skip('performance test', function(){
         return P.try(function(){
             var config = env.dbConfig('s1');
             //Disable auto persistent
-            config.persistentInterval = 3600 * 1000;
+            config.persistentDelay = 3600 * 1000;
+            config.idleTimeout = 3600 * 1000;
             return memdb.startServer(config);
         })
         .then(function(){
@@ -252,11 +250,12 @@ describe.skip('performance test', function(){
             return P.try(function(){
                 shards = _.range(1, shardCount + 1).map(function(shardId){
                     var config = {
-                        shard : shardId,
+                        shardId : shardId,
                         locking : env.config.shards.s1.locking,
                         event : env.config.shards.s1.event,
                         backend : env.config.shards.s1.backend,
                         slave : env.config.shards.s1.slave,
+                        persistentDelay : 3600 * 1000,
                         backendLockRetryInterval : lockRetryInterval,
                     };
                     return new Database(config);

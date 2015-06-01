@@ -36,7 +36,7 @@ consts.collMethods.forEach(function(method){
         // remove 'name' arg
         var args = [].slice.call(arguments, 1);
 
-        this.logger.debug('[conn:%s] %s.%s(%j)', this._id, name, method, args);
+     //   this.logger.debug('[conn:%s] %s.%s(%j)', this._id, name, method, args);
         return collection[method].apply(collection, args);
     };
 });

@@ -204,8 +204,9 @@ proto._findByIndex = function(indexKey, indexValue, fields, opts){
 proto.update = function(query, modifier, opts){
     opts = opts || {};
     var self = this;
+
     return P.try(function(){
-        return self.find(query, '_id', {lock : true});
+        return self.find(query, '_id');
     })
     .then(function(ret){
         if(!ret || ret.length === 0){
@@ -249,7 +250,7 @@ proto._updateById = function(id, modifier, opts){
 proto.remove = function(query, opts){
     var self = this;
     return P.try(function(){
-        return self.find(query, '_id', {lock : true});
+        return self.find(query, '_id');
     })
     .then(function(ret){
         if(!ret || ret.length === 0){

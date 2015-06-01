@@ -65,6 +65,7 @@ var Shard = function(opts){
     if(!this._id){
         throw new Error('shardId is empty');
     }
+    this._id = this._id.toString();
     if(this._id.indexOf('$') !== -1){
         throw new Error('shardId can not contain "$"');
     }
@@ -223,6 +224,7 @@ proto.stop = function(){
     .then(function(){
         var self = this;
         return P.mapLimit(Object.keys(this.docs), function(key){
+            //TODO: previous unload may block since user can not commit
             return self.keyLock.acquire(key, function(){
                 if(self.docs[key]){
                     self.docs[key]._unlock(); //force release existing lock
@@ -783,10 +785,10 @@ proto.gc = function(){
         })
         .then(function(){
             self.logger.warn('Finish GC in %s ms. %s docs have been unloaded.', Date.now() - startTick, keys.length);
+        })
+        .then(function(){
+            process.nextTick(self.gc.bind(self));
         });
-    })
-    .then(function(){
-        process.nextTick(self.gc.bind(self));
     })
     .catch(function(e){
         self.logger.error(e.stack);
