@@ -151,9 +151,7 @@ proto.findById = function(id, fields, opts){
 
     var self = this;
     return P.try(function(){
-        if(!opts || opts.lock !== false){
-            return self.lock(id);
-        }
+        return self.lock(id);
     })
     .then(function(){
         return self.shard.find(self.conn._id, self._key(id), fields, opts);
