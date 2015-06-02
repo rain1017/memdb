@@ -97,11 +97,56 @@ describe('autoconnection test', function(){
             });
         })
         .then(function(){
-            return memdb.close();
+            return autoconn.close();
         })
         .finally(function(){
             return memdb.stopServer();
         })
         .nodeify(cb);
     });
+
+    it('autoconnect to multiple standalone shards', function(cb){
+        var server1 = null, server2 = null;
+        var autoconn = null;
+
+        return P.all([
+            env.startServer('s1')
+            .then(function(ret){
+                server1 = ret;
+            }),
+            env.startServer('s2')
+            .then(function(ret){
+                server2 = ret;
+            })
+        ])
+        .then(function(){
+            return memdb.autoConnect({
+                shards : env.config.shards,
+            });
+        })
+        .then(function(ret){
+            autoconn = ret;
+
+            // execute in s1
+            return autoconn.transaction(function(){
+                var Player = autoconn.collection('player');
+                return Player.insert({_id : 'p1', name : 'rain'});
+            }, 's1');
+        })
+        .then(function(){
+            // execute in s2
+            return autoconn.transaction(function(){
+                var Player = autoconn.collection('player');
+                return Player.remove('p1');
+            }, 's2');
+        })
+        .then(function(){
+            return autoconn.close();
+        })
+        .finally(function(){
+            return P.all([env.stopServer(server1),
+                        env.stopServer(server2)]);
+        })
+        .nodeify(cb);
+   });
 });

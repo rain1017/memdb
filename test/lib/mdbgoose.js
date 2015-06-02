@@ -186,7 +186,7 @@ describe('mdbgoose test', function(){
             });
         })
         .then(function(){
-            return memdb.close();
+            return mdbgoose.disconnectAsync();
         })
         .finally(function(){
             return memdb.stopServer();
@@ -218,7 +218,11 @@ describe('mdbgoose test', function(){
         })
         .then(function(ret){
             serverProcess = ret;
-            return mdbgoose.connectAsync({host : env.config.shards.s1.host, port : env.config.shards.s1.port});
+            return mdbgoose.connectAsync({
+                        shards : {
+                            s1 : {host : env.config.shards.s1.host, port : env.config.shards.s1.port}
+                        }
+                    });
         })
         .then(function(){
             return mdbgoose.transaction(function(){
@@ -237,12 +241,12 @@ describe('mdbgoose test', function(){
                     player.name.should.eql('rain');
                     return player.removeAsync();
                 });
-            });
+            }, 's1');
         })
         .then(function(){
             return mdbgoose.disconnectAsync();
         })
-        .then(function(){
+        .finally(function(){
             return env.stopServer(serverProcess);
         })
         .nodeify(cb);
