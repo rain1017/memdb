@@ -1,12 +1,12 @@
 'use strict';
 
 var P = require('bluebird');
-var Logger = require('memdb-logger');
 var util = require('util');
 var utils = require('./utils');
 var AsyncLock = require('async-lock');
 var EventEmitter = require('events').EventEmitter;
 var modifier = require('./modifier');
+var logger = require('memdb-logger').getLogger('memdb', __filename);
 
 var DEFAULT_LOCK_TIMEOUT = 10 * 1000;
 
@@ -31,8 +31,6 @@ var Document = function(opts){ //jshint ignore:line
     this.releaseCallback = null;
 
     this.indexes = opts.indexes || {};
-
-    this.logger = Logger.getLogger('memdb', __filename, 'shard:' + opts.shardId);
 
     EventEmitter.call(this);
 };
@@ -153,12 +151,12 @@ proto.modify = function(connId, cmd, param){
         var value = this._getIndexValue(indexKey, this.indexes[indexKey]);
 
         if(oldValues[indexKey] !== value){
-            this.logger.trace('%s.updateIndex(%s, %s, %s)', this._id, indexKey, oldValues[indexKey], value);
+            logger.trace('%s.updateIndex(%s, %s, %s)', this._id, indexKey, oldValues[indexKey], value);
             this.emit('updateIndex', connId, indexKey, oldValues[indexKey], value);
         }
     }
 
-    this.logger.trace('%s.modify(%s, %j) => %j', this._id, cmd, param, this.changed);
+    logger.trace('%s.modify(%s, %j) => %j', this._id, cmd, param, this.changed);
 };
 
 proto.lock = function(connId){
@@ -220,7 +218,9 @@ proto._getCommited = function(){
 proto.commit = function(connId){
     this.ensureLocked(connId);
 
-    this.commited = this.changed;
+    if(this.changed !== undefined){
+        this.commited = this.changed;
+    }
     this.changed = undefined;
 
     this.emit('commit');

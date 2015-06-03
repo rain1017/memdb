@@ -13,21 +13,17 @@ describe('mdbgoose test', function(){
 
     it('mdbgoose', function(cb){
         var mdbgoose = memdb.goose;
-        var Schema = mdbgoose.Schema;
-        var types = mdbgoose.SchemaTypes;
 
-        mdbgoose._autoconn = null;
         delete mdbgoose.connection.models.player;
-        var playerSchema = new Schema({
+
+        var Player = mdbgoose.model('player', new mdbgoose.Schema({
             _id : String,
             areaId : String,
             name : String,
             fullname : {first: String, second: String},
-            items : [types.Mixed],
-            extra : types.Mixed,
-        }, {collection : 'player', versionKey: false});
-
-        var Player = mdbgoose.model('player', playerSchema);
+            items : [mdbgoose.SchemaTypes.Mixed],
+            extra : mdbgoose.SchemaTypes.Mixed,
+        }, {collection : 'player', versionKey: false}));
 
         return P.try(function(){
             return memdb.startServer(env.dbConfig('s1'));
@@ -196,20 +192,17 @@ describe('mdbgoose test', function(){
 
     it('mdbgoose (standalone mode)', function(cb){
         var mdbgoose = memdb.goose;
-        var Schema = mdbgoose.Schema;
-        var types = mdbgoose.SchemaTypes;
 
-        mdbgoose._autoconn = null;
         delete mdbgoose.connection.models.player;
-        var playerSchema = new Schema({
+
+        var Player = mdbgoose.model('player', new mdbgoose.Schema({
             _id : String,
             areaId : String,
             name : String,
             fullname : {first: String, second: String},
-            extra : types.Mixed,
-        }, {collection : 'player', versionKey: false});
-
-        var Player = mdbgoose.model('player', playerSchema);
+            items : [mdbgoose.SchemaTypes.Mixed],
+            extra : mdbgoose.SchemaTypes.Mixed,
+        }, {collection : 'player', versionKey: false}));
 
         var serverProcess = null;
 
@@ -257,7 +250,6 @@ describe('mdbgoose test', function(){
         var Schema = mdbgoose.Schema;
         var types = mdbgoose.SchemaTypes;
 
-        mdbgoose._autoconn = null;
         delete mdbgoose.connection.models.player;
         var DummySchema = new Schema({
             _id : String,

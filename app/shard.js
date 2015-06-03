@@ -516,7 +516,6 @@ proto._addDoc = function(key, obj){
         doc: obj,
         indexes: indexes,
         lockTimeout : this.config.lockTimeout,
-        shardId : this._id,
     };
     var doc = new Document(opts);
 

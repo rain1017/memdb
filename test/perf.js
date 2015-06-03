@@ -367,5 +367,61 @@ describe.skip('performance test', function(){
         })
         .nodeify(cb);
     });
+
+    it('mdbgoose', function(cb){
+        var count = 5000;
+
+        var mdbgoose = memdb.goose;
+        delete mdbgoose.connection.models.dummy;
+
+        var Dummy = mdbgoose.model('dummy', new mdbgoose.Schema({
+            _id : String,
+            count : Number,
+        }, {collection : 'dummy'}));
+
+        var makeTransaction = function(){
+            return mdbgoose.transaction(function(){
+                return P.try(function(){
+                    return Dummy.findAsync(1);
+                })
+                .then(function(dummy){
+                    if(!dummy){
+                        dummy = new Dummy({_id : 1, count : 0});
+                        return dummy.saveAsync();
+                    }
+                    // dummy.count++;
+                    // return dummy.saveAsync();
+                });
+            });
+        };
+
+        return P.try(function(){
+            var config = env.dbConfig('s1');
+            config.collections = mdbgoose.genCollectionConfig();
+            return memdb.startServer(config);
+        })
+        .then(function(){
+            return mdbgoose.connectAsync();
+        })
+        .then(function(){
+            var startTick = Date.now();
+
+            var p = P.resolve();
+            for(var i=0; i<count; i++){
+                p = p.then(makeTransaction);
+            }
+            return p.then(function(){
+                var rate = count * 1000 / (Date.now() - startTick);
+                logger.warn('Rate: %s', rate);
+            });
+        })
+        .then(function(){
+            return mdbgoose.disconnectAsync();
+        })
+        .finally(function(){
+            return memdb.stopServer();
+        })
+        .nodeify(cb);
+    });
 });
 
