@@ -101,6 +101,9 @@ proto.find = function(query, fields, opts){
     if(query.hasOwnProperty('_id')){
         return this.findById(query._id, fields, opts)
         .then(function(doc){
+            if(!doc){
+                return [];
+            }
             return [doc];
         });
     }

@@ -18,7 +18,7 @@ describe.skip('performance test', function(){
         env.flushdb(cb);
     });
 
-    it('write single doc', function(cb){
+    it('single doc transaction', function(cb){
         this.timeout(30 * 1000);
 
         var count = 10000;
@@ -75,7 +75,7 @@ describe.skip('performance test', function(){
         .nodeify(cb);
     });
 
-    it('write single doc in one transcation', function(cb){
+    it('single doc in transaction query', function(cb){
         this.timeout(30 * 1000);
 
         var count = 50000;
@@ -113,7 +113,48 @@ describe.skip('performance test', function(){
         .nodeify(cb);
     });
 
-    it('write huge docs', function(cb){
+    it('single doc in transation query with update index', function(cb){
+        this.timeout(300 * 1000);
+
+        var count = 20000;
+        var autoconn = null;
+
+        return P.try(function(){
+            return memdb.startServer(env.dbConfig('s1'));
+        })
+        .then(function(){
+            return memdb.autoConnect();
+        })
+        .then(function(ret){
+            autoconn = ret;
+
+            var Player = autoconn.collection('player');
+            var startTick = Date.now();
+
+            return autoconn.transaction(function(){
+                var p = P.resolve();
+                _.range(count).forEach(function(){
+                    p = p.then(function(){
+                        return Player.update({_id : 1}, {$set : {areaId : _.random(100)}}, {upsert: true});
+                    });
+                });
+                return p;
+            })
+            .then(function(){
+                var rate = count * 1000 / (Date.now() - startTick);
+                logger.warn('Rate: %s', rate);
+            });
+        })
+        .then(function(){
+            return autoconn.close();
+        })
+        .finally(function(){
+            return memdb.stopServer();
+        })
+        .nodeify(cb);
+    });
+
+    it('multiple docs transaction', function(cb){
         this.timeout(30 * 1000);
 
         var count = 10000;
@@ -164,7 +205,7 @@ describe.skip('performance test', function(){
         .nodeify(cb);
     });
 
-    it('move huge docs across shards', function(cb){
+    it('multiple docs fly across shards', function(cb){
         this.timeout(30 * 1000);
 
         var count = 1000, requestRate = 300;
@@ -226,7 +267,7 @@ describe.skip('performance test', function(){
         .nodeify(cb);
     });
 
-    it('move one doc across shards', function(cb){
+    it('one doc accessed by random shards', function(cb){
         this.timeout(180 * 1000);
 
         var moveSingleDoc = function(shardCount, requestRate, lockRetryInterval){
@@ -328,6 +369,116 @@ describe.skip('performance test', function(){
         promise.nodeify(cb);
     });
 
+    it('mdbgoose single doc in transation query', function(cb){
+        this.timeout(300 * 1000);
+
+        var count = 10000;
+
+        var mdbgoose = memdb.goose;
+        delete mdbgoose.connection.models.player;
+
+        var Player = mdbgoose.model('player', new mdbgoose.Schema({
+            _id : String,
+            exp : Number,
+        }, {collection : 'player'}));
+
+        return P.try(function(){
+            var config = env.dbConfig('s1');
+            config.collections = mdbgoose.genCollectionConfig();
+            return memdb.startServer(config);
+        })
+        .then(function(){
+            return mdbgoose.connectAsync();
+        })
+        .then(function(){
+            var startTick = Date.now();
+
+            return mdbgoose.transaction(function(){
+                var p = P.resolve();
+                var player = new Player({_id : 1, exp : 0});
+                _.range(count).forEach(function(){
+                    p = p.then(function(){
+                        player.exp++;
+                        return player.saveAsync();
+                    });
+                });
+                return p;
+            })
+            .then(function(){
+                var rate = count * 1000 / (Date.now() - startTick);
+                logger.warn('Rate: %s', rate);
+            });
+        })
+        .then(function(){
+            return mdbgoose.disconnectAsync();
+        })
+        .finally(function(){
+            return memdb.stopServer();
+        })
+        .nodeify(cb);
+    });
+
+    it('mdbgoose multi doc transaction and index', function(cb){
+        this.timeout(3600 * 1000);
+
+        var count = 5000;
+
+        var mdbgoose = memdb.goose;
+        delete mdbgoose.connection.models.player;
+
+        var Player = mdbgoose.model('player', new mdbgoose.Schema({
+            _id : String,
+            areaId : {type : String, index : true},
+            exp : Number,
+        }, {collection : 'player'}));
+
+        var makeTransaction = function(){
+            return mdbgoose.transaction(function(){
+                var playerId = _.random(100);
+                var areaId = _.random(10);
+                return P.try(function(){
+                    return Player.findAsync(playerId);
+                })
+                .then(function(player){
+                    if(!player){
+                        player = new Player({_id : playerId, exp : 0});
+                    }
+                    player.exp++;
+                    player.areaId = areaId;
+                    return player.saveAsync();
+                });
+            });
+        };
+
+        return P.try(function(){
+            var config = env.dbConfig('s1');
+            config.collections = mdbgoose.genCollectionConfig();
+            return memdb.startServer(config);
+        })
+        .then(function(){
+            return mdbgoose.connectAsync();
+        })
+        .then(function(){
+            var startTick = Date.now();
+
+            var p = P.resolve();
+            for(var i=0; i<count; i++){
+                p = p.then(makeTransaction);
+            }
+            return p.then(function(){
+                var rate = count * 1000 / (Date.now() - startTick);
+                logger.warn('Rate: %s', rate);
+            });
+        })
+        .then(function(){
+            return mdbgoose.disconnectAsync();
+        })
+        .finally(function(){
+            return memdb.stopServer();
+        })
+        .nodeify(cb);
+    });
+
     it('gc & idle', function(cb){
         this.timeout(3600 * 1000);
 
@@ -361,62 +512,6 @@ describe.skip('performance test', function(){
         })
         .then(function(){
             logger.warn('%j', process.memoryUsage());
-        })
-        .finally(function(){
-            return memdb.stopServer();
-        })
-        .nodeify(cb);
-    });
-
-    it('mdbgoose', function(cb){
-        var count = 5000;
-
-        var mdbgoose = memdb.goose;
-        delete mdbgoose.connection.models.dummy;
-
-        var Dummy = mdbgoose.model('dummy', new mdbgoose.Schema({
-            _id : String,
-            count : Number,
-        }, {collection : 'dummy'}));
-
-        var makeTransaction = function(){
-            return mdbgoose.transaction(function(){
-                return P.try(function(){
-                    return Dummy.findAsync(1);
-                })
-                .then(function(dummy){
-                    if(!dummy){
-                        dummy = new Dummy({_id : 1, count : 0});
-                        return dummy.saveAsync();
-                    }
-                    // dummy.count++;
-                    // return dummy.saveAsync();
-                });
-            });
-        };
-
-        return P.try(function(){
-            var config = env.dbConfig('s1');
-            config.collections = mdbgoose.genCollectionConfig();
-            return memdb.startServer(config);
-        })
-        .then(function(){
-            return mdbgoose.connectAsync();
-        })
-        .then(function(){
-            var startTick = Date.now();
-
-            var p = P.resolve();
-            for(var i=0; i<count; i++){
-                p = p.then(makeTransaction);
-            }
-            return p.then(function(){
-                var rate = count * 1000 / (Date.now() - startTick);
-                logger.warn('Rate: %s', rate);
-            });
-        })
-        .then(function(){
-            return mdbgoose.disconnectAsync();
         })
         .finally(function(){
             return memdb.stopServer();
