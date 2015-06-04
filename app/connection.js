@@ -36,14 +36,18 @@ consts.collMethods.forEach(function(method){
         // remove 'name' arg
         var args = [].slice.call(arguments, 1);
 
-     //   this.logger.debug('[conn:%s] %s.%s(%j)', this._id, name, method, args);
+        this.logger.debug('[conn:%s] %s.%s(%j)', this._id, name, method, args);
         return collection[method].apply(collection, args);
     };
 });
 
 proto.commit = function(){
     var self = this;
-    return P.try(function(){
+    return P.each(Object.keys(this.collections), function(name){
+        var collection = self.collections[name];
+        return collection.commitIndex();
+    })
+    .then(function(){
         return self.shard.commit(self._id, Object.keys(self.lockedKeys));
     })
     .then(function(){
@@ -53,7 +57,13 @@ proto.commit = function(){
     });
 };
 
+// sync method
 proto.rollback = function(){
+    var self = this;
+    Object.keys(this.collections).forEach(function(name){
+        self.collections[name].rollbackIndex();
+    });
+
     this.shard.rollback(this._id, Object.keys(this.lockedKeys));
     this.lockedKeys = {};
 

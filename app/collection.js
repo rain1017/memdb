@@ -17,29 +17,15 @@ var Collection = function(opts){
     this.shard = opts.shard;
     this.conn = opts.conn;
     this.config = opts.config || {};
+    this.config.maxCollision = this.config.maxCollision || DEFAULT_MAX_COLLISION;
+
+    // {indexKey : {indexValue : {id1 : 1, id2 : -1}}}
+    this.changedIndexes = {};
 
     this.pendingIndexTasks = {}; //{id, [Promise]}
 
-    var self = this;
-
-    this.onUpdateIndex = function(id, indexKey, oldValue, newValue){
-        var config = self.config.indexes[indexKey];
-        if(!config){
-            return;
-        }
-
-        if(!self.pendingIndexTasks[id]){
-            self.pendingIndexTasks[id] = [];
-        }
-        if(oldValue !== null){
-            self.pendingIndexTasks[id].push(self._removeIndex(id, indexKey, oldValue, config));
-        }
-        if(newValue !== null){
-            self.pendingIndexTasks[id].push(self._insertIndex(id, indexKey, newValue, config));
-        }
-    };
     this.updateIndexEvent = 'updateIndex$' + this.name + '$' + this.conn._id;
-    this.shard.on(this.updateIndexEvent, this.onUpdateIndex);
+    this.shard.on(this.updateIndexEvent, this.onUpdateIndex.bind(this));
 
     this.logger = Logger.getLogger('memdb', __filename, 'shard:' + this.shard._id);
 
@@ -154,6 +140,9 @@ proto.findById = function(id, fields, opts){
 
     var self = this;
     return P.try(function(){
+        if(opts && opts.nolock){
+            return;
+        }
         return self.lock(id);
     })
     .then(function(){
@@ -180,14 +169,34 @@ proto.findByIdReadOnly = function(id, fields, opts){
 };
 
 proto._findByIndex = function(indexKey, indexValue, fields, opts){
+    opts = opts || {};
+    var self = this;
+
     var indexCollection = this.conn.getCollection(this._indexCollectionName(indexKey), true);
 
-    var self = this;
+    var nolock = opts.nolock;
+
     return P.try(function(){
+        opts.nolock = true; // force not using lock
         return indexCollection.findById(indexValue, 'ids', opts);
     })
     .then(function(doc){
-        var ids = doc ? Object.keys(doc.ids) : [];
+        opts.nolock = nolock; // restore param
+
+        var ids = doc ? doc.ids : {};
+
+        var changedIds = (self.changedIndexes[indexKey] && self.changedIndexes[indexKey][indexValue]) || {};
+        for(var id in changedIds){
+            id = utils.escapeField(id);
+            if(changedIds[id] === 1){
+                ids[id] = 1;
+            }
+            else{
+                delete ids[id];
+            }
+        }
+
+        ids = Object.keys(ids);
         if(opts && opts.limit){
             ids = ids.slice(0, opts.limit);
         }
@@ -298,68 +307,141 @@ proto.lock = function(id){
     });
 };
 
+proto.onUpdateIndex = function(id, indexKey, oldValue, newValue){
+    this.logger.debug('onUpdateIndex(%s, %s, %s, %s)', id, indexKey, oldValue, newValue);
+
+    var self = this;
+    var promise = P.try(function(){
+
+        var config = self.config.indexes[indexKey];
+        if(!config){
+            throw new Error('index - ' + indexKey + ' not configured');
+        }
+        if(!self.changedIndexes[indexKey]){
+            self.changedIndexes[indexKey] = {};
+        }
+
+        var changedIndex = self.changedIndexes[indexKey];
+
+        if(oldValue !== null){
+            if(!changedIndex[oldValue]){
+                changedIndex[oldValue] = {};
+            }
+            if(changedIndex[oldValue][id] === 1){
+                delete changedIndex[oldValue][id];
+            }
+            else{
+                changedIndex[oldValue][id] = -1;
+            }
+        }
+        if(newValue !== null){
+            if(!changedIndex[newValue]){
+                changedIndex[newValue] = {};
+            }
+            if(changedIndex[newValue][id] === -1){
+                delete changedIndex[oldValue][id];
+            }
+            else{
+                changedIndex[newValue][id] = 1;
+            }
+        }
+
+        if(!config.unique){
+            return;
+        }
+
+        return P.try(function(){
+            if(oldValue !== null){
+                return self.commitOneIndex(indexKey, oldValue, changedIndex[oldValue], config)
+                .then(function(){
+                    delete changedIndex[oldValue];
+                });
+            }
+        })
+        .then(function(){
+            if(newValue !== null){
+                return self.commitOneIndex(indexKey, newValue, changedIndex[newValue], config)
+                .then(function(){
+                    delete changedIndex[newValue];
+                });
+            }
+        });
+    });
+
+    if(!this.pendingIndexTasks[id]){
+        this.pendingIndexTasks[id] = [];
+    }
+    this.pendingIndexTasks[id].push(promise);
+};
+
+proto.commitIndex = function(){
+    var self = this;
+
+    // must update in sorted order to avoid dead lock
+    return P.each(Object.keys(this.changedIndexes).sort(), function(indexKey){
+        var changedIndex = self.changedIndexes[indexKey];
+        var config = self.config.indexes[indexKey];
+
+        return P.each(Object.keys(changedIndex).sort(), function(indexValue){
+            var changedIds = changedIndex[indexValue];
+
+            return self.commitOneIndex(indexKey, indexValue, changedIds, config);
+        });
+    })
+    .then(function(){
+        self.changedIndexes = {};
+    });
+};
+
+proto.rollbackIndex = function(){
+    this.changedIndexes = {};
+};
+
 // indexKey: json encoded sorted fields array
 // indexValue: json encoded sorted fields value
-proto._insertIndex = function(id, indexKey, indexValue, config){
-    // Escape id since field name can not contain '$' or '.'
-    id = utils.escapeField(id);
+proto.commitOneIndex = function(indexKey, indexValue, changedIds, config){
 
     var indexCollection = this.conn.getCollection(this._indexCollectionName(indexKey), true);
 
-    if(config.unique){
-        var doc = {_id : indexValue, 'ids' : {}, 'count' : 1};
-        doc.ids[id] = 1;
+    var modifier = {$set : {}, $unset: {}};
+    var countDelta = 0;
+    for(var id in changedIds){
+        // Escape id since field name can not contain '$' or '.'
+        var escapedId = utils.escapeField(id);
 
-        return indexCollection.insert(doc)
-        .catch(function(err){
-            if(err.message === 'doc already exists'){
-                throw new Error('duplicate value for unique key - ' + indexKey);
-            }
-            throw err;
-        });
+        if(changedIds[id] === 1){
+            modifier.$set['ids.' + escapedId] = 1;
+            countDelta++;
+        }
+        else{
+            modifier.$unset['ids.' + escapedId] = 1;
+            countDelta--;
+        }
     }
-
-    var param = {
-        $set : {},
-        $inc : {count : 1},
-    };
-    param.$set['ids.' + id] = 1;
 
     var self = this;
     return P.try(function(){
         return indexCollection.find(indexValue, 'count');
     })
     .then(function(ret){
-        if(ret && ret.count >= (config.maxCollision || DEFAULT_MAX_COLLISION)){
+        var oldCount = ret ? ret.count : 0;
+        var newCount = oldCount + countDelta;
+        if(config.unique && newCount > 1){
+            throw new Error('duplicate value - ' + indexValue + ' for unique index - ' + indexKey);
+        }
+        if(newCount > config.maxCollision){
             throw new Error('too many documents have value - ' + indexValue + ' for index - ' + indexKey);
         }
-        return indexCollection.update(indexValue, param, {upsert : true});
-    });
-};
 
-// value is json encoded
-proto._removeIndex = function(id, indexKey, indexValue, config){
-    id = utils.escapeField(id);
-
-    var indexCollection = this.conn.getCollection(this._indexCollectionName(indexKey), true);
-
-    return P.try(function(){
-        var param = {
-            $unset : {},
-            $inc: {count : -1}
-        };
-        param.$unset['ids.' + id] = 1;
-        return indexCollection.update(indexValue, param);
-    })
-    .then(function(){
-        return indexCollection.find(indexValue, 'count');
-    })
-    .then(function(ret){
-        if(!ret){ // This should not happen
-            throw new Error('index - ' + indexKey + ' corrputed, please rebuild index');
+        if(newCount > 0){
+            modifier.$set.count = newCount;
+            return indexCollection.update(indexValue, modifier, {upsert : true});
         }
-        if(ret.count === 0){
+        else if(newCount === 0){
             return indexCollection.remove(indexValue);
+        }
+        else{
+            throw new Error('index count < 0');
         }
     });
 };

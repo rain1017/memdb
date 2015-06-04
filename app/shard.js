@@ -46,7 +46,7 @@ var DEFAULT_CACHE_TIMEOUT = 60 * 1000;
 // timeout for locking backend doc
 var DEFAULT_BACKEND_LOCK_TIMEOUT = 10 * 1000;
 // retry interval for backend lock
-var DEFAULT_BACKEND_LOCK_RETRY_INTERVAL = 100;
+var DEFAULT_BACKEND_LOCK_RETRY_INTERVAL = 50;
 
 // timeout for locking doc
 var DEFAULT_LOCK_TIMEOUT = 10 * 1000;
@@ -257,16 +257,38 @@ proto.stop = function(){
 
 proto.find = function(connId, key, fields){
     this._ensureState(STATE.RUNNING);
+    var self = this;
 
-    // Since lock is called before, so doc is loaded for sure
-    var ret = this._doc(key).find(connId, fields);
-    this.logger.debug('[conn:%s] find(%s, %j) => %j', connId, key, fields, ret);
-    return ret;
+    if(this.docs[key]){ //already loaded
+        if(this.docs[key].isFree()){
+            // restart idle timer if doc doesn't locked by anyone
+            this._cancelIdleTimeout(key);
+            this._startIdleTimeout(key);
+        }
+
+        var ret = this.docs[key].find(connId, fields);
+        self.logger.debug('[conn:%s] find(%s, %j) => %j', connId, key, fields, ret);
+        return ret;
+    }
+
+    return this.keyLock.acquire(key, function(){
+        return P.try(function(){
+            return self._load(key);
+        })
+        .then(function(){
+            return self.docs[key].find(connId, fields);
+        })
+        .then(function(ret){
+            self.logger.debug('[conn:%s] find(%s, %j) => %j', connId, key, fields, ret);
+            return ret;
+        });
+    });
 };
 
 proto.update = function(connId, key, doc, opts){
     this._ensureState(STATE.RUNNING);
 
+    // Since lock is called before, so doc is loaded for sure
     var ret = this._doc(key).update(connId, doc, opts);
     this.logger.debug('[conn:%s] update(%s, %j, %j) => %s', connId, key, doc, opts, ret);
     return ret;
@@ -620,7 +642,6 @@ proto._lockBackend = function(key){
         var startTick = Date.now();
 
         var tryLock = function(wait){
-
             return P.try(function(){
                 return self.backendLocker.getHolderId(key);
             })

@@ -61,7 +61,10 @@ describe.skip('performance test', function(){
 
                             return Player.update(threadId, modifier, {upsert : true});
                         });
-                    }, shardId);
+                    }, shardId)
+                    .catch(function(e){
+                        logger.error(e.stack);
+                    });
                 });
             };
 
@@ -73,7 +76,8 @@ describe.skip('performance test', function(){
             })
             .then(function(){
                 var config = {
-                    shards : env.config.shards
+                    shards : env.config.shards,
+                    maxPendingTask : 1000,
                 };
                 return memdb.autoConnect(config)
                 .then(function(ret){
@@ -141,30 +145,29 @@ describe.skip('performance test', function(){
             transCount : 100,
             randomRoute : true,
         },
-        // {
-        //     description : 'Indexed transaction 1 shard',
-        //     shardCount : 1,
-        //     playerCount : 100,
-        //     queryPerTrans : 1,
-        //     transCount : 300,
-        //     useIndex : true,
-        // },
-        // {
-        //     // WARN: Will easily cause DEAD LOCK
-        //     description : 'Indexed query 1 shard',
-        //     shardCount : 1,
-        //     playerCount : 5,
-        //     queryPerTrans : 5,
-        //     useIndex : true,
-        //     transCount : 1,
-        // },
+        {
+            description : 'Indexed transaction 1 shard',
+            shardCount : 1,
+            playerCount : 100,
+            queryPerTrans : 1,
+            transCount : 300,
+            useIndex : true,
+        },
+        {
+            description : 'Indexed query 1 shard',
+            shardCount : 1,
+            playerCount : 100,
+            queryPerTrans : 1000,
+            useIndex : true,
+            transCount : 1,
+        },
         // {
         //     // WARN: very slow since index is always flying
         //     description : 'Indexed transaction 2 shards',
         //     shardCount : 2,
         //     playerCount : 100,
         //     queryPerTrans : 1,
-        //     transCount : 300,
+        //     transCount : 10,
         //     useIndex : true,
         // },
         ];

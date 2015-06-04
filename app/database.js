@@ -89,7 +89,7 @@ proto.disconnect = function(connId){
 
     return P.bind(this)
     .then(function(){
-        this.execute(connId, 'close');
+        this.execute(connId, 'close', [], {ignoreConcurrent : true});
     })
     .then(function(){
         delete this.connections[connId];
@@ -98,12 +98,13 @@ proto.disconnect = function(connId){
 };
 
 // Execute a command
-proto.execute = function(connId, method, args){
+proto.execute = function(connId, method, args, opts){
+    opts = opts || {};
     var self = this;
 
     // Query in the same connection must execute in series
     // This is usually a client bug here
-    if(this.connectionLock.isBusy(connId)){
+    if(this.connectionLock.isBusy(connId) && !opts.ignoreConcurrent){
         P.try(function(){
             // Must pass error in a promise in order to get the longStackTrace
             throw new Error();
