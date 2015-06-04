@@ -29,6 +29,9 @@ var Database = function(opts){
         var collection = opts.collections[name];
         var indexes = {};
         (collection.indexes || []).forEach(function(index){
+            if(!Array.isArray(index.keys)){
+                index.keys = [index.keys];
+            }
             var indexKey = JSON.stringify(index.keys.sort());
             if(indexes[indexKey]){
                 throw new Error('Duplicate index keys - ' + indexKey);

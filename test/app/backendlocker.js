@@ -12,9 +12,9 @@ describe('backendlocker test', function(){
         var docKey = 'player$p1', shardId = 's1';
 
         var locker = new BackendLocker({
-                            host : env.config.shards.s1.locking.host,
-                            port : env.config.shards.s1.locking.port,
-                            db : env.config.shards.s1.locking.db,
+                            host : env.config.locking.host,
+                            port : env.config.locking.port,
+                            db : env.config.locking.db,
                             shardId : shardId,
                             heartbeatTimeout : 2000,
                             heartbeatInterval : 1000,

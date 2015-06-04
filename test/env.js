@@ -21,7 +21,7 @@ if(config.log && config.log.level){
 
 var flushdb = function(cb){
     return P.try(function(){
-        return P.promisify(mongodb.MongoClient.connect)(config.shards.s1.backend.url, config.shards.s1.backend.options);
+        return P.promisify(mongodb.MongoClient.connect)(config.backend.url, config.backend.options);
     })
     .then(function(db){
         return P.try(function(){
@@ -32,8 +32,8 @@ var flushdb = function(cb){
         });
     })
     .then(function(){
-        var client = redis.createClient(config.shards.s1.locking.port, config.shards.s1.locking.host);
-        client.select(config.shards.s1.locking.db);
+        var client = redis.createClient(config.locking.port, config.locking.host);
+        client.select(config.locking.db);
         return client.flushdbAsync()
         .then(function(){
             client.end();
@@ -45,8 +45,10 @@ var flushdb = function(cb){
     .nodeify(cb);
 };
 
-var startServer = function(shardId){
-    var confPath = path.join(__dirname, 'memdb.json');
+var startServer = function(shardId, confPath){
+    if(!confPath){
+        confPath = path.join(__dirname, 'memdb.json');
+    }
     var serverScript = path.join(__dirname, '../app/server.js');
     var args = [serverScript, '--conf=' + confPath, '--shard=' + shardId];
     var serverProcess = child_process.spawn(process.execPath, args);
@@ -87,10 +89,10 @@ module.exports = {
     dbConfig : function(shardId){
         return {
             shardId : shardId,
-            locking : config.shards[shardId].locking,
-            event : config.shards[shardId].event,
-            backend : config.shards[shardId].backend,
-            slave : config.shards[shardId].slave,
+            locking : config.shards[shardId].locking || config.locking,
+            event : config.shards[shardId].event || config.event,
+            backend : config.shards[shardId].backend || config.backend,
+            slave : config.shards[shardId].slave || config.slave,
             collections : config.collections,
         };
     },

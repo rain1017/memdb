@@ -12,7 +12,7 @@ describe('slave test', function(){
     after(env.flushdb);
 
     it('set/del', function(cb){
-        var opts = env.config.shards.s1.slave;
+        var opts = env.config.slave;
         opts.shardId = 's1';
         var slave = new Slave(opts);
 
@@ -70,7 +70,7 @@ describe('slave test', function(){
     });
 
     it('getAll/clear', function(cb){
-        var opts = env.config.shards.s1.slave;
+        var opts = env.config.slave;
         opts.shardId = 's1';
         var slave = new Slave(opts);
 
@@ -109,7 +109,7 @@ describe('slave test', function(){
     it.skip('huge data', function(cb){
         this.timeout(180 * 1000);
 
-        var opts = env.config.shards.s1.slave;
+        var opts = env.config.slave;
         opts.shardId = 's1';
         var slave = new Slave(opts);
 

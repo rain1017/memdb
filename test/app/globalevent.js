@@ -11,16 +11,16 @@ describe('globalevent test', function(){
 
     it('event', function(cb){
         var ge1 = new GlobalEvent({
-            host : env.config.shards.s1.event.host,
-            port : env.config.shards.s1.event.port,
-            db : env.config.shards.s1.event.db,
+            host : env.config.event.host,
+            port : env.config.event.port,
+            db : env.config.event.db,
             shardId : 's1',
         });
 
         var ge2 = new GlobalEvent({
-            host : env.config.shards.s2.event.host,
-            port : env.config.shards.s2.event.port,
-            db : env.config.shards.s2.event.db,
+            host : env.config.event.host,
+            port : env.config.event.port,
+            db : env.config.event.db,
             shardId : 's2',
         });
 

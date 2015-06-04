@@ -61,7 +61,7 @@ describe('backends test', function(){
     it('mongo backend', function(cb){
         var opts = {
             engine : 'mongodb',
-            url : env.config.shards.s1.backend.url,
+            url : env.config.backend.url,
             shardId : 's1',
         };
         var backend = backends.create(opts);
@@ -72,9 +72,9 @@ describe('backends test', function(){
     it('redis backend', function(cb){
         var opts = {
             engine : 'redis',
-            host : env.config.shards.s1.locking.host,
-            port : env.config.shards.s1.locking.port,
-            db : env.config.shards.s1.locking.db,
+            host : env.config.locking.host,
+            port : env.config.locking.port,
+            db : env.config.locking.db,
             shardId : 's1',
         };
         var backend = backends.create(opts);

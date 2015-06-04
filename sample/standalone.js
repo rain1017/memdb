@@ -14,8 +14,8 @@ var P = require('bluebird');
 var main = P.coroutine(function*(){
     // When specifying shards config, client will connect to the standalone server
     var shards = {
-            s1 : {host : '127.0.0.1', port : 3000},
-            s2 : {host : '127.0.0.1', port : 3001},
+            s1 : {host : '127.0.0.1', port : 31017},
+            s2 : {host : '127.0.0.1', port : 31018},
         };
     var autoconn = yield memdb.autoConnect({shards : shards});
 
