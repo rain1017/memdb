@@ -4,10 +4,13 @@ var memdb = require('../lib');
 var P = require('bluebird');
 var child_process = require('child_process');
 var path = require('path');
+var fs = require('fs');
 var redis = P.promisifyAll(require('redis'));
 var mongodb = P.promisifyAll(require('mongodb'));
 var memdbLogger = require('memdb-logger');
 var logger = memdbLogger.getLogger('test', __filename);
+
+var serverScript = path.join(__dirname, '../app/server.js');
 
 var config = require('./memdb.json');
 
@@ -19,81 +22,112 @@ if(config.log && config.log.level){
     memdbLogger.setGlobalLogLevel(memdbLogger.levels[config.log.level]);
 }
 
-var flushdb = function(cb){
-    return P.try(function(){
-        return P.promisify(mongodb.MongoClient.connect)(config.backend.url, config.backend.options);
-    })
-    .then(function(db){
-        return P.try(function(){
-            return db.dropDatabaseAsync();
-        })
-        .then(function(){
-            return db.closeAsync();
+var _servers = {}; // {shardId : server}
+
+exports.startCluster = function(shardIds, configOverrideFunc){
+    if(!shardIds){
+        throw new Error('shardIds is missing');
+    }
+    if(!Array.isArray(shardIds)){
+        shardIds = [shardIds];
+    }
+
+    var newConfig = JSON.parse(JSON.stringify(config)); //deep copy
+    if(typeof(configOverrideFunc) === 'function'){
+        configOverrideFunc(newConfig);
+    }
+
+    var configPath = '/tmp/memdb-test.json';
+    fs.writeFileSync(configPath, JSON.stringify(newConfig));
+
+    return P.map(shardIds, function(shardId){
+        if(!config.shards[shardId]){
+            throw new Error('shard ' + shardId + ' not configured');
+        }
+        if(!!_servers[shardId]){
+            throw new Error('shard ' + shardId + ' already started');
+        }
+
+        var args = ['--conf=' + configPath, '--shard=' + shardId];
+        var server = child_process.fork(serverScript, args);
+
+        var deferred = P.defer();
+        server.on('message', function(msg){
+            if(msg === 'start'){
+                deferred.resolve();
+                logger.warn('shard %s started', shardId);
+            }
+        });
+
+        _servers[shardId] = server;
+        return deferred.promise;
+    });
+};
+
+exports.stopCluster = function(){
+    return P.map(Object.keys(_servers), function(shardId){
+        var server = _servers[shardId];
+
+        var deferred = P.defer();
+        server.on('exit', function(code, signal){
+            if(code === 0){
+                deferred.resolve();
+            }
+            else{
+                deferred.reject('shard ' + shardId + ' returned non-zero code');
+            }
+            delete _servers[shardId];
+            logger.warn('shard %s stoped', shardId);
+        });
+        server.kill();
+        return deferred.promise;
+    });
+};
+
+exports.flushdb = function(cb){
+    var promise = P.try(function(){
+        return P.promisify(mongodb.MongoClient.connect)(config.backend.url, config.backend.options)
+        .then(function(db){
+            return db.dropDatabaseAsync()
+            .then(function(){
+                return db.closeAsync();
+            });
         });
     })
     .then(function(){
-        var client = redis.createClient(config.locking.port, config.locking.host);
-        client.select(config.locking.db);
-        return client.flushdbAsync()
-        .then(function(){
-            client.end();
+        return P.map([config.locking, config.event, config.slave], function(redisConfig){
+
+            var client = redis.createClient(redisConfig.port, redisConfig.host);
+            client.select(redisConfig.db);
+
+            return client.flushdbAsync()
+            .then(function(){
+                return client.quitAsync();
+            });
         });
     })
     .then(function(){
         logger.info('flushed db');
-    })
-    .nodeify(cb);
-};
-
-var startServer = function(shardId, confPath){
-    if(!confPath){
-        confPath = path.join(__dirname, 'memdb.json');
-    }
-    var serverScript = path.join(__dirname, '../app/server.js');
-    var args = [serverScript, '--conf=' + confPath, '--shard=' + shardId];
-    var serverProcess = child_process.spawn(process.execPath, args);
-
-    // This is required! otherwise server will block due to stdout buffer full
-    serverProcess.stdout.pipe(process.stdout);
-    serverProcess.stderr.pipe(process.stderr);
-
-    return P.delay(2000) // wait for server start
-    .then(function(){
-        return serverProcess;
     });
-};
 
-var stopServer = function(serverProcess){
-    if(!serverProcess){
-        return;
+    if(typeof(cb) === 'function'){
+        return promise.nodeify(cb);
     }
-    var deferred = P.defer();
-    serverProcess.on('exit', function(code, signal){
-        if(code === 0){
-            deferred.resolve();
-        }
-        else{
-            deferred.reject('server process returned non-zero code');
-        }
-    });
-    serverProcess.kill();
-    return deferred.promise;
+    else{
+        return promise;
+    }
 };
 
-module.exports = {
-    config : config,
-    flushdb : flushdb,
-    startServer : startServer,
-    stopServer : stopServer,
+exports.shardConfig = function(shardId){
+    var shardConfig = JSON.parse(JSON.stringify(config));
 
-    dbConfig : function(shardId){
-        return {
-            shardId : shardId,
-            locking : config.shards[shardId].locking || config.locking,
-            event : config.shards[shardId].event || config.event,
-            backend : config.shards[shardId].backend || config.backend,
-            slave : config.shards[shardId].slave || config.slave,
-            collections : config.collections,
-        };
-    },
+    var shard = config.shards[shardId];
+    for(var key in shard){
+        shardConfig[key] = shard[key];
+    }
+
+    shardConfig.shardId = shardId;
+    return shardConfig;
 };
+
+exports.config = config;

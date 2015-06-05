@@ -12,7 +12,7 @@ describe('shard test', function(){
     after(env.flushdb);
 
     it('load/unload/find/update/insert/remove/commit/rollback', function(cb){
-        var shard = new Shard(env.dbConfig('s1'));
+        var shard = new Shard(env.shardConfig('s1'));
         var connId = 'c1', key = 'user$1', doc = {_id : '1', name : 'rain', age : 30};
 
         return P.try(function(){
@@ -95,10 +95,10 @@ describe('shard test', function(){
     });
 
     it('backendLock between multiple shards', function(cb){
-        var config = env.dbConfig('s1');
+        var config = env.shardConfig('s1');
         config.backendLockRetryInterval = 500; // This is required for this test
         var shard1 = new Shard(config);
-        var shard2 = new Shard(env.dbConfig('s2'));
+        var shard2 = new Shard(env.shardConfig('s2'));
 
         var key = 'user$1', doc = {_id : '1', name : 'rain', age : 30};
         return P.try(function(){
@@ -164,8 +164,8 @@ describe('shard test', function(){
     });
 
     it('backendLock consistency fix', function(cb){
-        var shard1 = new Shard(env.dbConfig('s1'));
-        var config = env.dbConfig('s2');
+        var shard1 = new Shard(env.shardConfig('s1'));
+        var config = env.shardConfig('s2');
         config.backendLockTimeout = 500;
         var shard2 = new Shard(config);
 

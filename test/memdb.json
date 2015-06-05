@@ -4,14 +4,13 @@
         "level" : "TRACE"
     },
     "promise" : {
-        "longStackTraces" : true
+        "longStackTraces" : false
     },
     "collections" : {
         "player" : {
             "indexes" : [
                 {
                     "keys" : ["areaId"],
-                    "unique" : false,
                     "valueIgnore" : {
                         "areaId" : ["", -1]
                     }

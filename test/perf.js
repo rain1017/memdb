@@ -11,14 +11,10 @@ var AutoConnection = require('../lib/autoconnection');
 var logger = require('memdb-logger').getLogger('test', __filename);
 
 describe.skip('performance test', function(){
-    beforeEach(function(cb){
-        env.flushdb(cb);
-    });
-    after(function(cb){
-        env.flushdb(cb);
-    });
+    beforeEach(env.flushdb);
+    after(env.flushdb);
 
-    it('multiple standalone shards', function(cb){
+    it('multiple shards', function(cb){
         this.timeout(3600 * 1000);
 
         var runTest = function(opts){
@@ -36,11 +32,8 @@ describe.skip('performance test', function(){
                 transCount = 1;
             }
 
-            var shardIds = _.range(shardCount).map(function(shardId){
-                return 's' + (shardId + 1);
-            });
+            var shardIds = Object.keys(env.config.shards).slice(0, shardCount);
 
-            var shardProcesses = [];
             var autoconn = null;
 
             var queryThread = function(threadId){
@@ -71,12 +64,7 @@ describe.skip('performance test', function(){
                 });
             };
 
-            return P.map(shardIds, function(shardId){
-                return env.startServer(shardId)
-                .then(function(ret){
-                    shardProcesses.push(ret);
-                });
-            })
+            return env.startCluster(shardIds)
             .then(function(){
                 var config = {
                     shards : env.config.shards,
@@ -103,9 +91,7 @@ describe.skip('performance test', function(){
                 return autoconn.close();
             })
             .finally(function(){
-                return P.map(shardProcesses, function(shardProcess){
-                    return env.stopServer(shardProcess);
-                });
+                return env.stopCluster();
             });
         };
 
@@ -153,7 +139,7 @@ describe.skip('performance test', function(){
             shardCount : 1,
             playerCount : 100,
             queryPerTrans : 1,
-            transCount : 300,
+            transCount : 500,
             useIndex : true,
         },
         {
@@ -169,7 +155,7 @@ describe.skip('performance test', function(){
             shardCount : 2,
             playerCount : 100,
             queryPerTrans : 1,
-            transCount : 300,
+            transCount : 500,
             useIndex : true,
         },
         ];
@@ -202,19 +188,9 @@ describe.skip('performance test', function(){
             exp : Number,
         }, {collection : 'player'}));
 
-        var serverProcess = null;
-
-        return P.try(function(){
-            return env.startServer('s1');
-        })
-        .then(function(ret){
-            serverProcess = ret;
-
-            return mdbgoose.connectAsync({
-                shards : {
-                    s1 : {host : env.config.shards.s1.host, port : env.config.shards.s1.port}
-                }
-            });
+        return env.startCluster('s1')
+        .then(function(){
+            return mdbgoose.connectAsync(env.config);
         })
         .then(function(){
             var startTick = Date.now();
@@ -238,7 +214,7 @@ describe.skip('performance test', function(){
             return mdbgoose.disconnectAsync();
         })
         .finally(function(){
-            return env.stopServer(serverProcess);
+            return env.stopCluster();
         })
         .nodeify(cb);
     });
@@ -247,17 +223,14 @@ describe.skip('performance test', function(){
     it('gc & idle', function(cb){
         this.timeout(3600 * 1000);
 
-        var config = env.dbConfig('s1');
-        config.memoryLimit = 1024; //1G
+        return env.startCluster('s1', function(config){
+            config.memoryLimit = 1024; // 1G
 
-        // Set large value to trigger gc, small value to not trigger gc
-        config.idleTimeout = 3600 * 1000;
-
-        return P.try(function(){
-            return memdb.startServer(config);
+            // Set large value to trigger gc, small value to not trigger gc
+            config.idleTimeout = 3600 * 1000;
         })
         .then(function(){
-            return memdb.autoConnect();
+            return memdb.connectAsync(env.config);
         })
         .then(function(autoconn){
             return P.each(_.range(10000), function(i){
@@ -275,7 +248,7 @@ describe.skip('performance test', function(){
             logger.warn('%j', process.memoryUsage());
         })
         .finally(function(){
-            return memdb.stopServer();
+            return env.stopCluster();
         })
         .nodeify(cb);
     });

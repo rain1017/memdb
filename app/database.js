@@ -57,6 +57,9 @@ proto.start = function(){
     var self = this;
     return this.shard.start()
     .then(function(){
+        if(typeof(process.send) === 'function'){
+            process.send('start');
+        }
         self.logger.warn('database started');
     });
 };
@@ -65,6 +68,9 @@ proto.stop = function(force){
     var self = this;
     return this.shard.stop(force)
     .then(function(){
+        if(typeof(process.send) === 'function'){
+            process.send('stop');
+        }
         self.logger.warn('database stoped');
     });
 };
@@ -85,10 +91,10 @@ proto.connect = function(){
 };
 
 proto.disconnect = function(connId){
-    var conn = this.getConnection(connId);
-
     return P.bind(this)
     .then(function(){
+        var conn = this.getConnection(connId);
+
         this.execute(connId, 'close', [], {ignoreConcurrent : true});
     })
     .then(function(){
@@ -134,8 +140,8 @@ proto.execute = function(connId, method, args, opts){
         }, function(err){
             self.logger.error('[conn:%s] %s(%j) =>', connId, method, args, err.stack);
 
-            // Roll back on exception
             conn.rollback();
+
             // Rethrow to client
             throw err;
         });

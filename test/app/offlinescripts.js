@@ -5,6 +5,7 @@ var util = require('util');
 var should = require('should');
 var env = require('../env');
 var memdb = require('../../lib');
+var offlinescripts = require('../../app/offlinescripts');
 var logger = require('memdb-logger').getLogger('test', __filename);
 
 describe('offlinescripts test', function(){
@@ -12,52 +13,64 @@ describe('offlinescripts test', function(){
     after(env.flushdb);
 
     it('rebuildIndex', function(cb){
-        var config = env.dbConfig('s1');
-        return P.try(function(){
-            return memdb.startServer(config);
+        var shardId = 's1';
+        var autoconn = null;
+
+        return env.startCluster(shardId)
+        .then(function(){
+            return memdb.autoConnect(env.config)
+            .then(function(ret){
+                autoconn = ret;
+            });
         })
         .then(function(){
-            return memdb.autoConnect();
-        })
-        .then(function(conn){
-            var Player = conn.collection('player');
-            return conn.transaction(function(){
+            var Dummy = autoconn.collection('dummy');
+            return autoconn.transaction(function(){
                 return P.try(function(){
-                    return Player.insert({_id : 'p1', guid : 'g1'});
+                    return Dummy.insert({_id : '1', guid : 'g1'});
                 })
                 .then(function(){
-                    return Player.insert({_id : 'p2', guid : 'g2'});
+                    return Dummy.insert({_id : '2', guid : 'g2'});
                 });
+            }, shardId);
+        })
+        .then(function(){
+            return autoconn.close();
+        })
+        .then(function(){
+            return env.stopCluster();
+        })
+        .then(function(){
+            return offlinescripts.rebuildIndex(env.config.backend, 'dummy', 'guid', {unique : true});
+        })
+        .then(function(){
+            return env.startCluster(shardId, function(config){
+                config.collections.dummy = {
+                    indexes : [{keys : ['guid'], unique : true}]
+                };
             });
         })
         .then(function(){
-            return memdb.stopServer();
-        })
-        .then(function(){
-            return memdb.offlinescripts.rebuildIndex(config.backend, 'player', 'guid', {unique : true});
-        })
-        .then(function(){
-            config.collections.player.indexes.push({
-                keys : ['guid'],
-                unique : true,
+            return memdb.autoConnect(env.config)
+            .then(function(ret){
+                autoconn = ret;
             });
-            return memdb.startServer(config);
         })
         .then(function(){
-            return memdb.autoConnect();
-        })
-        .then(function(conn){
-            var Player = conn.collection('player');
-            return conn.transaction(function(){
-                return Player.find({guid : 'g1'})
+            var Dummy = autoconn.collection('dummy');
+            return autoconn.transaction(function(){
+                return Dummy.find({guid : 'g1'})
                 .then(function(ret){
                     ret.length.should.eql(1);
-                    ret[0]._id.should.eql('p1');
+                    ret[0]._id.should.eql('1');
                 });
-            });
+            }, shardId);
         })
         .then(function(){
-            return memdb.stopServer();
+            return autoconn.close();
+        })
+        .then(function(){
+            return env.stopCluster();
         })
         .nodeify(cb);
     });

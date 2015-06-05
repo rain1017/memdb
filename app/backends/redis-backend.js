@@ -35,8 +35,8 @@ proto.start = function(){
 };
 
 proto.stop = function(){
-    this.conn.end();
-    this.logger.debug('backend redis closed');
+    this.logger.debug('backend redis stop');
+    return this.conn.quitAsync();
 };
 
 proto.get = function(name, id){

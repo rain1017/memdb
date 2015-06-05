@@ -20,11 +20,11 @@ describe('database test', function(){
     // });
 
     it('persistent / idle timeout / find readonly', function(cb){
-        var config1 = env.dbConfig('s1');
+        var config1 = env.shardConfig('s1');
         config1.persistentDelay = 100;
         var db1 = new Database(config1);
 
-        var config2 = env.dbConfig('s2');
+        var config2 = env.shardConfig('s2');
         config2.idleTimeout = 200;
         var db2 = new Database(config2);
 
@@ -85,7 +85,7 @@ describe('database test', function(){
         var player2 = {_id : 'p2', name : 'snow', age: 25};
 
         return P.try(function(){
-            var config = env.dbConfig('s1');
+            var config = env.shardConfig('s1');
             config.heartbeatInterval = -1; // disable heartbeat
             config.gcInterval = 3600 * 1000; // disable gc
             db1 = new Database(config);
@@ -108,7 +108,7 @@ describe('database test', function(){
         })
         .then(function(){
             //restart db
-            db2 = new Database(env.dbConfig('s1'));
+            db2 = new Database(env.shardConfig('s1'));
             return db2.start();
         })
         .then(function(){

@@ -18,18 +18,17 @@ describe('connection test', function(){
         var user2 = {_id : '2', name : 'tina', age : 24};
         var news1 = {_id : '1', text : 'hello'};
 
-        return P.try(function(){
-            return memdb.startServer(env.dbConfig('s1'));
+        return env.startCluster('s1')
+        .then(function(){
+            return memdb.connect(env.config.shards.s1)
+            .then(function(ret){
+                conn = ret;
+            });
         })
         .then(function(){
-            return memdb.connect();
-        })
-        .then(function(ret){
-            conn = ret;
             User = conn.collection('user');
             News = conn.collection('news');
-        })
-        .then(function(){
+
             return User.insert([user1, user2]);
         })
         .then(function(ret){
@@ -96,7 +95,7 @@ describe('connection test', function(){
             return conn.close();
         })
         .finally(function(){
-            return memdb.stopServer();
+            return env.stopCluster();
         })
         .nodeify(cb);
     });
@@ -106,17 +105,16 @@ describe('connection test', function(){
         var Player = null;
         var errCount = 0;
 
-        return P.try(function(){
-            return memdb.startServer(env.dbConfig('s1'));
+        return env.startCluster('s1')
+        .then(function(){
+            return memdb.connect(env.config.shards.s1)
+            .then(function(ret){
+                conn = ret;
+            });
         })
         .then(function(){
-            return memdb.connect();
-        })
-        .then(function(ret){
-            conn = ret;
             Player = conn.collection('player');
-        })
-        .then(function(){
+
             return Player.find({areaId : 1})
             .then(function(players){
                 players.length.should.eql(0);
@@ -182,7 +180,7 @@ describe('connection test', function(){
             return conn.close();
         })
         .finally(function(){
-            return memdb.stopServer();
+            return env.stopCluster();
         })
         .nodeify(cb);
     });
@@ -191,14 +189,14 @@ describe('connection test', function(){
         var conn = null;
         var Player = null;
 
-        return P.try(function(){
-            return memdb.startServer(env.dbConfig('s1'));
+        return env.startCluster('s1')
+        .then(function(){
+            return memdb.connect(env.config.shards.s1)
+            .then(function(ret){
+                conn = ret;
+            });
         })
         .then(function(){
-            return memdb.connect();
-        })
-        .then(function(ret){
-            conn = ret;
             Player = conn.collection('player');
 
             return Player.insert({_id : '1', deviceType : 1, deviceId : 'id1'});
@@ -233,13 +231,10 @@ describe('connection test', function(){
             });
         })
         .then(function(){
-
-        })
-        .then(function(){
             return conn.close();
         })
         .finally(function(){
-            return memdb.stopServer();
+            return env.stopCluster();
         })
         .nodeify(cb);
     });
@@ -247,15 +242,14 @@ describe('connection test', function(){
     it('concurrent query on same connection', function(cb){
         var conn = null;
 
-        return P.try(function(){
-            return memdb.startServer(env.dbConfig('s1'));
+        return env.startCluster('s1')
+        .then(function(){
+            return memdb.connect(env.config.shards.s1)
+            .then(function(ret){
+                conn = ret;
+            });
         })
         .then(function(){
-            return memdb.connect();
-        })
-        .then(function(ret){
-            conn = ret;
-
             var Player = conn.collection('player');
             Player.insert({_id : 1, name : 'rain'});
             Player.remove({_id : 1});
@@ -265,24 +259,24 @@ describe('connection test', function(){
             return conn.close();
         })
         .finally(function(){
-            return memdb.stopServer();
+            return env.stopCluster();
         })
         .nodeify(cb);
     });
 
     it('collection/field name restriction', function(cb){
-        var conn = null, Collection = null;
+        var conn = null;
+        var Collection = null;
         var errCount = 0;
 
-        return P.try(function(){
-            return memdb.startServer(env.dbConfig('s1'));
+        return env.startCluster('s1')
+        .then(function(){
+            return memdb.connect(env.config.shards.s1)
+            .then(function(ret){
+                conn = ret;
+            });
         })
         .then(function(){
-            return memdb.connect();
-        })
-        .then(function(ret){
-            conn = ret;
-
             Collection = conn.collection('invalid$name');
             return Collection.insert({_id : 1, name : 'rain'});
         })
@@ -311,7 +305,7 @@ describe('connection test', function(){
             return conn.close();
         })
         .finally(function(){
-            return memdb.stopServer();
+            return env.stopCluster();
         })
         .nodeify(cb);
     });

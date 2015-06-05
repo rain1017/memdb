@@ -26,10 +26,10 @@ describe('mdbgoose test', function(){
         }, {collection : 'player', versionKey: false}));
 
         return P.try(function(){
-            return memdb.startServer(env.dbConfig('s1'));
+            return env.startCluster('s1');
         })
         .then(function(ret){
-            return mdbgoose.connectAsync();
+            return mdbgoose.connectAsync(env.config);
         })
         .then(function(){
             // connect to backend mongodb
@@ -161,12 +161,12 @@ describe('mdbgoose test', function(){
                         logger.debug('%j', ret);
                     });
                 });
-            });
+            }, 's1');
         })
         .then(function(){
             return mdbgoose.transaction(function(){
                 return mdbgoose.autoconn.flushBackend();
-            });
+            }, 's1');
         })
         .then(function(){
             // Call mongodb directly
@@ -185,62 +185,7 @@ describe('mdbgoose test', function(){
             return mdbgoose.disconnectAsync();
         })
         .finally(function(){
-            return memdb.stopServer();
-        })
-        .nodeify(cb);
-    });
-
-    it('mdbgoose (standalone mode)', function(cb){
-        var mdbgoose = memdb.goose;
-
-        delete mdbgoose.connection.models.player;
-
-        var Player = mdbgoose.model('player', new mdbgoose.Schema({
-            _id : String,
-            areaId : String,
-            name : String,
-            fullname : {first: String, second: String},
-            items : [mdbgoose.SchemaTypes.Mixed],
-            extra : mdbgoose.SchemaTypes.Mixed,
-        }, {collection : 'player', versionKey: false}));
-
-        var serverProcess = null;
-
-        return P.try(function(){
-            return env.startServer('s1');
-        })
-        .then(function(ret){
-            serverProcess = ret;
-            return mdbgoose.connectAsync({
-                shards : {
-                    s1 : {host : env.config.shards.s1.host, port : env.config.shards.s1.port}
-                }
-            });
-        })
-        .then(function(){
-            return mdbgoose.transaction(function(){
-                var player1 = new Player({
-                                    _id : 'p1',
-                                    areaId: 'a2',
-                                    name: 'rain',
-                                });
-                return P.try(function(){
-                    return player1.saveAsync();
-                })
-                .then(function(){
-                    return Player.findAsync('p1');
-                })
-                .then(function(player){
-                    player.name.should.eql('rain');
-                    return player.removeAsync();
-                });
-            }, 's1');
-        })
-        .then(function(){
-            return mdbgoose.disconnectAsync();
-        })
-        .finally(function(){
-            return env.stopServer(serverProcess);
+            return env.stopCluster();
         })
         .nodeify(cb);
     });

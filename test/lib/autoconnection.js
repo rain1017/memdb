@@ -16,18 +16,16 @@ describe('autoconnection test', function(){
         var user1 = {_id : '1', name : 'rain', level : 0};
         var autoconn = null;
 
-        return P.try(function(){
-            return memdb.startServer(env.dbConfig(shardId));
-        })
+        return env.startCluster(shardId)
         .then(function(){
-            return memdb.autoConnect();
+            return memdb.autoConnect(env.config);
         })
         .then(function(ret){
             autoconn = ret;
             return autoconn.transaction(function(){
                 var User = autoconn.collection('user');
                 return User.insert(user1);
-            });
+            }, shardId);
         })
         .then(function(){
             var count = 8;
@@ -54,7 +52,7 @@ describe('autoconnection test', function(){
                         .then(function(){
                             return User.update(user1._id, {level : level + 1});
                         });
-                    });
+                    }, shardId);
                 });
             })
             .then(function(){
@@ -68,7 +66,7 @@ describe('autoconnection test', function(){
                         ret.level.should.eql(count);
                         return User.remove(user1._id);
                     });
-                });
+                }, shardId);
             });
         })
         .then(function(){
@@ -80,7 +78,7 @@ describe('autoconnection test', function(){
                     //Should roll back on exception
                     throw new Error('Oops!');
                 });
-            })
+            }, shardId)
             .catch(function(e){
                 e.message.should.eql('Oops!');
             });
@@ -94,35 +92,23 @@ describe('autoconnection test', function(){
                 .then(function(ret){
                     (ret === null).should.eql(true);
                 });
-            });
+            }, shardId);
         })
         .then(function(){
             return autoconn.close();
         })
         .finally(function(){
-            return memdb.stopServer();
+            return env.stopCluster();
         })
         .nodeify(cb);
     });
 
-    it('autoconnect to multiple standalone shards', function(cb){
-        var server1 = null, server2 = null;
+    it('autoconnect to multiple shards', function(cb){
         var autoconn = null;
 
-        return P.all([
-            env.startServer('s1')
-            .then(function(ret){
-                server1 = ret;
-            }),
-            env.startServer('s2')
-            .then(function(ret){
-                server2 = ret;
-            })
-        ])
+        return env.startCluster(['s1', 's2'])
         .then(function(){
-            return memdb.autoConnect({
-                shards : env.config.shards,
-            });
+            return memdb.autoConnect({shards : env.config.shards});
         })
         .then(function(ret){
             autoconn = ret;
@@ -144,8 +130,7 @@ describe('autoconnection test', function(){
             return autoconn.close();
         })
         .finally(function(){
-            return P.all([env.stopServer(server1),
-                        env.stopServer(server2)]);
+            return env.stopCluster();
         })
         .nodeify(cb);
    });
