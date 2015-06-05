@@ -212,10 +212,10 @@ describe('mdbgoose test', function(){
         .then(function(ret){
             serverProcess = ret;
             return mdbgoose.connectAsync({
-                        shards : {
-                            s1 : {host : env.config.shards.s1.host, port : env.config.shards.s1.port}
-                        }
-                    });
+                shards : {
+                    s1 : {host : env.config.shards.s1.host, port : env.config.shards.s1.port}
+                }
+            });
         })
         .then(function(){
             return mdbgoose.transaction(function(){

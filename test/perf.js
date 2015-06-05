@@ -49,11 +49,14 @@ describe.skip('performance test', function(){
                 return P.each(_.range(transCount), function(){
                     var shardId = randomRoute ? _.sample(shardIds) : shardIds[threadId % shardIds.length];
 
+                    // Make sure same areaId route to same shard
+                    var areaId = randomRoute ? _.random(areaCount) : Math.floor(_.random(areaCount) / shardIds.length) * shardIds.length + threadId % shardIds.length;
+
                     return autoconn.transaction(function(){
                         return P.each(_.range(queryPerTrans), function(){
                             var modifier = null;
                             if(useIndex){
-                                modifier = {$set : {areaId : _.random(areaCount)}};
+                                modifier = {$set : {areaId : areaId}};
                             }
                             else{
                                 modifier = {$set : {level : _.random(100)}};
@@ -161,15 +164,14 @@ describe.skip('performance test', function(){
             useIndex : true,
             transCount : 1,
         },
-        // {
-        //     // WARN: very slow since index is always flying
-        //     description : 'Indexed transaction 2 shards',
-        //     shardCount : 2,
-        //     playerCount : 100,
-        //     queryPerTrans : 1,
-        //     transCount : 10,
-        //     useIndex : true,
-        // },
+        {
+            description : 'Indexed transaction 2 shards',
+            shardCount : 2,
+            playerCount : 100,
+            queryPerTrans : 1,
+            transCount : 300,
+            useIndex : true,
+        },
         ];
 
         return P.each(testOpts, function(testOpt){
@@ -190,7 +192,7 @@ describe.skip('performance test', function(){
     it('mdbgoose', function(cb){
         this.timeout(300 * 1000);
 
-        var count = 10000;
+        var queryCount = 200, concurrency = 100;
 
         var mdbgoose = memdb.goose;
         delete mdbgoose.connection.models.player;
@@ -200,27 +202,35 @@ describe.skip('performance test', function(){
             exp : Number,
         }, {collection : 'player'}));
 
+        var serverProcess = null;
+
         return P.try(function(){
-            var config = env.dbConfig('s1');
-            config.collections = mdbgoose.genCollectionConfig();
-            return memdb.startServer(config);
+            return env.startServer('s1');
         })
-        .then(function(){
-            return mdbgoose.connectAsync();
+        .then(function(ret){
+            serverProcess = ret;
+
+            return mdbgoose.connectAsync({
+                shards : {
+                    s1 : {host : env.config.shards.s1.host, port : env.config.shards.s1.port}
+                }
+            });
         })
         .then(function(){
             var startTick = Date.now();
 
-            return mdbgoose.transaction(function(){
-                var player = new Player({_id : 1, exp : 0});
+            return P.map(_.range(concurrency), function(playerId){
+                return mdbgoose.transaction(function(){
+                    var player = new Player({_id : playerId, exp : 0});
 
-                return P.each(_.range(count), function(){
-                    player.exp++;
-                    return player.saveAsync();
-                });
+                    return P.each(_.range(queryCount), function(){
+                        player.exp++;
+                        return player.saveAsync();
+                    });
+                }, 's1');
             })
             .then(function(){
-                var rate = count * 1000 / (Date.now() - startTick);
+                var rate = queryCount * concurrency * 1000 / (Date.now() - startTick);
                 logger.warn('Rate: %s', rate);
             });
         })
@@ -228,10 +238,11 @@ describe.skip('performance test', function(){
             return mdbgoose.disconnectAsync();
         })
         .finally(function(){
-            return memdb.stopServer();
+            return env.stopServer(serverProcess);
         })
         .nodeify(cb);
     });
+
 
     it('gc & idle', function(cb){
         this.timeout(3600 * 1000);
