@@ -1,16 +1,16 @@
 'use strict';
 
-var P = require('bluebird');
-var minimist = require('minimist');
-var path = require('path');
-var fs = require('fs');
+var Database = require('./database');
 var memdbLogger = require('memdb-logger');
-var logger = memdbLogger.getLogger('memdb', __filename);
+var P = require('bluebird');
 
-var startServer = function(opts){
-    logger = memdbLogger.getLogger('memdb', __filename, 'shard:' + opts.shardId);
+exports.start = function(opts){
+    var logger = memdbLogger.getLogger('memdb', __filename, 'shard:' + opts.shardId);
 
-    var Database = require('./database');
+    process.on('uncaughtException', function(err) {
+        logger.error('Uncaught exception: %s', err.stack);
+    });
+
     var server = require('socket.io')();
 
     var db = new Database(opts);
@@ -101,86 +101,3 @@ var startServer = function(opts){
     process.on('SIGTERM', shutdown);
     process.on('SIGINT', shutdown);
 };
-
-var showUsage = function(){
-    var content = 'MemDB - Distributed transactional in memory database\n\n' +
-                'Options:\n' +
-                '  -c, --conf path      Specify config file path (must with .json extension)\n' +
-                '  -s, --shard shardId  Start specific shard\n' +
-                '  -d, --daemon         Start as daemon\n' +
-                '  -h, --help           Display this help';
-    console.log(content);
-};
-
-if (require.main === module) {
-    process.on('uncaughtException', function(err) {
-        logger.error('Uncaught exception: %s', err.stack);
-    });
-
-    var argv = minimist(process.argv.slice(2));
-    if(argv.help || argv.h){
-        showUsage();
-        process.exit(0);
-    }
-
-    var searchPaths = [];
-    var confPath = argv.conf || argv.c || null;
-    if(confPath){
-        searchPaths.push(confPath);
-    }
-    searchPaths = searchPaths.concat(['./memdb.json', '~/.memdb.json', '/etc/memdb.json']);
-
-    var conf = null;
-    for(var i=0; i<searchPaths.length; i++){
-        if(fs.existsSync(searchPaths[i])){
-            conf = require(path.resolve(searchPaths[i]));
-            break;
-        }
-    }
-    if(!conf){
-        console.error('Error: config file not found! %j', searchPaths);
-        process.exit(1);
-    }
-
-    var shardId = argv.shard || argv.s || null;
-    if(!shardId){
-        console.error('Please specify shardId with --shard');
-        process.exit(1);
-    }
-
-    // Start specific shard
-    var shardConfig = conf.shards && conf.shards[shardId];
-    if(!shardConfig){
-        console.error('Shard %s not exist in config', shardId);
-        process.exit(1);
-    }
-
-    // Override shard specific config
-    for(var key in shardConfig){
-        conf[key] = shardConfig[key];
-    }
-    delete conf.shards;
-
-    if(conf.promise && conf.promise.longStackTraces){
-        P.longStackTraces();
-    }
-
-    // Configure log
-    var logConf = conf.log || {};
-
-    var logPath = logConf.path || '/tmp';
-    console.log('all output going to: %s/memdb*.log', logPath);
-
-    memdbLogger.configure(path.join(__dirname, 'log4js.json'), {shardId : shardId, base : logPath});
-
-    var level = logConf.level || 'INFO';
-    memdbLogger.setGlobalLogLevel(memdbLogger.levels[level]);
-
-    if(argv.d || argv.daemon){
-        //Become daemon
-        require('daemon')();
-    }
-
-    conf.shardId = shardId;
-    startServer(conf);
-}

@@ -10,7 +10,7 @@ var mongodb = P.promisifyAll(require('mongodb'));
 var memdbLogger = require('memdb-logger');
 var logger = memdbLogger.getLogger('test', __filename);
 
-var serverScript = path.join(__dirname, '../app/server.js');
+var serverScript = path.join(__dirname, '../bin/memdbd.js');
 
 var config = require('./memdb.json');
 

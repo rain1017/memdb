@@ -4,34 +4,9 @@
 // run with node >= 0.12 with --harmony option
 
 // First start memdb server by:
-// node app/server.js --conf=test/memdb.json --shard=s1 -d
+// memdbd --conf=test/memdb.json --shard=s1
 
-// memdb.json config for index
-//{
-//     // Config for each collections
-//     collections : {
-//         // Config for player collection
-//         player : {
-//             // Index config
-//             indexes : [
-//                 // index for key [areaId]
-//                 {
-//                     keys : ['areaId'],
-//                     // Values that exclude from index
-//                     // Since some default value occurs too often, which can make index too large
-//                     valueIgnore : {
-//                         areaId : ['', -1],
-//                     }
-//                 },
-//                 // Unique index for compound keys [deviceType, deviceId]
-//                 {
-//                     keys : ['deviceType', 'deviceId'],
-//                     unique : true,
-//                 }
-//             ]
-//         }
-//     }
-// };
+// Note that indexes is configured in memdb.json
 
 var memdb = require('memdb');
 var P = require('bluebird');

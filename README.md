@@ -40,78 +40,70 @@ __MemDB__    | __High (Memory)__ | __Yes__                   | __Yes__          
 
 ### A Quick Sample
 
-```javascript
+First start memdb cluster by:
+```
+memdbd --conf=test/memdb.json --shard=s1
+memdbd --conf=test/memdb.json --shard=s2
+```
+
+```js
+// npm install memdb, should
+// run with node >= 0.12 with --harmony option
+
 var memdb = require('memdb');
-var mdbgoose = memdb.goose;
-var P = require('bluebird');
-
-// memdb's config
-var config = {
-    //shard Id (Must unique and immutable for each shard)
-    shardId : 's1',
-    // Global backend storage, all shards must connect to the same mongodb (or mongodb cluster)
-    backend : {engine : 'mongodb', url : 'mongodb://localhost/memdb-test'},
-    // Global locking redis, all shards must connect to the same redis (or redis cluster)
-    locking : {host : '127.0.0.1', port : 6379, db : 0},
-    // Global event redis, all shards must connect to the same redis
-    event : {host : '127.0.0.1', port : 6379, db : 0},
-    // Data replication redis, one redis instance for each shard
-    slave : {host : '127.0.0.1', port : 6379, db : 1},
-};
-
-// Define player schema
-var playerSchema = new mdbgoose.Schema({
-    _id : String,
-    name : String,
-    areaId : {type : Number, index : true, indexIgnore : [-1]},
-    deviceType : {type : Number, indexIgnore : [-1]},
-    deviceId : {type : String, indexIgnore : ['']},
-    items : [mdbgoose.SchemaTypes.Mixed],
-}, {collection : 'player'});
-// Define a compound unique index
-playerSchema.index({deviceType : 1, deviceId : 1}, {unique : true});
-
-// Define player model
-var Player = mdbgoose.model('player', playerSchema);
+var P = memdb.Promise;
+var should = require('should');
 
 var main = P.coroutine(function*(){
-    // Parse mdbgoose schema to collection config
-    config.collections = mdbgoose.genCollectionConfig();
-    // Start a memdb shard with in-process mode
-    yield memdb.startServer(config);
 
-    // Connect to in-process server
-    yield mdbgoose.connectAsync();
-    // Execute in a transaction
-    yield mdbgoose.transactionAsync(P.coroutine(function*(){
-        var player = new Player({
-            _id : 'p1',
-            name: 'rain',
-            areaId : 1,
-            deviceType : 1,
-            deviceId : 'id1',
-            items : [],
-        });
-        // insert a player
-        yield player.saveAsync();
-        // find player by id
-        console.log(yield Player.findAsync('p1'));
-        // find player by areaId, return array of players
-        console.log(yield Player.findAsync({areaId : 1}));
-        // find player by deviceType and deviceId
-        player = yield Player.findOneAsync({deviceType : 1, deviceId : 'id1'});
-        console.log(player);
+    var autoconn = yield memdb.autoConnect({
+        shards : {
+            s1 : {host : '127.0.0.1', port : 31017},
+            s2 : {host : '127.0.0.1', port : 31018},
+        }
+    });
 
-        // update player
-        player.areaId = 2;
-        yield player.saveAsync();
+    var User = autoconn.collection('user');
+    var doc = {_id : '1', name : 'rain', level : 1};
 
-        // remove the player
-        yield player.removeAsync();
-    }));
+    // Make a transaction in shard s1
+    yield autoconn.transaction(P.coroutine(function*(){
+        // Remove if exist
+        yield User.remove(doc._id);
 
-    // stop memdb server
-    yield memdb.stopServer();
+        // Insert a doc
+        yield User.insert(doc);
+        // Find the doc
+        yield User.find(doc._id);
+        ret.level.should.eql(1);
+    }), 's1'); // Auto commit after transaction
+
+    try{
+        // Make another transaction in shard s1
+        yield autoconn.transaction(P.coroutine(function*(){
+            // Update doc with $set modifier
+            yield User.update(doc._id, {$set : {level : 2}});
+            // Find the changed doc
+            var ret = yield User.find(doc._id);
+            ret.level.should.eql(2);
+            // Exception here!
+            throw new Error('Oops!');
+        }), 's1');
+    }
+    catch(err){ // Catch the exception
+        // Change is rolled back
+        yield autoconn.transaction(P.coroutine(function*(){
+            var ret = yield User.find(doc._id);
+            ret.level.should.eql(1);
+        }), 's1');
+    }
+
+    // Make transcation in another shard
+    yield autoconn.transaction(P.coroutine(function*(){
+        yield User.remove(doc._id);
+    }), 's2');
+
+    yield autoconn.close();
 });
 
 if (require.main === module) {

@@ -23,7 +23,9 @@
         "node": ">=0.10.x"
     },
     "bin" : {
-        "memdb" : "./app/server.js"
+        "memdbd" : "./bin/memdbd.js",
+        "memdb" : "./bin/memdb.js",
+        "memdbindex" : "./bin/memdbindex.js"
     },
     "scripts": {
         "start": "grunt",
