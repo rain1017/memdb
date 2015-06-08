@@ -11,8 +11,9 @@ var memdbLogger = require('memdb-logger');
 var logger = memdbLogger.getLogger('test', __filename);
 
 var serverScript = path.join(__dirname, '../bin/memdbd.js');
+var configPath = path.join(__dirname, 'memdb.json');
 
-var config = require('./memdb.json');
+var config = require(configPath);
 
 if(config.promise && config.promise.longStackTraces){
     P.longStackTraces();
@@ -130,4 +131,20 @@ exports.shardConfig = function(shardId){
     return shardConfig;
 };
 
+exports.runScript = function(script, args){
+    var proc = child_process.fork(script, args);
+    var deferred = P.defer();
+
+    proc.on('exit', function(code){
+        if(code === 0){
+            deferred.resolve();
+        }
+        else{
+            deferred.reject('script ' + script + ' returned non-zero code');
+        }
+    });
+    return deferred.promise;
+};
+
 exports.config = config;
+exports.configPath = configPath;

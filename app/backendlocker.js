@@ -139,6 +139,16 @@ proto.isAlive = function(shardId){
     });
 };
 
+proto.getActiveShards = function(){
+    var prefix = this.config.heartbeatPrefix;
+    return this.client.keysAsync(prefix + '*')
+    .then(function(keys){
+        return keys.map(function(key){
+            return key.slice(prefix.length);
+        });
+    });
+};
+
 proto._docKey = function(docId){
     return this.config.prefix + docId;
 };

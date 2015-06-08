@@ -7,21 +7,21 @@ var logger = require('memdb-logger').getLogger('memdb', __filename);
 var config = require('../app/config');
 var server = require('../app/server');
 
-var showUsage = function(){
-    var content = 'MemDB - Distributed transactional in memory database\n\n' +
-                'Usage: memdbd [options]\n\n' +
-                'Options:\n' +
-                '  -c, --conf path      Specify config file path (must with .json extension)\n' +
-                '  -s, --shard shardId  Start specific shard\n' +
-                '  -d, --daemon         Start as daemon\n' +
-                '  -h, --help           Display this help';
-    console.log(content);
-};
+var helpContent = '\
+MemDB - Distributed transactional in memory database\n\n\
+Usage: memdbd [options]\n\
+Options:\n\
+  -c, --conf path      Config file path (must with .json extension)\n\
+  -s, --shard shardId  Start specific shard\n\
+  -d, --daemon         Start as daemon\n\
+  -h, --help           Display this help\n\
+';
+
 
 if (require.main === module) {
     var argv = minimist(process.argv.slice(2));
-    if(argv.help || argv.h){
-        showUsage();
+    if(process.argv.length <= 2 || argv.help || argv.h){
+        console.log(helpContent);
         process.exit(0);
     }
 

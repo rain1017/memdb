@@ -117,10 +117,6 @@ npm install memdb bluebird
 node --harmony sample.js
 ```
 
-__Become a cluster__
-
-Just start more shards that connect to __the same global services (backend/locking/event)__, and they will automatically become a MemDB cluster.
-
 ## Quick-pomelo
 __[quick-pomelo](http://quickpomelo.com)__ is a rapid and robust game server framework based on memdb
 

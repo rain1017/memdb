@@ -14,7 +14,10 @@ exports.init = function(confPath, shardId){
     if(confPath){
         searchPaths.push(confPath);
     }
-    searchPaths = searchPaths.concat(['./memdb.json', '~/.memdb.json', '/etc/memdb.json']);
+
+    var homePath = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
+
+    searchPaths = searchPaths.concat(['./memdb.json', path.join(homePath, '.memdb.json'), '/etc/memdb.json']);
 
     var conf = null;
     for(var i=0; i<searchPaths.length; i++){
@@ -37,13 +40,20 @@ exports.init = function(confPath, shardId){
 
     var logPath = logConf.path || '/tmp';
 
-    console.log('all output going to: %s/memdb-%s.log', logPath, shardId || '');
-    memdbLogger.configure(path.join(__dirname, 'log4js.json'), {shardId : shardId || '', base : logPath});
+    console.log('all output going to: %s/memdb-%s.log', logPath, shardId || '$');
+    memdbLogger.configure(path.join(__dirname, 'log4js.json'), {shardId : shardId || '$', base : logPath});
 
     var level = logConf.level || 'INFO';
     memdbLogger.setGlobalLogLevel(memdbLogger.levels[level]);
 
     _config = conf;
+};
+
+exports.getShardIds = function(){
+    if(!_config){
+        throw new Error('please config.init first');
+    }
+    return Object.keys(_config.shards);
 };
 
 exports.shardConfig = function(shardId){

@@ -1,31 +1,52 @@
 'use strict';
 
 /**
- * Offline scripts
- *
  * WARNING: Shutdown all cluster before running these scripts
  */
 
 var P = require('bluebird');
 var backends = require('./backends');
+var BackendLocker = require('./backendLocker');
 var Document = require('./document'); //jshint ignore:line
 var Collection = require('./collection');
 var utils = require('./utils');
 var logger = require('memdb-logger').getLogger('memdb', __filename);
 
+var ensureShutDown = function(lockingConf){
+    lockingConf.shardId = 'indexbuilder';
+    lockingConf.heartbeatInterval = 0;
+    var backendLocker = new BackendLocker(lockingConf);
+
+    return P.try(function(){
+        return backendLocker.start();
+    })
+    .then(function(){
+        return backendLocker.getActiveShards();
+    })
+    .then(function(shardIds){
+        if(shardIds.length > 0){
+            throw new Error('You should shutdown all shards first');
+        }
+    })
+    .finally(function(){
+        return backendLocker.stop();
+    });
+};
+
 // dropIndex('field1 field2')
-exports.dropIndex = function(backendConf, collName, keys){
+exports.drop = function(conf, collName, keys){
     if(!Array.isArray(keys)){
         keys = keys.split(' ');
     }
     var indexKey = JSON.stringify(keys.sort());
-    var backend = backends.create(backendConf);
+    var backend = backends.create(conf.backend);
+    var indexCollName = Collection.prototype._indexCollectionName.call({name : collName}, indexKey);
 
-    return P.try(function(){
+    return ensureShutDown(conf.locking)
+    .then(function(){
         return backend.start();
     })
     .then(function(){
-        var indexCollName = Collection.prototype._indexCollectionName.call({name : collName}, indexKey);
         return backend.drop(indexCollName);
     })
     .finally(function(){
@@ -35,20 +56,24 @@ exports.dropIndex = function(backendConf, collName, keys){
 };
 
 // rebuildIndex('field1 field2', {unique : true})
-exports.rebuildIndex = function(backendConf, collName, keys, opts){
+exports.rebuild = function(conf, collName, keys, opts){
     opts = opts || {};
     if(!Array.isArray(keys)){
         keys = keys.split(' ');
     }
     var indexKey = JSON.stringify(keys.sort());
-    var backend = backends.create(backendConf);
+    var backend = backends.create(conf.backend);
+
+    var indexCollName = Collection.prototype._indexCollectionName.call({name : collName}, indexKey);
 
     logger.warn('Start rebuild index %s %s', collName, indexKey);
-    return P.try(function(){
-        return exports.dropIndex(backendConf, collName, keys);
-    })
+
+    return ensureShutDown(conf.locking)
     .then(function(){
         return backend.start();
+    })
+    .then(function(){
+        return backend.drop(indexCollName);
     })
     .then(function(){
         return backend.getAll(collName);
@@ -59,7 +84,6 @@ exports.rebuildIndex = function(backendConf, collName, keys, opts){
             if(!indexValue){
                 return;
             }
-            var indexCollName = Collection.prototype._indexCollectionName.call({name : collName}, indexKey);
 
             return P.try(function(){
                 return backend.get(indexCollName, indexValue);

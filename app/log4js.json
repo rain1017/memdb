@@ -15,6 +15,6 @@
     "levels" : {
     },
 
-    "replaceConsole": true,
+    "replaceConsole": false,
     "lineDebug": false
 }
