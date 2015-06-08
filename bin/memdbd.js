@@ -11,7 +11,7 @@ var helpContent = '\
 MemDB - Distributed transactional in memory database\n\n\
 Usage: memdbd [options]\n\
 Options:\n\
-  -c, --conf path      Config file path (must with .json extension)\n\
+  -c, --conf path      Config file path\n\
   -s, --shard shardId  Start specific shard\n\
   -d, --daemon         Start as daemon\n\
   -h, --help           Display this help\n\

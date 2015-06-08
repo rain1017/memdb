@@ -17,7 +17,7 @@ exports.init = function(confPath, shardId){
 
     var homePath = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
 
-    searchPaths = searchPaths.concat(['./memdb.json', path.join(homePath, '.memdb.json'), '/etc/memdb.json']);
+    searchPaths = searchPaths.concat([path.join(homePath, '.memdb.js'), '/etc/memdb.js']);
 
     var conf = null;
     for(var i=0; i<searchPaths.length; i++){
@@ -40,7 +40,7 @@ exports.init = function(confPath, shardId){
 
     var logPath = logConf.path || '/tmp';
 
-    console.log('all output going to: %s/memdb-%s.log', logPath, shardId || '$');
+    //console.log('all output going to: %s/memdb-%s.log', logPath, shardId || '$');
     memdbLogger.configure(path.join(__dirname, 'log4js.json'), {shardId : shardId || '$', base : logPath});
 
     var level = logConf.level || 'INFO';
@@ -75,4 +75,8 @@ exports.shardConfig = function(shardId){
 
     conf.shardId = shardId;
     return conf;
+};
+
+exports.clusterConfig = function(){
+    return _config;
 };

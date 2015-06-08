@@ -13,7 +13,7 @@ var utils = require('./utils');
 var logger = require('memdb-logger').getLogger('memdb', __filename);
 
 var ensureShutDown = function(lockingConf){
-    lockingConf.shardId = 'indexbuilder';
+    lockingConf.shardId = '$';
     lockingConf.heartbeatInterval = 0;
     var backendLocker = new BackendLocker(lockingConf);
 
@@ -39,6 +39,7 @@ exports.drop = function(conf, collName, keys){
         keys = keys.split(' ');
     }
     var indexKey = JSON.stringify(keys.sort());
+    conf.backend.shardId = '$';
     var backend = backends.create(conf.backend);
     var indexCollName = Collection.prototype._indexCollectionName.call({name : collName}, indexKey);
 
@@ -62,6 +63,7 @@ exports.rebuild = function(conf, collName, keys, opts){
         keys = keys.split(' ');
     }
     var indexKey = JSON.stringify(keys.sort());
+    conf.backend.shardId = '$';
     var backend = backends.create(conf.backend);
 
     var indexCollName = Collection.prototype._indexCollectionName.call({name : collName}, indexKey);

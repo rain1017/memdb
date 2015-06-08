@@ -4,7 +4,7 @@
 // run with node >= 0.12 with --harmony option
 
 // First start memdb server by:
-// memdbd --conf=test/memdb.json --shard=s1
+// memdbd --shard=s1
 
 var memdb = require('memdb');
 var P = require('bluebird');

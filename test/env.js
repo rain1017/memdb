@@ -7,22 +7,15 @@ var path = require('path');
 var fs = require('fs');
 var redis = P.promisifyAll(require('redis'));
 var mongodb = P.promisifyAll(require('mongodb'));
+var memdbConfig = require('../app/config');
 var memdbLogger = require('memdb-logger');
 var logger = memdbLogger.getLogger('test', __filename);
 
+var configPath = path.join(__dirname, '../.memdb.js');
+memdbConfig.init(configPath);
+var config = memdbConfig.clusterConfig();
+
 var serverScript = path.join(__dirname, '../bin/memdbd.js');
-var configPath = path.join(__dirname, 'memdb.json');
-
-var config = require(configPath);
-
-if(config.promise && config.promise.longStackTraces){
-    P.longStackTraces();
-}
-
-if(config.log && config.log.level){
-    memdbLogger.setGlobalLogLevel(memdbLogger.levels[config.log.level]);
-}
-
 var _servers = {}; // {shardId : server}
 
 exports.startCluster = function(shardIds, configOverrideFunc){
@@ -38,8 +31,8 @@ exports.startCluster = function(shardIds, configOverrideFunc){
         configOverrideFunc(newConfig);
     }
 
-    var configPath = '/tmp/memdb-test.json';
-    fs.writeFileSync(configPath, JSON.stringify(newConfig));
+    var newConfigPath = '/tmp/.memdb-test.json';
+    fs.writeFileSync(newConfigPath, JSON.stringify(newConfig));
 
     return P.map(shardIds, function(shardId){
         if(!config.shards[shardId]){
@@ -49,7 +42,7 @@ exports.startCluster = function(shardIds, configOverrideFunc){
             throw new Error('shard ' + shardId + ' already started');
         }
 
-        var args = ['--conf=' + configPath, '--shard=' + shardId];
+        var args = ['--conf=' + newConfigPath, '--shard=' + shardId];
         var server = child_process.fork(serverScript, args);
 
         var deferred = P.defer();
@@ -120,15 +113,7 @@ exports.flushdb = function(cb){
 };
 
 exports.shardConfig = function(shardId){
-    var shardConfig = JSON.parse(JSON.stringify(config));
-
-    var shard = config.shards[shardId];
-    for(var key in shard){
-        shardConfig[key] = shard[key];
-    }
-
-    shardConfig.shardId = shardId;
-    return shardConfig;
+    return memdbConfig.shardConfig(shardId);
 };
 
 exports.runScript = function(script, args){

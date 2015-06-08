@@ -1,6 +1,9 @@
 {
     "appenders": [
         {
+            "type": "console"
+        },
+        {
             "type": "dateFile",
             "filename": "${opts:base}/memdb-${opts:shardId}.log",
             "pattern": "-yyyyMMdd",
@@ -9,6 +12,16 @@
               }
             ,"backups": 5,
             "category":"memdb"
+        },
+        {
+            "type": "dateFile",
+            "filename": "${opts:base}/memdbclient.log",
+            "pattern": "-yyyyMMdd",
+            "layout": {
+                "type": "basic"
+              }
+            ,"backups": 5,
+            "category":"memdb-client"
         }
     ],
 

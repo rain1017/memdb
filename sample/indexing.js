@@ -4,7 +4,7 @@
 // run with node >= 0.12 with --harmony option
 
 // First start memdb server by:
-// memdbd --conf=test/memdb.json --shard=s1
+// memdbd --shard=s1
 
 // Note that indexes is configured in memdb.json
 
