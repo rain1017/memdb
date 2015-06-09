@@ -10,7 +10,6 @@ var logger = require('memdb-logger').getLogger('memdb', __filename);
 
 var DEFAULT_LOCK_TIMEOUT = 10 * 1000;
 
-
 var Document = function(opts){ //jshint ignore:line
     opts = opts || {};
 
@@ -104,22 +103,26 @@ proto.remove = function(connId){
     this.modify(connId, '$remove');
 };
 
-proto.update = function(connId, doc, opts){
+proto.update = function(connId, modifier, opts){
     opts = opts || {};
-    doc = doc || {};
+    if(!modifier){
+        throw new Error('modifier is empty');
+    }
+
+    modifier = modifier || {};
 
     var isModify = false;
-    for(var field in doc){
+    for(var field in modifier){
         isModify = (field[0] === '$');
         break;
     }
 
     if(!isModify){
-        this.modify(connId, '$replace', doc);
+        this.modify(connId, '$replace', modifier);
     }
     else{
-        for(var cmd in doc){
-            this.modify(connId, cmd, doc[cmd]);
+        for(var cmd in modifier){
+            this.modify(connId, cmd, modifier[cmd]);
         }
     }
 };

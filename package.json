@@ -36,7 +36,7 @@
         "memdb-logger": "rain1017/memdb-logger",
         "bluebird": "~2.9.24",
         "lodash": "~3.7.0",
-        "async-lock": "~0.3.3",
+        "async-lock": "~0.3.4",
         "redis": "~0.12.1",
         "hiredis": "~0.3.0",
         "mongodb": "~2.0.28",

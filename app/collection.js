@@ -95,6 +95,10 @@ proto.find = function(query, fields, opts){
     }
 
     var keys = Object.keys(query).sort();
+    if(keys.length === 0){
+        throw new Error('You must specify query key');
+    }
+
     var indexKey = JSON.stringify(keys);
 
     var indexConfig = this.config.indexes[indexKey];

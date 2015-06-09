@@ -54,6 +54,7 @@ proto.commit = function(){
         self.lockedKeys = {};
 
         self.logger.debug('[conn:%s] commited', self._id);
+        return true;
     });
 };
 
@@ -68,6 +69,7 @@ proto.rollback = function(){
     this.lockedKeys = {};
 
     this.logger.debug('[conn:%s] rolledback', this._id);
+    return true;
 };
 
 proto.flushBackend = function(){

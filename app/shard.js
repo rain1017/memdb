@@ -329,7 +329,7 @@ proto.lock = function(connId, key){
     this._ensureState(STATE.RUNNING);
 
     if(this.isLocked(connId, key)){
-        return;
+        return true;
     }
 
     var self = this;
@@ -342,6 +342,7 @@ proto.lock = function(connId, key){
         })
         .then(function(){
             self.logger.debug('[conn:%s] lock(%s)', connId, key);
+            return true;
         });
     });
 };
@@ -390,7 +391,7 @@ proto.commit = function(connId, keys){
 
         self.logger.debug('[conn:%s] commit(%j)', connId, keys);
     })
-    .finally(function(){
+    .finally(function(ret){
         self.commitingCount--;
     });
 };
@@ -744,6 +745,7 @@ proto.flushBackend = function(connId){
     })
     .then(function(){
         self.logger.warn('[conn:%s] flushed Backend', connId);
+        return true;
     });
 };
 
