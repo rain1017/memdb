@@ -23,10 +23,11 @@
 <a id="why-memdb" class="anchor" href="#why-memdb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Why memdb?</h2>
 
 <ul>
-<li><p><strong>Performance</strong> : Data access is mainly based on in process memory, which is extremely fast.</p></li>
+<li><p><strong>Performance</strong> : In memory data access which is extremely fast.</p></li>
 <li><p><strong>Scalable</strong> : System is horizontally scalable by adding more shards.</p></li>
 <li><p><strong>Transaction</strong> : Full transaction support like traditional database, data consistency is guaranteed. 'row' based locking mechanism is used.</p></li>
-<li><p><strong>High Availability</strong> : Each shard is backed by one or more redis replica, you will never lose any commited data.</p></li>
+<li><p><strong>Object Based</strong> : JSON object based data, schemaless.</p></li>
+<li><p><strong>High Availability</strong> : Each shard is backed by one or more replica, you will never lose any commited data.</p></li>
 </ul>
 
 <p><strong>Comparison with other databases</strong></p>
@@ -87,57 +88,167 @@
 <a id="install-dependencies" class="anchor" href="#install-dependencies" aria-hidden="true"><span class="octicon octicon-link"></span></a>Install Dependencies</h3>
 
 <ul>
-<li><p>Install <a href="https://nodejs.org/download/">Node.js v0.12</a></p></li>
+<li><p>Install <a href="https://nodejs.org/download/">Node.js &gt;=v0.10</a></p></li>
 <li><p>Install <a href="http://redis.io/download">Redis</a></p></li>
 <li><p>Install <a href="https://www.mongodb.org/downloads">MongoDB</a></p></li>
 </ul>
 
 <h3>
-<a id="a-quick-sample" class="anchor" href="#a-quick-sample" aria-hidden="true"><span class="octicon octicon-link"></span></a>A Quick Sample</h3>
+<a id="install-memdb" class="anchor" href="#install-memdb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Install MemDB</h3>
 
-<div class="highlight highlight-javascript"><pre><span class="pl-k">var</span> memdb <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>memdb<span class="pl-pds">'</span></span>);
+<ul>
+<li>Install memdb</li>
+</ul>
+
+<pre><code>sudo npm install -g memdb-server
+</code></pre>
+
+<ul>
+<li><p>Modify settings in <code>.memdb.js</code> on your need</p></li>
+<li><p>Start memdb server</p></li>
+</ul>
+
+<pre><code>memdbd --shard=[shardId] [--daemon]
+// Start more shards on your need
+</code></pre>
+
+<ul>
+<li>To stop the server, just press ^C on console mode, or send signal kill on daemon mode</li>
+</ul>
+
+<h3>
+<a id="play-with-memdb-shell" class="anchor" href="#play-with-memdb-shell" aria-hidden="true"><span class="octicon octicon-link"></span></a>Play with memdb shell</h3>
+
+<div class="highlight highlight-js"><pre>$ memdb <span class="pl-k">-</span>h <span class="pl-c1">127.0</span>.<span class="pl-c1">0.1</span> <span class="pl-k">-</span>p <span class="pl-c1">31017</span> <span class="pl-c">// specify the shard's host and port to connect</span>
+MemDB shell
+connected to <span class="pl-c1">127.0</span>.<span class="pl-c1">0.1</span><span class="pl-k">:</span><span class="pl-c1">31017</span>
+memdb<span class="pl-k">&gt;</span> db.insert(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, {_id <span class="pl-k">:</span> <span class="pl-c1">1</span>, name <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>rain<span class="pl-pds">'</span></span>}) <span class="pl-c">// insert a doc to 'player' collection</span>
+<span class="pl-s"><span class="pl-pds">'</span>1<span class="pl-pds">'</span></span>
+memdb<span class="pl-k">&gt;</span> db.<span class="pl-c1">find</span>(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, <span class="pl-c1">1</span>)  <span class="pl-c">// find doc by id</span>
+{ _id<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>1<span class="pl-pds">'</span></span>, name<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>rain<span class="pl-pds">'</span></span> }
+memdb<span class="pl-k">&gt;</span> db.commit() <span class="pl-c">// commit changes</span>
+<span class="pl-c1">true</span>
+memdb<span class="pl-k">&gt;</span> db.update(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, <span class="pl-c1">1</span>, {$set <span class="pl-k">:</span> {name <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>snow<span class="pl-pds">'</span></span>}}) <span class="pl-c">// update doc</span>
+<span class="pl-c1">1</span>
+memdb<span class="pl-k">&gt;</span> db.<span class="pl-c1">find</span>(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, <span class="pl-c1">1</span>, <span class="pl-s"><span class="pl-pds">'</span>name<span class="pl-pds">'</span></span>)
+{ name<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>snow<span class="pl-pds">'</span></span> }
+memdb<span class="pl-k">&gt;</span> db.rollback() <span class="pl-c">// rollback changes</span>
+<span class="pl-c1">true</span>
+memdb<span class="pl-k">&gt;</span> db.<span class="pl-c1">find</span>(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, <span class="pl-c1">1</span>, <span class="pl-s"><span class="pl-pds">'</span>name<span class="pl-pds">'</span></span>)
+{ name<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>rain<span class="pl-pds">'</span></span> }
+memdb<span class="pl-k">&gt;</span> db.<span class="pl-c1">remove</span>(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, <span class="pl-c1">1</span>) <span class="pl-c">// remove doc</span>
+<span class="pl-c1">1</span>
+memdb<span class="pl-k">&gt;</span> db.commit()
+<span class="pl-c1">true</span>
+memdb<span class="pl-k">&gt;</span> <span class="pl-k">^</span>D (to exit)</pre></div>
+
+<h3>
+<a id="nodejs-client-using-autoconnection" class="anchor" href="#nodejs-client-using-autoconnection" aria-hidden="true"><span class="octicon octicon-link"></span></a>Nodejs client using AutoConnection</h3>
+
+<p>AutoConnection manages a pool of connections for each shard, execute transacion on specified shard, and auto commit on transaction complete or rollback on failure.</p>
+
+<div class="highlight highlight-js"><pre><span class="pl-c">// npm install memdb-client</span>
+<span class="pl-c">// run with node &gt;= 0.12 with --harmony option</span>
+<span class="pl-c">// first start memdb shards 's1' on localhost:31017, 's2' on localhost:31018.</span>
+
+<span class="pl-k">var</span> memdb <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>memdb-client<span class="pl-pds">'</span></span>);
+<span class="pl-c">// just bluebird promise</span>
+<span class="pl-k">var</span> P <span class="pl-k">=</span> memdb.Promise;
+
+<span class="pl-k">var</span> main <span class="pl-k">=</span> P.coroutine(<span class="pl-k">function*</span>(){
+    <span class="pl-c">// All database access should via this autoconn object, you can preserve autoconn object in a global module that can be accessed anywhere</span>
+    <span class="pl-k">var</span> autoconn <span class="pl-k">=</span> <span class="pl-k">yield</span> memdb.autoConnect({
+        shards <span class="pl-k">:</span> { <span class="pl-c">// Specify all shards here</span>
+            s1 <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port <span class="pl-k">:</span> <span class="pl-c1">31017</span>},
+            s2 <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port <span class="pl-k">:</span> <span class="pl-c1">31018</span>},
+        }
+    });
+
+    <span class="pl-k">var</span> doc <span class="pl-k">=</span> {_id <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>1<span class="pl-pds">'</span></span>, name <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>rain<span class="pl-pds">'</span></span>, level <span class="pl-k">:</span> <span class="pl-c1">1</span>};
+
+    <span class="pl-c">// Get player collection object</span>
+    <span class="pl-k">var</span> Player <span class="pl-k">=</span> autoconn.collection(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>);
+
+    <span class="pl-c">// Make a transaction in shard s1</span>
+    <span class="pl-k">yield</span> autoconn.transaction(P.coroutine(<span class="pl-k">function*</span>(){
+        <span class="pl-c">// Upsert a doc (update if exist, insert if not exist)</span>
+        <span class="pl-k">yield</span> Player.update(doc._id, doc, {upsert <span class="pl-k">:</span> <span class="pl-c1">true</span>});
+        <span class="pl-c">// Find the doc</span>
+        <span class="pl-k">var</span> ret <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.<span class="pl-c1">find</span>(doc._id);
+        <span class="pl-en">console</span><span class="pl-c1">.log</span>(ret); <span class="pl-c">// {_id : '1', name : 'rain', level : 1}</span>
+    }), <span class="pl-s"><span class="pl-pds">'</span>s1<span class="pl-pds">'</span></span>); <span class="pl-c">// Auto commit after transaction</span>
+
+    <span class="pl-k">try</span>{
+        <span class="pl-c">// Make another transaction in shard s1</span>
+        <span class="pl-k">yield</span> autoconn.transaction(P.coroutine(<span class="pl-k">function*</span>(){
+            <span class="pl-c">// Update doc with $set modifier</span>
+            <span class="pl-k">yield</span> Player.update(doc._id, {$set <span class="pl-k">:</span> {level <span class="pl-k">:</span> <span class="pl-c1">2</span>}});
+            <span class="pl-c">// Find the changed doc with specified field</span>
+            <span class="pl-k">var</span> ret <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.<span class="pl-c1">find</span>(doc._id, <span class="pl-s"><span class="pl-pds">'</span>level<span class="pl-pds">'</span></span>);
+            <span class="pl-en">console</span><span class="pl-c1">.log</span>(ret); <span class="pl-c">// {level : 2}</span>
+            <span class="pl-c">// Exception here!</span>
+            <span class="pl-k">throw</span> <span class="pl-k">new</span> <span class="pl-en">Error</span>(<span class="pl-s"><span class="pl-pds">'</span>Oops!<span class="pl-pds">'</span></span>);
+        }), <span class="pl-s"><span class="pl-pds">'</span>s1<span class="pl-pds">'</span></span>);
+    }
+    <span class="pl-k">catch</span>(err){ <span class="pl-c">// Catch the exception</span>
+        <span class="pl-c">// Change is rolled back</span>
+        <span class="pl-k">yield</span> autoconn.transaction(P.coroutine(<span class="pl-k">function*</span>(){
+            <span class="pl-k">var</span> ret <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.<span class="pl-c1">find</span>(doc._id, <span class="pl-s"><span class="pl-pds">'</span>level<span class="pl-pds">'</span></span>);
+            <span class="pl-en">console</span><span class="pl-c1">.log</span>(ret); <span class="pl-c">// {level : 1}</span>
+        }), <span class="pl-s"><span class="pl-pds">'</span>s1<span class="pl-pds">'</span></span>);
+    }
+
+    <span class="pl-c">// Make transcation in another shard</span>
+    <span class="pl-c">// Since we just accessed this doc in s1, the doc will 'fly' from shard s1 to s2</span>
+    <span class="pl-c">// In real production you should avoid these kind of data 'fly' by routing transaction to proper shard</span>
+    <span class="pl-k">yield</span> autoconn.transaction(P.coroutine(<span class="pl-k">function*</span>(){
+        <span class="pl-k">yield</span> Player.<span class="pl-c1">remove</span>(doc._id);
+    }), <span class="pl-s"><span class="pl-pds">'</span>s2<span class="pl-pds">'</span></span>);
+
+    <span class="pl-c">// Close all connections</span>
+    <span class="pl-k">yield</span> autoconn.<span class="pl-c1">close</span>();
+});
+
+<span class="pl-k">if</span> (<span class="pl-c1">require</span>.main <span class="pl-k">===</span> <span class="pl-c1">module</span>) {
+    main().finally(<span class="pl-c1">process</span>.exit);
+}</pre></div>
+
+<h3>
+<a id="nodejs-client-using-mdbgoose" class="anchor" href="#nodejs-client-using-mdbgoose" aria-hidden="true"><span class="octicon octicon-link"></span></a>Nodejs client using MdbGoose</h3>
+
+<p>Mdbgoose is the 'mongoose' for memdb</p>
+
+<div class="highlight highlight-js"><pre><span class="pl-c">// npm install memdb-client</span>
+<span class="pl-c">// run with node &gt;= 0.12 with --harmony option</span>
+<span class="pl-c">// first start memdb shards 's1' on localhost:31017</span>
+
+<span class="pl-k">var</span> memdb <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>memdb-client<span class="pl-pds">'</span></span>);
+<span class="pl-k">var</span> P <span class="pl-k">=</span> memdb.Promise;
 <span class="pl-k">var</span> mdbgoose <span class="pl-k">=</span> memdb.goose;
-<span class="pl-k">var</span> P <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>bluebird<span class="pl-pds">'</span></span>);
-
-<span class="pl-c">// memdb's config</span>
-<span class="pl-k">var</span> config <span class="pl-k">=</span> {
-    <span class="pl-c">//shard Id (Must unique and immutable for each shard)</span>
-    shard <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>s1<span class="pl-pds">'</span></span>,
-    <span class="pl-c">// Global backend storage, all shards must connect to the same mongodb (or mongodb cluster)</span>
-    backend <span class="pl-k">:</span> {engine <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>mongodb<span class="pl-pds">'</span></span>, url <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>mongodb://localhost/memdb-test<span class="pl-pds">'</span></span>},
-    <span class="pl-c">// Global locking redis, all shards must connect to the same redis (or redis cluster)</span>
-    locking <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port <span class="pl-k">:</span> <span class="pl-c1">6379</span>, db <span class="pl-k">:</span> <span class="pl-c1">0</span>},
-    <span class="pl-c">// Global event redis, all shards must connect to the same redis</span>
-    <span class="pl-c1">event</span> <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port <span class="pl-k">:</span> <span class="pl-c1">6379</span>, db <span class="pl-k">:</span> <span class="pl-c1">0</span>},
-    <span class="pl-c">// Data replication redis, one redis instance for each shard</span>
-    slave <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port <span class="pl-k">:</span> <span class="pl-c1">6379</span>, db <span class="pl-k">:</span> <span class="pl-c1">1</span>},
-};
 
 <span class="pl-c">// Define player schema</span>
 <span class="pl-k">var</span> playerSchema <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">mdbgoose.Schema</span>({
     _id <span class="pl-k">:</span> <span class="pl-c1">String</span>,
     name <span class="pl-k">:</span> <span class="pl-c1">String</span>,
-    areaId <span class="pl-k">:</span> {type <span class="pl-k">:</span> <span class="pl-c1">Number</span>, index <span class="pl-k">:</span> <span class="pl-c1">true</span>, indexIgnore <span class="pl-k">:</span> [<span class="pl-k">-</span><span class="pl-c1">1</span>, <span class="pl-c1">null</span>]},
-    deviceType <span class="pl-k">:</span> {type <span class="pl-k">:</span> <span class="pl-c1">Number</span>, indexIgnore <span class="pl-k">:</span> [<span class="pl-k">-</span><span class="pl-c1">1</span>, <span class="pl-c1">null</span>]},
-    deviceId <span class="pl-k">:</span> {type <span class="pl-k">:</span> <span class="pl-c1">String</span>, indexIgnore <span class="pl-k">:</span> [<span class="pl-s"><span class="pl-pds">'</span><span class="pl-pds">'</span></span>, <span class="pl-c1">null</span>]},
+    areaId <span class="pl-k">:</span> <span class="pl-c1">Number</span>,
+    deviceType <span class="pl-k">:</span> <span class="pl-c1">Number</span>,
+    deviceId <span class="pl-k">:</span> <span class="pl-c1">String</span>,
     items <span class="pl-k">:</span> [mdbgoose.SchemaTypes.Mixed],
 }, {collection <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>});
-<span class="pl-c">// Define a compound unique index</span>
-playerSchema.<span class="pl-c1">index</span>({deviceType <span class="pl-k">:</span> <span class="pl-c1">1</span>, deviceId <span class="pl-k">:</span> <span class="pl-c1">1</span>}, {unique <span class="pl-k">:</span> <span class="pl-c1">true</span>});
-
 <span class="pl-c">// Define player model</span>
 <span class="pl-k">var</span> Player <span class="pl-k">=</span> mdbgoose.model(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, playerSchema);
 
 <span class="pl-k">var</span> main <span class="pl-k">=</span> P.coroutine(<span class="pl-k">function*</span>(){
-    <span class="pl-c">// Parse mdbgoose schema to collection config</span>
-    config.collections <span class="pl-k">=</span> mdbgoose.genCollectionConfig();
-    <span class="pl-c">// Start a memdb shard with in-process mode</span>
-    <span class="pl-k">yield</span> memdb.startServer(config);
+    <span class="pl-c">// Connect to memdb</span>
+    <span class="pl-k">yield</span> mdbgoose.connectAsync({
+        shards <span class="pl-k">:</span> { <span class="pl-c">// specify all shards here</span>
+            s1 <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port<span class="pl-k">:</span> <span class="pl-c1">31017</span>},
+        }
+    });
 
-    <span class="pl-c">// Connect to in-process server</span>
-    <span class="pl-k">yield</span> mdbgoose.connectAsync();
-    <span class="pl-c">// Execute in a transaction</span>
+    <span class="pl-c">// Make a transaction in s1</span>
     <span class="pl-k">yield</span> mdbgoose.transactionAsync(P.coroutine(<span class="pl-k">function*</span>(){
+
         <span class="pl-k">var</span> player <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">Player</span>({
             _id <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>p1<span class="pl-pds">'</span></span>,
             name<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>rain<span class="pl-pds">'</span></span>,
@@ -146,15 +257,22 @@ playerSchema.<span class="pl-c1">index</span>({deviceType <span class="pl-k">:</
             deviceId <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>id1<span class="pl-pds">'</span></span>,
             items <span class="pl-k">:</span> [],
         });
+
         <span class="pl-c">// insert a player</span>
         <span class="pl-k">yield</span> player.saveAsync();
+
         <span class="pl-c">// find player by id</span>
-        <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-k">yield</span> Player.findAsync(<span class="pl-s"><span class="pl-pds">'</span>p1<span class="pl-pds">'</span></span>));
+        <span class="pl-k">var</span> doc <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.findAsync(<span class="pl-s"><span class="pl-pds">'</span>p1<span class="pl-pds">'</span></span>);
+        <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-s"><span class="pl-pds">'</span>%j<span class="pl-pds">'</span></span>, doc);
+
         <span class="pl-c">// find player by areaId, return array of players</span>
-        <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-k">yield</span> Player.findAsync({areaId <span class="pl-k">:</span> <span class="pl-c1">1</span>}));
+        <span class="pl-c">// index for areaId should be configured in memdb.json</span>
+        <span class="pl-k">var</span> docs <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.findAsync({areaId <span class="pl-k">:</span> <span class="pl-c1">1</span>});
+        <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-s"><span class="pl-pds">'</span>%j<span class="pl-pds">'</span></span>, docs);
+
         <span class="pl-c">// find player by deviceType and deviceId</span>
+        <span class="pl-c">// a compound index should be configured in memdb.json</span>
         player <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.findOneAsync({deviceType <span class="pl-k">:</span> <span class="pl-c1">1</span>, deviceId <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>id1<span class="pl-pds">'</span></span>});
-        <span class="pl-en">console</span><span class="pl-c1">.log</span>(player);
 
         <span class="pl-c">// update player</span>
         player.areaId <span class="pl-k">=</span> <span class="pl-c1">2</span>;
@@ -162,25 +280,13 @@ playerSchema.<span class="pl-c1">index</span>({deviceType <span class="pl-k">:</
 
         <span class="pl-c">// remove the player</span>
         <span class="pl-k">yield</span> player.removeAsync();
-    }));
 
-    <span class="pl-c">// stop memdb server</span>
-    <span class="pl-k">yield</span> memdb.stopServer();
+    }), <span class="pl-s"><span class="pl-pds">'</span>s1<span class="pl-pds">'</span></span>);
 });
 
 <span class="pl-k">if</span> (<span class="pl-c1">require</span>.main <span class="pl-k">===</span> <span class="pl-c1">module</span>) {
-    main().catch(<span class="pl-en">console</span><span class="pl-c1">.error</span>).finally(<span class="pl-c1">process</span>.exit);
+    main().finally(<span class="pl-c1">process</span>.exit);
 }</pre></div>
-
-<p><strong>Run the sample</strong></p>
-
-<pre><code>npm install memdb bluebird
-node --harmony sample.js
-</code></pre>
-
-<p><strong>Become a cluster</strong></p>
-
-<p>Just start more shards that connect to <strong>the same global services (backend/locking/event)</strong>, and they will automatically become a MemDB cluster.</p>
 
 <h2>
 <a id="quick-pomelo" class="anchor" href="#quick-pomelo" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick-pomelo</h2>
