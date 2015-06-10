@@ -139,7 +139,7 @@ proto.findById = function(id, fields, opts){
     id = this._checkId(id);
 
     if(opts && opts.readonly){
-        return this.shard.findReadOnly(this.conn._id, this._key(id));
+        return this.shard.findReadOnly(this.conn._id, this._key(id), fields);
     }
 
     var self = this;

@@ -46,7 +46,7 @@ proto.find = function(connId, fields){
     }
 
     if(!fields){
-        return utils.clone(doc);
+        return doc;
     }
 
     var includeFields = [], excludeFields = [];
@@ -72,23 +72,18 @@ proto.find = function(connId, fields){
     if(includeFields.length > 0){
         includeFields.forEach(function(field){
             if(doc.hasOwnProperty(field)){
-                ret[field] = utils.clone(doc[field]);
+                ret[field] = doc[field];
             }
         });
     }
     else{
-        ret = utils.clone(doc);
+        ret = doc;
         excludeFields.forEach(function(field){
             delete ret[field];
         });
     }
 
     return ret;
-};
-
-proto.findReadOnly = function(connId){
-    // return reference rather than deepcopy
-    return this.isLocked(connId) ? this._getChanged() : this.commited;
 };
 
 proto.exists = function(connId){

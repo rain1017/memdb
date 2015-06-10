@@ -2,17 +2,6 @@
 
 var utils = require('./utils');
 
-// Max document size 1MB after serialize
-var MAX_DOC_SIZE = 1024 * 1024;
-
-var clone = function(obj){
-    var json = JSON.stringify(obj);
-    if(json.length > MAX_DOC_SIZE){
-        throw new Error('Document size exceed limit');
-    }
-    return JSON.parse(json);
-};
-
 //http://docs.mongodb.org/manual/reference/limits/#Restrictions-on-Field-Names
 var verifyDoc = function(doc){
     if(doc === null || typeof(doc) !== 'object'){
@@ -36,7 +25,7 @@ exports.$insert = function(doc, param){
         throw new Error('doc already exists');
     }
     verifyDoc(param);
-    return clone(param);
+    return param;
 };
 
 exports.$replace = function(doc, param){
@@ -45,7 +34,7 @@ exports.$replace = function(doc, param){
         throw new Error('doc not exist');
     }
     verifyDoc(param);
-    return clone(param);
+    return param;
 };
 
 exports.$remove = function(doc, param){
@@ -61,7 +50,7 @@ exports.$set = function(doc, param){
     }
     for(var path in param){
         verifyDoc(param[path]);
-        utils.setObjPath(doc, path, clone(param[path]));
+        utils.setObjPath(doc, path, param[path]);
     }
     return doc;
 };
@@ -110,7 +99,7 @@ exports.$push = function(doc, param){
             throw new Error('$push to non-array');
         }
         verifyDoc(param[path]);
-        arr.push(clone(param[path]));
+        arr.push(param[path]);
     }
     return doc;
 };
@@ -134,7 +123,7 @@ exports.$pushAll = function(doc, param){
         }
         for(var i in items){
             verifyDoc(items[i]);
-            arr.push(clone(items[i]));
+            arr.push(items[i]);
         }
     }
     return doc;
@@ -156,7 +145,7 @@ exports.$addToSet = function(doc, param){
         var value = param[path];
         if(arr.indexOf(value) === -1){
             verifyDoc(value);
-            arr.push(clone(value));
+            arr.push(value);
         }
     }
     return doc;

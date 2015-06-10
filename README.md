@@ -34,7 +34,7 @@ __MemDB__    | __High (Memory)__ | __Yes__                   | __Yes__          
 
 ### Install Dependencies
 
-* Install [Node.js >=v0.12.5](https://nodejs.org/download/)
+* Install [Node.js >=v0.10](https://nodejs.org/download/)
 
 * Install [Redis](http://redis.io/download)
 
@@ -52,8 +52,8 @@ sudo npm install -g memdb-server
 * Start memdb server
 ```
 memdbd --shard=[shardId] [--daemon]
+// Start more shards on your need
 ```
-Start more shards on your need
 
 * To stop the server, just press ^C on console mode, or send signal kill on daemon mode
 

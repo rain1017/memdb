@@ -397,7 +397,7 @@ proto.commit = function(connId, keys){
 };
 
 // Readonly find without locking backend (data may not up-to-date)
-proto.findReadOnly = function(connId, key){
+proto.findReadOnly = function(connId, key, fields){
     this._ensureState(STATE.RUNNING);
 
     if(this.cachedDocs.hasOwnProperty(key)){
@@ -408,7 +408,7 @@ proto.findReadOnly = function(connId, key){
     return P.bind(this)
     .then(function(){
         if(!!this.docs[key]){
-            return this._doc(key).findReadOnly(connId, key);
+            return this._doc(key).find(connId);
         }
 
         return P.bind(this)
