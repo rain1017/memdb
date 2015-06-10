@@ -7,13 +7,15 @@ Distributed transactional in memory database
 
 ## Why memdb?
 
-- [x] __Performance__ : Data access is mainly based on in process memory, which is extremely fast.
+- [x] __Performance__ : In memory data access which is extremely fast.
 
 - [x] __Scalable__ : System is horizontally scalable by adding more shards.
 
 - [x] __Transaction__ : Full transaction support like traditional database, data consistency is guaranteed. 'row' based locking mechanism is used.
 
-- [x] __High Availability__ : Each shard is backed by one or more redis replica, you will never lose any commited data.
+- [x] __Object Based__ : JSON object based data, schemaless.
+
+- [x] __High Availability__ : Each shard is backed by one or more replica, you will never lose any commited data.
 
 __Comparison with other databases__
 
@@ -32,60 +34,101 @@ __MemDB__    | __High (Memory)__ | __Yes__                   | __Yes__          
 
 ### Install Dependencies
 
-* Install [Node.js v0.12](https://nodejs.org/download/)
+* Install [Node.js >=v0.12.5](https://nodejs.org/download/)
 
 * Install [Redis](http://redis.io/download)
 
 * Install [MongoDB](https://www.mongodb.org/downloads)
 
-### A Quick Sample
+### Install MemDB
 
-First start memdb cluster by:
+* Install memdb
 ```
-memdbd --conf=test/memdb.json --shard=s1
-memdbd --conf=test/memdb.json --shard=s2
+sudo npm install -g memdb-server
 ```
+
+* Modify settings in `.memdb.js` on your need
+
+* Start memdb server
+```
+memdbd --shard=[shardId] [--daemon]
+```
+Start more shards on your need
+
+* To stop the server, just press ^C on console mode, or send signal kill on daemon mode
+
+
+### Play with memdb shell
 
 ```js
-// npm install memdb, should
-// run with node >= 0.12 with --harmony option
+$ memdb -h 127.0.0.1 -p 31017 // specify the shard's host and port to connect
+MemDB shell
+connected to 127.0.0.1:31017
+memdb> db.insert('player', {_id : 1, name : 'rain'}) // insert a doc to 'player' collection
+'1'
+memdb> db.find('player', 1)  // find doc by id
+{ _id: '1', name: 'rain' }
+memdb> db.commit() // commit changes
+true
+memdb> db.update('player', 1, {$set : {name : 'snow'}}) // update doc
+1
+memdb> db.find('player', 1, 'name')
+{ name: 'snow' }
+memdb> db.rollback() // rollback changes
+true
+memdb> db.find('player', 1, 'name')
+{ name: 'rain' }
+memdb> db.remove('player', 1) // remove doc
+1
+memdb> db.commit()
+true
+memdb> ^D (to exit)
+```
 
-var memdb = require('memdb');
+### Nodejs client using AutoConnection
+
+AutoConnection manages a pool of connections for each shard, execute transacion on specified shard, and auto commit on transaction complete or rollback on failure.
+
+```js
+// npm install memdb-client
+// run with node >= 0.12 with --harmony option
+// first start memdb shards 's1' on localhost:31017, 's2' on localhost:31018.
+
+var memdb = require('memdb-client');
+// just bluebird promise
 var P = memdb.Promise;
-var should = require('should');
 
 var main = P.coroutine(function*(){
-
+    // All database access should via this autoconn object, you can preserve autoconn object in a global module that can be accessed anywhere
     var autoconn = yield memdb.autoConnect({
-        shards : {
+        shards : { // Specify all shards here
             s1 : {host : '127.0.0.1', port : 31017},
             s2 : {host : '127.0.0.1', port : 31018},
         }
     });
 
-    var User = autoconn.collection('user');
     var doc = {_id : '1', name : 'rain', level : 1};
+
+    // Get player collection object
+    var Player = autoconn.collection('player');
 
     // Make a transaction in shard s1
     yield autoconn.transaction(P.coroutine(function*(){
-        // Remove if exist
-        yield User.remove(doc._id);
-
-        // Insert a doc
-        yield User.insert(doc);
+        // Upsert a doc (update if exist, insert if not exist)
+        yield Player.update(doc._id, doc, {upsert : true});
         // Find the doc
-        yield User.find(doc._id);
-        ret.level.should.eql(1);
+        var ret = yield Player.find(doc._id);
+        console.log(ret); // {_id : '1', name : 'rain', level : 1}
     }), 's1'); // Auto commit after transaction
 
     try{
         // Make another transaction in shard s1
         yield autoconn.transaction(P.coroutine(function*(){
             // Update doc with $set modifier
-            yield User.update(doc._id, {$set : {level : 2}});
-            // Find the changed doc
-            var ret = yield User.find(doc._id);
-            ret.level.should.eql(2);
+            yield Player.update(doc._id, {$set : {level : 2}});
+            // Find the changed doc with specified field
+            var ret = yield Player.find(doc._id, 'level');
+            console.log(ret); // {level : 2}
             // Exception here!
             throw new Error('Oops!');
         }), 's1');
@@ -93,50 +136,103 @@ var main = P.coroutine(function*(){
     catch(err){ // Catch the exception
         // Change is rolled back
         yield autoconn.transaction(P.coroutine(function*(){
-            var ret = yield User.find(doc._id);
-            ret.level.should.eql(1);
+            var ret = yield Player.find(doc._id, 'level');
+            console.log(ret); // {level : 1}
         }), 's1');
     }
 
     // Make transcation in another shard
+    // Since we just accessed this doc in s1, the doc will 'fly' from shard s1 to s2
+    // In real production you should avoid these kind of data 'fly' by routing transaction to proper shard
     yield autoconn.transaction(P.coroutine(function*(){
-        yield User.remove(doc._id);
+        yield Player.remove(doc._id);
     }), 's2');
 
+    // Close all connections
     yield autoconn.close();
 });
 
 if (require.main === module) {
-    main().catch(console.error).finally(process.exit);
+    main().finally(process.exit);
 }
 ```
 
-__Run the sample__
-```
-npm install memdb bluebird
-node --harmony sample.js
+
+### Nodejs client using MdbGoose
+
+Mdbgoose is the 'mongoose' for memdb
+
+```js
+// npm install memdb-client
+// run with node >= 0.12 with --harmony option
+// first start memdb shards 's1' on localhost:31017
+
+var memdb = require('memdb-client');
+var P = memdb.Promise;
+var mdbgoose = memdb.goose;
+
+// Define player schema
+var playerSchema = new mdbgoose.Schema({
+    _id : String,
+    name : String,
+    areaId : Number,
+    deviceType : Number,
+    deviceId : String,
+    items : [mdbgoose.SchemaTypes.Mixed],
+}, {collection : 'player'});
+// Define player model
+var Player = mdbgoose.model('player', playerSchema);
+
+var main = P.coroutine(function*(){
+    // Connect to memdb
+    yield mdbgoose.connectAsync({
+        shards : { // specify all shards here
+            s1 : {host : '127.0.0.1', port: 31017},
+        }
+    });
+
+    // Make a transaction in s1
+    yield mdbgoose.transactionAsync(P.coroutine(function*(){
+
+        var player = new Player({
+            _id : 'p1',
+            name: 'rain',
+            areaId : 1,
+            deviceType : 1,
+            deviceId : 'id1',
+            items : [],
+        });
+
+        // insert a player
+        yield player.saveAsync();
+
+        // find player by id
+        var doc = yield Player.findAsync('p1');
+        console.log('%j', doc);
+
+        // find player by areaId, return array of players
+        // index for areaId should be configured in memdb.json
+        var docs = yield Player.findAsync({areaId : 1});
+        console.log('%j', docs);
+
+        // find player by deviceType and deviceId
+        // a compound index should be configured in memdb.json
+        player = yield Player.findOneAsync({deviceType : 1, deviceId : 'id1'});
+
+        // update player
+        player.areaId = 2;
+        yield player.saveAsync();
+
+        // remove the player
+        yield player.removeAsync();
+
+    }), 's1');
+});
+
+if (require.main === module) {
+    main().finally(process.exit);
+}
 ```
 
 ## Quick-pomelo
 __[quick-pomelo](http://quickpomelo.com)__ is a rapid and robust game server framework based on memdb
-
-## License
-(The MIT License)
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.

@@ -1,15 +1,13 @@
 'use strict';
 
-// npm install memdb, bluebird
+// npm install memdb-client
 // run with node >= 0.12 with --harmony option
 
-// First start memdb server by:
-// memdbd --shard=s1
+// first start memdb shards 's1' on localhost:31017
 
-var memdb = require('memdb');
-var mdbgoose = memdb.goose;
+var memdb = require('memdb-client');
 var P = memdb.Promise;
-var should = require('should');
+var mdbgoose = memdb.goose;
 
 // Define player schema
 var playerSchema = new mdbgoose.Schema({
@@ -20,14 +18,13 @@ var playerSchema = new mdbgoose.Schema({
     deviceId : String,
     items : [mdbgoose.SchemaTypes.Mixed],
 }, {collection : 'player'});
-
 // Define player model
 var Player = mdbgoose.model('player', playerSchema);
 
 var main = P.coroutine(function*(){
     // Connect to memdb
     yield mdbgoose.connectAsync({
-        shards : {
+        shards : { // specify all shards here
             s1 : {host : '127.0.0.1', port: 31017},
             s2 : {host : '127.0.0.1', port: 31018},
         }
@@ -50,16 +47,15 @@ var main = P.coroutine(function*(){
 
         // find player by id
         var doc = yield Player.findAsync('p1');
-        doc._id.should.eql('p1');
+        console.log('%j', doc);
 
         // find player by areaId, return array of players
-        // note that the index for areaId is configured in memdb.json
+        // index for areaId should be configured in memdb.json
         var docs = yield Player.findAsync({areaId : 1});
-        docs.length.should.eql(1);
-        docs[0].areaId.should.eql(1);
+        console.log('%j', docs);
 
         // find player by deviceType and deviceId
-        // note that a compound index is configured in memdb.json
+        // a compound index should be configured in memdb.json
         player = yield Player.findOneAsync({deviceType : 1, deviceId : 'id1'});
 
         // update player
@@ -73,5 +69,5 @@ var main = P.coroutine(function*(){
 });
 
 if (require.main === module) {
-    main().catch(console.error).finally(process.exit);
+    main().finally(process.exit);
 }

@@ -62,7 +62,7 @@ var startRepl = function(conn){
             if(P.is(ret)){
                 ret.nodeify(function(err, ret){
                     if(err){
-                        err = err.split('\n')[0];
+                        err = err.split('\n')[0] + '\n(Changes are rolledback)';
                     }
                     cb(err, ret);
                 });
@@ -89,7 +89,7 @@ var startRepl = function(conn){
 };
 
 if (require.main === module) {
-    console.log('MemDB shell\n');
+    console.log('MemDB shell');
 
     var argv = minimist(process.argv.slice(2));
     if(argv.help){

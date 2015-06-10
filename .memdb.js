@@ -71,7 +71,7 @@ module.exports = {
         path : '/tmp',
         // Log Level (one of 'ALL', 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR')
         // Please set to WARN on production
-        level : 'DEBUG',
+        level : 'WARN',
     },
 
     // Promise settings

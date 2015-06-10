@@ -42,7 +42,7 @@ proto.close = function(){
 
 proto.insert = function(docs){
     if(!Array.isArray(docs)){
-        return this._insertById(docs._id, docs);
+        return this._insertById(docs && docs._id, docs);
     }
 
     var self = this;

@@ -1,13 +1,12 @@
 'use strict';
 
-// npm install memdb, bluebird
+// npm install memdb-client
 // run with node >= 0.12 with --harmony option
 
-// First start memdb server by:
-// memdbd --shard=s1
+// first start memdb shards 's1' on localhost:31017
 
-var memdb = require('memdb');
-var P = require('bluebird');
+var memdb = require('memdb-client');
+var P = memdb.Promise;
 var should = require('should');
 
 var main = P.coroutine(function*(){
@@ -41,5 +40,5 @@ var main = P.coroutine(function*(){
 });
 
 if (require.main === module) {
-    main().catch(console.error).finally(process.exit);
+    main().finally(process.exit);
 }
