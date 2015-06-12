@@ -25,7 +25,8 @@
     "bin" : {
         "memdbd" : "./bin/memdbd.js",
         "memdb" : "./bin/memdb.js",
-        "memdbindex" : "./bin/memdbindex.js"
+        "memdbindex" : "./bin/memdbindex.js",
+        "memdbcluster" : "./bin/memdbcluster.js"
     },
     "scripts": {
         "start": "grunt",

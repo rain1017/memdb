@@ -87,7 +87,7 @@ memdb> ^D (to exit)
 
 ### Nodejs client using AutoConnection
 
-AutoConnection manages a pool of connections for each shard, execute transacion on specified shard, and auto commit on transaction complete or rollback on failure.
+AutoConnection manages a pool of connections for each shard, execute transaction on specified shard, and auto commit on transaction complete or rollback on failure.
 
 ```js
 // npm install memdb-client

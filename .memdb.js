@@ -55,6 +55,9 @@ module.exports = {
         longStackTraces : false,
     },
 
+    // user for memdbcluster ssh login, default current user
+    //user : 'memdb',
+
     // Delay for flush changes to backend storage
     // set it to large value to improve performance if the data delay in backend storage is not an issue.
     persistentDelay : 300000, // number in ms, default 300,000
@@ -71,8 +74,6 @@ module.exports = {
 
     // Disable redis replica, DO NOT turn on this in production.
     disableSlave : false, // default false
-
-
 
     // Collection settings, modify it on your need
     collections : {

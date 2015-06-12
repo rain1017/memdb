@@ -101,7 +101,7 @@ proto.find = function(query, fields, opts){
 
     var indexKey = JSON.stringify(keys);
 
-    var indexConfig = this.config.indexes[indexKey];
+    var indexConfig = this.config.indexes && this.config.indexes[indexKey];
     if(!indexConfig){
         throw new Error('No index configured for keys - ' + indexKey);
     }

@@ -1,7 +1,9 @@
 'use strict';
 
 var _ = require('lodash');
+var util = require('util');
 var P = require('bluebird');
+var child_process = require('child_process');
 var uuid = require('node-uuid');
 
 // Add some usefull promise methods
@@ -153,5 +155,33 @@ exports.mongoForEach = function(itor, func){
     };
     next();
 
+    return deferred.promise;
+};
+
+exports.remoteExec = function(ip, cmd, opts){
+    ip = ip || '127.0.0.1';
+    opts = opts || {};
+    var user = opts.user || process.env.USER;
+    var successCodes = opts.successCodes || [0];
+
+    var args = [user + '@' + ip, 'bash -c \'' + cmd + '\''];
+    var child = child_process.spawn('ssh', args);
+
+    var deferred = P.defer();
+    var stdout = '', stderr = '';
+    child.stdout.on('data', function(data){
+        stdout += data;
+    });
+    child.stderr.on('data', function(data){
+        stderr += data;
+    });
+    child.on('exit', function(code, signal){
+        if(successCodes.indexOf(code) !== -1){
+            deferred.resolve(stdout);
+        }
+        else{
+            deferred.reject(new Error(util.format('remoteExec return code %s on %s@%s - %s\n%s', code, user, ip, cmd, stderr)));
+        }
+    });
     return deferred.promise;
 };
