@@ -164,8 +164,15 @@ exports.remoteExec = function(ip, cmd, opts){
     var user = opts.user || process.env.USER;
     var successCodes = opts.successCodes || [0];
 
-    var args = [user + '@' + ip, 'bash -c \'' + cmd + '\''];
-    var child = child_process.spawn('ssh', args);
+    var child = null;
+    // localhost with current user
+    if((ip === '127.0.0.1' || ip.toLowerCase() === 'localhost') && user === process.env.USER){
+        child = child_process.spawn('bash', ['-c', cmd]);
+    }
+    // run remote via ssh
+    else{
+        child = child_process.spawn('ssh', [user + '@' + ip, 'bash -c \'' + cmd + '\'']);
+    }
 
     var deferred = P.defer();
     var stdout = '', stderr = '';

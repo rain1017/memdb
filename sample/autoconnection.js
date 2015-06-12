@@ -3,7 +3,7 @@
 // npm install memdb-client
 // run with node >= 0.12 with --harmony option
 
-// first start memdb shards 's1' on localhost:31017, 's2' on localhost:31018.
+// We assure you have started shard 's1' on localhost:31017, 's2' on localhost:31018.
 
 var memdb = require('memdb-client');
 // just bluebird promise

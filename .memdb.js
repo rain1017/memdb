@@ -11,14 +11,14 @@
 module.exports = {
     // *** global settings for all shards ***
 
-    // Global backend storage, all shards must connect to the same mongodb (cluster)
+    // Global backend storage, all shards must connect to the same mongodb (or mongodb cluster)
     backend : {
         engine : 'mongodb', // should be 'mongodb'
         url : 'mongodb://localhost/memdb-test', // mongodb connect string
         options : {}, // mongodb connect options
     },
 
-    // Global locking redis, all shards must connect to the same redis (cluster)
+    // Global locking redis, all shards must connect to the same redis (or redis cluster)
     locking : {
         host : '127.0.0.1',
         port : 6379,
@@ -37,14 +37,14 @@ module.exports = {
     slave : {
         host : '127.0.0.1',
         port : 6379,
-        db : 1,
+        db : 0,
     },
 
     // Log settings
     log : {
         // Log file path
         path : '/tmp',
-        // Log Level (one of 'ALL', 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR')
+        // Log Level (one of 'ALL', 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'OFF')
         // Please set to WARN on production
         level : 'WARN',
     },
@@ -56,26 +56,11 @@ module.exports = {
     },
 
     // user for memdbcluster ssh login, default current user
-    //user : 'memdb',
+    // when start using memdbcluster, make sure you have ssh permission (without password) on all servers,
+    // and the memdb version, install folder, config files are all the same in all servers
+    user : process.env.USER,
 
-    // Delay for flush changes to backend storage
-    // set it to large value to improve performance if the data delay in backend storage is not an issue.
-    persistentDelay : 300000, // number in ms, default 300,000
-
-    // Idle time before document is removed from memory.
-    // Larger value can improve performance but use more memory.
-    // Set it to large value if the documents accessed via this hard is limited.
-    // Do not access too many different documents in a short time, which may exhault memory and trigger heavy GC operation.
-    idleTimeout : 600000, // number in ms, default 600,000
-
-    // GC will be triggered when memory usage reach this limit
-    // GC can be very heavy, please adjust idleTimeout to avoid GC.
-    memoryLimit : 1024, // number in MB, default 1024
-
-    // Disable redis replica, DO NOT turn on this in production.
-    disableSlave : false, // default false
-
-    // Collection settings, modify it on your need
+    // Collection settings for index
     collections : {
         // Collection name
         player : {
@@ -128,4 +113,25 @@ module.exports = {
             port : 31018,
         },
     }
+
+
+    // *** additional settings ***
+    // These settings are unstable and may change in later version
+
+    // Delay for flush changes to backend storage
+    // set it to large value to improve performance if the data delay in backend storage is not an issue.
+    persistentDelay : 300 * 1000, // number in ms, default 300,000
+
+    // Idle time before document is removed from memory.
+    // Larger value can improve performance but use more memory.
+    // Set it to large value if the documents accessed via this hard is limited.
+    // Do not access too many different documents in a short time, which may exhault memory and trigger heavy GC operation.
+    idleTimeout : 600 * 1000, // number in ms, default 600,000
+
+    // GC will be triggered when memory usage reach this limit
+    // GC can be very heavy, please adjust idleTimeout to avoid GC.
+    memoryLimit : 1024, // number in MB, default 1024
+
+    // Disable redis replica, DO NOT turn on this in production.
+    disableSlave : false, // default false
 };

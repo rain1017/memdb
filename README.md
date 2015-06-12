@@ -49,14 +49,19 @@ sudo npm install -g memdb-server
 
 * Modify settings in `.memdb.js` on your need
 
-* Start memdb server
+* Start memdb cluster
+Start cluster
 ```
-memdbd --shard=[shardId] [--daemon]
-// Start more shards on your need
+memdbcluster start
 ```
-
-* To stop the server, just press ^C on console mode, or send signal kill on daemon mode
-
+Check cluster status
+```
+memdbcluster status
+```
+Stop cluster
+```
+memdbcluster stop
+```
 
 ### Play with memdb shell
 
@@ -90,13 +95,13 @@ memdb> ^D (to exit)
 AutoConnection manages a pool of connections for each shard, execute transaction on specified shard, and auto commit on transaction complete or rollback on failure.
 
 ```js
+// To run the sample:
 // npm install memdb-client
 // run with node >= 0.12 with --harmony option
-// first start memdb shards 's1' on localhost:31017, 's2' on localhost:31018.
+// We assure you have started shard 's1' on localhost:31017, 's2' on localhost:31018.
 
 var memdb = require('memdb-client');
-// just bluebird promise
-var P = memdb.Promise;
+var P = memdb.Promise; // just bluebird promise
 
 var main = P.coroutine(function*(){
     // All database access should via this autoconn object, you can preserve autoconn object in a global module that can be accessed anywhere
@@ -157,15 +162,19 @@ if (require.main === module) {
 }
 ```
 
+run sample
+```
+```
 
 ### Nodejs client using MdbGoose
 
 Mdbgoose is the 'mongoose' for memdb
 
 ```js
+// To run the sample:
 // npm install memdb-client
 // run with node >= 0.12 with --harmony option
-// first start memdb shards 's1' on localhost:31017
+// We assure you have started shard 's1' on localhost:31017
 
 var memdb = require('memdb-client');
 var P = memdb.Promise;
