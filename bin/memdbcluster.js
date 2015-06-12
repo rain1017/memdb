@@ -49,6 +49,9 @@ if (require.main === module) {
     }
 
     var confPath = argv.conf || argv.c;
+    if(confPath){
+        confPath = path.resolve(confPath);
+    }
     var shardId = argv.shard || argv.s;
     config.init(confPath);
     var shardIds = shardId ? [shardId] : config.getShardIds();
