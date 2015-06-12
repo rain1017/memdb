@@ -47,20 +47,15 @@ __MemDB__    | __High (Memory)__ | __Yes__                   | __Yes__          
 sudo npm install -g memdb-server
 ```
 
-* Modify settings in `.memdb.js` on your need
+### Configure MemDB
 
-* Start memdb cluster
-Start cluster
+Modify settings in `.memdb.js` on your need. Please read comments carefully.
+
+### Start MemDB
+
+Use `memdbcluster` to control lifecycle of memdb server cluster
 ```
-memdbcluster start
-```
-Check cluster status
-```
-memdbcluster status
-```
-Stop cluster
-```
-memdbcluster stop
+memdbcluster [start | stop | status] [--conf=.memdb.js] [--shard=shardId]
 ```
 
 ### Play with memdb shell
@@ -160,10 +155,6 @@ var main = P.coroutine(function*(){
 if (require.main === module) {
     main().finally(process.exit);
 }
-```
-
-run sample
-```
 ```
 
 ### Nodejs client using MdbGoose
