@@ -124,7 +124,7 @@ module.exports = {
 
     // Idle time before document is removed from memory.
     // Larger value can improve performance but use more memory.
-    // Set it to large value if the documents accessed via this hard is limited.
+    // Set it to large value if the documents accessed via this shard is limited.
     // Do not access too many different documents in a short time, which may exhault memory and trigger heavy GC operation.
     idleTimeout : 600 * 1000, // number in ms, default 600,000
 
