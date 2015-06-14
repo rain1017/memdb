@@ -103,18 +103,18 @@
 <pre><code>sudo npm install -g memdb-server
 </code></pre>
 
-<ul>
-<li><p>Modify settings in <code>.memdb.js</code> on your need</p></li>
-<li><p>Start memdb server</p></li>
-</ul>
+<h3>
+<a id="configure-memdb" class="anchor" href="#configure-memdb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Configure MemDB</h3>
 
-<pre><code>memdbd --shard=[shardId] [--daemon]
-// Start more shards on your need
+<p>Modify settings in <code>.memdb.js</code> on your need. Please read comments carefully.</p>
+
+<h3>
+<a id="start-memdb" class="anchor" href="#start-memdb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Start MemDB</h3>
+
+<p>Use <code>memdbcluster</code> to control lifecycle of memdb server cluster</p>
+
+<pre><code>memdbcluster [start | stop | status] [--conf=.memdb.js] [--shard=shardId]
 </code></pre>
-
-<ul>
-<li>To stop the server, just press ^C on console mode, or send signal kill on daemon mode</li>
-</ul>
 
 <h3>
 <a id="play-with-memdb-shell" class="anchor" href="#play-with-memdb-shell" aria-hidden="true"><span class="octicon octicon-link"></span></a>Play with memdb shell</h3>
@@ -145,15 +145,15 @@ memdb<span class="pl-k">&gt;</span> <span class="pl-k">^</span>D (to exit)</pre>
 <h3>
 <a id="nodejs-client-using-autoconnection" class="anchor" href="#nodejs-client-using-autoconnection" aria-hidden="true"><span class="octicon octicon-link"></span></a>Nodejs client using AutoConnection</h3>
 
-<p>AutoConnection manages a pool of connections for each shard, execute transacion on specified shard, and auto commit on transaction complete or rollback on failure.</p>
+<p>AutoConnection manages a pool of connections for each shard, execute transaction on specified shard, and auto commit on transaction complete or rollback on failure.</p>
 
-<div class="highlight highlight-js"><pre><span class="pl-c">// npm install memdb-client</span>
+<div class="highlight highlight-js"><pre><span class="pl-c">// To run the sample:</span>
+<span class="pl-c">// npm install memdb-client</span>
 <span class="pl-c">// run with node &gt;= 0.12 with --harmony option</span>
-<span class="pl-c">// first start memdb shards 's1' on localhost:31017, 's2' on localhost:31018.</span>
+<span class="pl-c">// We assure you have started shard 's1' on localhost:31017, 's2' on localhost:31018.</span>
 
 <span class="pl-k">var</span> memdb <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>memdb-client<span class="pl-pds">'</span></span>);
-<span class="pl-c">// just bluebird promise</span>
-<span class="pl-k">var</span> P <span class="pl-k">=</span> memdb.Promise;
+<span class="pl-k">var</span> P <span class="pl-k">=</span> memdb.Promise; <span class="pl-c">// just bluebird promise</span>
 
 <span class="pl-k">var</span> main <span class="pl-k">=</span> P.coroutine(<span class="pl-k">function*</span>(){
     <span class="pl-c">// All database access should via this autoconn object, you can preserve autoconn object in a global module that can be accessed anywhere</span>
@@ -218,9 +218,10 @@ memdb<span class="pl-k">&gt;</span> <span class="pl-k">^</span>D (to exit)</pre>
 
 <p>Mdbgoose is the 'mongoose' for memdb</p>
 
-<div class="highlight highlight-js"><pre><span class="pl-c">// npm install memdb-client</span>
+<div class="highlight highlight-js"><pre><span class="pl-c">// To run the sample:</span>
+<span class="pl-c">// npm install memdb-client</span>
 <span class="pl-c">// run with node &gt;= 0.12 with --harmony option</span>
-<span class="pl-c">// first start memdb shards 's1' on localhost:31017</span>
+<span class="pl-c">// We assure you have started shard 's1' on localhost:31017</span>
 
 <span class="pl-k">var</span> memdb <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>memdb-client<span class="pl-pds">'</span></span>);
 <span class="pl-k">var</span> P <span class="pl-k">=</span> memdb.Promise;
@@ -292,6 +293,26 @@ memdb<span class="pl-k">&gt;</span> <span class="pl-k">^</span>D (to exit)</pre>
 <a id="quick-pomelo" class="anchor" href="#quick-pomelo" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick-pomelo</h2>
 
 <p><strong><a href="http://quickpomelo.com">quick-pomelo</a></strong> is a rapid and robust game server framework based on memdb</p>
+
+<h2>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span class="octicon octicon-link"></span></a>License</h2>
+
+<p>MemDB - distributed transactional in memory database</p>
+
+<p>Copyright (C) rain1017</p>
+
+<p>This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.</p>
+
+<p>This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.</p>
+
+<p>You should have received a copy of the GNU General Public License
+along with this program.  If not, see <a href="http://www.gnu.org/licenses/">http://www.gnu.org/licenses/</a>.</p>
 
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/rain1017/memdb">MemDB</a> is maintained by <a href="https://github.com/rain1017">rain1017</a>.</span>
