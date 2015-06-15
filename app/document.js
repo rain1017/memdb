@@ -19,17 +19,26 @@ var Document = function(opts){ //jshint ignore:line
     }
 
     this._id = opts._id;
+
     this.commited = doc;
     this.changed = undefined; // undefined means no change, while null means removed
     this.connId = null; // Connection that hold the document lock
 
-    this._lock = new AsyncLock({
-                                Promise : P,
-                                timeout : opts.lockTimeout || DEFAULT_LOCK_TIMEOUT
-                                });
+    this.locker = opts.lock;
+    this.lockKey = opts.lockKey;
+    if(!this.locker){
+        this.locker = new AsyncLock({
+                            Promise : P,
+                            timeout : opts.lockTimeout || DEFAULT_LOCK_TIMEOUT
+                            });
+        this.lockKey = '';
+    }
+
     this.releaseCallback = null;
 
     this.indexes = opts.indexes || {};
+
+    this.savedIndexValues = {}; //{indexKey : indexValue}
 
     EventEmitter.call(this);
 };
@@ -125,9 +134,10 @@ proto.update = function(connId, modifier, opts){
 proto.modify = function(connId, cmd, param){
     this.ensureLocked(connId);
 
-    var oldValues = {};
     for(var indexKey in this.indexes){
-        oldValues[indexKey] = this._getIndexValue(indexKey, this.indexes[indexKey]);
+        if(!this.savedIndexValues.hasOwnProperty(indexKey)){
+            this.savedIndexValues[indexKey] = this._getIndexValue(indexKey, this.indexes[indexKey]);
+        }
     }
 
     var modifyFunc = modifier[cmd];
@@ -138,6 +148,7 @@ proto.modify = function(connId, cmd, param){
     if(this.changed === undefined){ //copy on write
         this.changed = utils.clone(this.commited);
     }
+
     this.changed = modifyFunc(this.changed, param);
 
     // id is immutable
@@ -148,9 +159,11 @@ proto.modify = function(connId, cmd, param){
     for(indexKey in this.indexes){
         var value = this._getIndexValue(indexKey, this.indexes[indexKey]);
 
-        if(oldValues[indexKey] !== value){
-            logger.trace('%s.updateIndex(%s, %s, %s)', this._id, indexKey, oldValues[indexKey], value);
-            this.emit('updateIndex', connId, indexKey, oldValues[indexKey], value);
+        if(value !== this.savedIndexValues[indexKey]){
+            logger.trace('%s.updateIndex(%s, %s, %s)', this._id, indexKey, this.savedIndexValues[indexKey], value);
+            this.emit('updateIndex', connId, indexKey, this.savedIndexValues[indexKey], value);
+
+            this.savedIndexValues[indexKey] = value;
         }
     }
 
@@ -168,7 +181,7 @@ proto.lock = function(connId){
     }
     else{
         var self = this;
-        this._lock.acquire('', function(release){
+        this.locker.acquire(this.lockKey, function(release){
             self.connId = connId;
             self.releaseCallback = release;
 
@@ -185,7 +198,7 @@ proto.lock = function(connId){
 // Wait existing lock release (not create new lock)
 proto._waitUnlock = function(){
     var deferred = P.defer();
-    return this._lock.acquire('', function(){
+    return this.locker.acquire(this.lockKey, function(){
         deferred.resolve();
     })
     .catch(function(err){
@@ -229,6 +242,8 @@ proto.rollback = function(connId){
     this.ensureLocked(connId);
 
     this.changed = undefined;
+
+    this.savedIndexValues = {};
 
     this.emit('rollback');
     this._unlock();

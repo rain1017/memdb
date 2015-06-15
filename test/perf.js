@@ -37,7 +37,7 @@ describe.skip('performance test', function(){
             var autoconn = null;
 
             var queryThread = function(threadId){
-                var Player = autoconn.collection('player');
+                var Dummy = autoconn.collection('dummy');
 
                 return P.each(_.range(transCount), function(){
                     var shardId = randomRoute ? _.sample(shardIds) : shardIds[threadId % shardIds.length];
@@ -55,7 +55,7 @@ describe.skip('performance test', function(){
                                 modifier = {$set : {level : _.random(100)}};
                             }
 
-                            return Player.update(threadId, modifier, {upsert : true});
+                            return Dummy.update(threadId, modifier, {upsert : true});
                         });
                     }, shardId)
                     .catch(function(e){

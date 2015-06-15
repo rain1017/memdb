@@ -121,7 +121,7 @@ proto.execute = function(connId, method, args, opts){
     }
 
     // Ensure series execution in same connection
-    return this.connectionLock.acquire(connId, function(){
+    return this.connectionLock.acquire(connId, function(cb){
 
         self.logger.debug('[conn:%s] start %s(%j)...', connId, method, args);
 
@@ -144,7 +144,8 @@ proto.execute = function(connId, method, args, opts){
 
             // Rethrow to client
             throw err;
-        });
+        })
+        .nodeify(cb);
     });
 };
 

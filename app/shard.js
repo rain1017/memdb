@@ -140,6 +140,12 @@ var Shard = function(opts){
     // Task locker
     this.taskLock = new AsyncLock({Promise : P});
 
+    // Doc locker
+    this.docLock = new AsyncLock({
+        timeout : this.config.lockTimeout,
+        Promise : P,
+    });
+
     // Cached readonly docs {key : doc} (raw doc, not document object)
     this.cachedDocs = {};
 
@@ -290,6 +296,7 @@ proto.update = function(connId, key, doc, opts){
 
     // Since lock is called before, so doc is loaded for sure
     var ret = this._doc(key).update(connId, doc, opts);
+
     this.logger.debug('[conn:%s] update(%s, %j, %j) => %s', connId, key, doc, opts, ret);
     return ret;
 };
@@ -538,7 +545,8 @@ proto._addDoc = function(key, obj){
         _id : res.id,
         doc: obj,
         indexes: indexes,
-        lockTimeout : this.config.lockTimeout,
+        locker : this.docLock,
+        lockKey : key,
     };
     var doc = new Document(opts);
 

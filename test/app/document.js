@@ -10,7 +10,7 @@ var logger = require('memdb-logger').getLogger('test', __filename);
 describe('document test', function(){
     it('find', function(){
         var value = {k1 : 1, k2 : 1};
-        var doc = new Document({doc : value});
+        var doc = new Document({_id : '1', doc : value});
         // Get all fields
         doc.find('c1').should.eql(value);
         // Get specified fields
@@ -81,7 +81,7 @@ describe('document test', function(){
     it('insert/remove', function(cb){
         var value = {k1 : 1};
         // Init with non-exist doc
-        var doc = new Document({exist : false});
+        var doc = new Document({_id : '1', exist : false});
 
         return P.try(function(){
             assert(doc.find('c1') === null);
