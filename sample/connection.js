@@ -3,7 +3,7 @@
 // npm install memdb-client
 // run with node >= 0.12 with --harmony option
 
-// We assure you have started shard 's1' on localhost:31017
+// We assume you have started shard 's1' on localhost:31017
 
 var memdb = require('memdb-client');
 var P = memdb.Promise;

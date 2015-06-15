@@ -90,6 +90,7 @@ describe.skip('performance test', function(){
             .then(function(){
                 return autoconn.close();
             })
+            .delay(1000)
             .finally(function(){
                 return env.stopCluster();
             });
@@ -99,65 +100,65 @@ describe.skip('performance test', function(){
         {
             description : 'Transaction 1 shard',
             shardCount : 1,
-            playerCount : 100,
+            playerCount : 200,
             queryPerTrans : 1,
             transCount : 500,
         },
         {
             description : 'Query 1 shard',
             shardCount : 1,
-            playerCount : 100,
-            queryPerTrans : 1000,
-            transCount : 1,
-        },
-        {
-            //bottle neck is client side
-            description : 'Transaction 2 shards',
-            shardCount : 2,
-            playerCount : 100,
-            queryPerTrans : 1,
-            transCount : 500,
-        },
-        {
-            //bottle neck is client side
-            description : 'Query 2 shards',
-            shardCount : 2,
-            playerCount : 100,
-            queryPerTrans : 1000,
-            transCount : 1,
-        },
-        {
-            description : 'Transaction 2 shards random route',
-            shardCount : 2,
             playerCount : 200,
-            queryPerTrans : 1,
-            transCount : 100,
-            randomRoute : true,
-        },
-        {
-            description : 'Indexed transaction 1 shard',
-            shardCount : 1,
-            playerCount : 100,
-            queryPerTrans : 1,
-            transCount : 500,
-            useIndex : true,
-        },
-        {
-            description : 'Indexed query 1 shard',
-            shardCount : 1,
-            playerCount : 100,
             queryPerTrans : 1000,
-            useIndex : true,
             transCount : 1,
         },
-        {
-            description : 'Indexed transaction 2 shards',
-            shardCount : 2,
-            playerCount : 100,
-            queryPerTrans : 1,
-            transCount : 500,
-            useIndex : true,
-        },
+        // {
+        //     //bottle neck is client side
+        //     description : 'Transaction 2 shards',
+        //     shardCount : 2,
+        //     playerCount : 200,
+        //     queryPerTrans : 1,
+        //     transCount : 500,
+        // },
+        // {
+        //     //bottle neck is client side
+        //     description : 'Query 2 shards',
+        //     shardCount : 2,
+        //     playerCount : 200,
+        //     queryPerTrans : 1000,
+        //     transCount : 1,
+        // },
+        // {
+        //     description : 'Transaction 2 shards random route',
+        //     shardCount : 2,
+        //     playerCount : 200,
+        //     queryPerTrans : 1,
+        //     transCount : 100,
+        //     randomRoute : true,
+        // },
+        // {
+        //     description : 'Indexed transaction 1 shard',
+        //     shardCount : 1,
+        //     playerCount : 200,
+        //     queryPerTrans : 1,
+        //     transCount : 500,
+        //     useIndex : true,
+        // },
+        // {
+        //     description : 'Indexed query 1 shard',
+        //     shardCount : 1,
+        //     playerCount : 200,
+        //     queryPerTrans : 1000,
+        //     useIndex : true,
+        //     transCount : 1,
+        // },
+        // {
+        //     description : 'Indexed transaction 2 shards',
+        //     shardCount : 2,
+        //     playerCount : 200,
+        //     queryPerTrans : 1,
+        //     transCount : 500,
+        //     useIndex : true,
+        // },
         ];
 
         return P.each(testOpts, function(testOpt){

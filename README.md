@@ -93,13 +93,14 @@ AutoConnection manages a pool of connections for each shard, execute transaction
 // To run the sample:
 // npm install memdb-client
 // run with node >= 0.12 with --harmony option
-// We assure you have started shard 's1' on localhost:31017, 's2' on localhost:31018.
+// We assume you have started shard 's1' on localhost:31017, 's2' on localhost:31018.
 
 var memdb = require('memdb-client');
 var P = memdb.Promise; // just bluebird promise
 
 var main = P.coroutine(function*(){
-    // All database access should via this autoconn object, you can preserve autoconn object in a global module that can be accessed anywhere
+    // All database access should via this autoconn object, 
+    // you can preserve autoconn object in a global module that can be accessed anywhere
     var autoconn = yield memdb.autoConnect({
         shards : { // Specify all shards here
             s1 : {host : '127.0.0.1', port : 31017},
@@ -165,7 +166,7 @@ Mdbgoose is the 'mongoose' for memdb
 // To run the sample:
 // npm install memdb-client
 // run with node >= 0.12 with --harmony option
-// We assure you have started shard 's1' on localhost:31017
+// We assume you have started shard 's1' on localhost:31017
 
 var memdb = require('memdb-client');
 var P = memdb.Promise;
@@ -211,12 +212,12 @@ var main = P.coroutine(function*(){
         console.log('%j', doc);
 
         // find player by areaId, return array of players
-        // index for areaId should be configured in memdb.json
+        // (index should be configured in .memdb.js)
         var docs = yield Player.findAsync({areaId : 1});
         console.log('%j', docs);
 
         // find player by deviceType and deviceId
-        // a compound index should be configured in memdb.json
+        // (index should be configured in .memdb.js)
         player = yield Player.findOneAsync({deviceType : 1, deviceId : 'id1'});
 
         // update player
