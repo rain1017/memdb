@@ -67,6 +67,7 @@ proto.setMulti = function(docs){
         var doc = docs[key];
         multi = multi.set(this._redisKey(key), JSON.stringify(doc));
     }
+
     return multi.execAsync();
 };
 
@@ -80,10 +81,7 @@ proto.getMulti = function(keys){
         multi = multi.get(self._redisKey(key));
     });
 
-    return P.bind(this)
-    .then(function(){
-        return multi.execAsync();
-    })
+    return multi.execAsync()
     .then(function(results){
         var docs = {};
         for(var i in keys){

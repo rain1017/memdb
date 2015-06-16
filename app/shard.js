@@ -380,13 +380,20 @@ proto.commit = function(connId, keys){
         if(self.config.disableSlave){
             return;
         }
-        // Sync data to slave
-        var docs = {};
-        keys.forEach(function(key){
-            docs[key] = self._doc(key)._getChanged();
-        });
-        return self.slave.setMulti(docs);
 
+        // Sync data to slave
+        if(keys.length === 1){
+            var key = keys[0];
+            var doc = self._doc(key)._getChanged();
+            return self.slave.set(key, doc);
+        }
+        else{
+            var docs = {};
+            keys.forEach(function(key){
+                docs[key] = self._doc(key)._getChanged();
+            });
+            return self.slave.setMulti(docs);
+        }
         //TODO: possibly loss consistency
         //      if setMulti return failed but actually sccuess
     })

@@ -4,6 +4,8 @@ var P = require('bluebird');
 var Logger = require('memdb-logger');
 var consts = require('./consts');
 var Collection = require('./collection');
+var util = require('util');
+var utils = require('./utils');
 
 var Connection = function(opts){
     opts = opts || {};

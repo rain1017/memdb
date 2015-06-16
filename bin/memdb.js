@@ -18,8 +18,7 @@ Options:\n\
   -p, --port port   memdb shard port\n\
   --help            display help\n\n\
 Example: \n\
-memdb -h127.0.0.1 -p31017\n\
-';
+memdb -h127.0.0.1 -p31017\n';
 
 var helpCmd = '\n\
 Command Reference:\n\n\
@@ -34,8 +33,7 @@ Command Reference:\n\n\
     coll.insert(docs)\n\
     coll.update(idOrQuery, modifier)\n\
     coll.remove(idOrQuery)\n\n\
-    _   last result\n\
-';
+    _   last result\n';
 
 var startRepl = function(conn){
 
@@ -50,9 +48,9 @@ var startRepl = function(conn){
         ignoreUndefined : true,
     });
 
-    var originEval = server.eval;
+    var originEval = server.eval; //jshint ignore:line
 
-    server.eval = function(cmd, context, filename, cb){
+    server.eval = function(cmd, context, filename, cb){ //jshint ignore:line
         originEval.call(server, cmd, context, filename, function(err, ret){
             if(err){
                 console.log(helpCmd);

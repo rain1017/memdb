@@ -15,8 +15,7 @@ Options:\n\
   -c, --conf path      Config file path\n\
   -s, --shard shardId  Operate on specific shard only\n\
   -h, --help           Display this help\n\n\
-WARN: Make sure memdb is installed using the same folder and same config on all servers\
-';
+WARN: Make sure memdb is installed using the same folder and same config on all servers\n';
 
 var start = function(confPath, shardConfig){
     var memdbd = path.join(__dirname, 'memdbd.js');
@@ -30,7 +29,7 @@ var stop = function(shardConfig){
     return utils.remoteExec(shardConfig.host, cmd, {successCodes : [0, 1], user : shardConfig.user});
 };
 
-var status = function(shardConfig){
+var status = function(shardConfig){ //jshint ignore:line
     var cmd = util.format('lsof -i:%s -t', shardConfig.port);
     return utils.remoteExec(shardConfig.host, cmd, {successCodes : [0, 1], user : shardConfig.user})
     .then(function(output){
@@ -82,8 +81,8 @@ if (require.main === module) {
                 var shardConfig = config.shardConfig(shardId);
                 return status(shardConfig)
                 .then(function(ret){
-                    var status = ret ? 'running' : 'down';
-                    console.log('%s (%s:%s)\t%s', shardConfig.shardId, shardConfig.host, shardConfig.port, status);
+                    var display = ret ? 'running' : 'down';
+                    console.log('%s (%s:%s)\t%s', shardConfig.shardId, shardConfig.host, shardConfig.port, display);
                 });
             });
         }

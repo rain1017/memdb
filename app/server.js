@@ -98,13 +98,13 @@ exports.start = function(opts){
         _isShutingDown = true;
 
         return P.try(function(){
-            var deferred = P.defer();
-            server.once('close', function(){
-                logger.debug('on server close');
-                deferred.resolve();
-            });
+            // var deferred = P.defer();
+            // server.once('close', function(){
+            //     logger.debug('on server close');
+            //     deferred.resolve();
+            // });
             server.close();
-            return deferred.promise;
+            // return deferred.promise;
         })
         .then(function(){
             return db.stop();

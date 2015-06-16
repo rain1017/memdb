@@ -264,6 +264,51 @@ describe('connection test', function(){
         .nodeify(cb);
     });
 
+    it('eval', function(cb){
+        var conn = null;
+
+        return env.startCluster('s1')
+        .then(function(){
+            return memdb.connect(env.config.shards.s1)
+            .then(function(ret){
+                conn = ret;
+            });
+        })
+        .then(function(){
+            var script = '\
+            P.try(function(){\
+                return db.insert("test", doc);\
+            })\
+            .then(function(){\
+                return db.commit();\
+            });';
+
+            var context = {
+                doc : {_id : '1', name :'rain'},
+            };
+            return conn.eval(script, context); //jshint ignore:line
+        })
+        .then(function(){
+            return conn.collection('test').find('1')
+            .then(function(ret){
+                ret.name.should.eql('rain');
+            });
+        })
+        .then(function(){
+            return conn.collection('test').remove('1');
+        })
+        .then(function(){
+            return conn.commit();
+        })
+        .then(function(){
+            return conn.close();
+        })
+        .finally(function(){
+            return env.stopCluster();
+        })
+        .nodeify(cb);
+    });
+
     it('collection/field name restriction', function(cb){
         var conn = null;
         var Collection = null;

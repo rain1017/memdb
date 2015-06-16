@@ -23,11 +23,11 @@ describe.skip('performance test', function(){
             var shardCount = opts.shardCount || 1;
             var playerCount = opts.playerCount || 100;
             var areaCount = Math.floor(opts.areaCount || (playerCount / 10));
-            var queryPerTrans = opts.queryPerTrans || 5;
+            var transOps = opts.transOps || 5;
             var useIndex = opts.useIndex || false;
             var randomRoute = opts.randomRoute || false;
 
-            var transCount = Math.floor(opts.transCount || (50000 / playerCount / queryPerTrans));
+            var transCount = Math.floor(opts.transCount || (50000 / playerCount / transOps));
             if(transCount < 1){
                 transCount = 1;
             }
@@ -45,18 +45,20 @@ describe.skip('performance test', function(){
                     // Make sure same areaId route to same shard
                     var areaId = randomRoute ? _.random(areaCount) : Math.floor(_.random(areaCount) / shardIds.length) * shardIds.length + threadId % shardIds.length;
 
-                    return autoconn.transaction(function(){
-                        return P.each(_.range(queryPerTrans), function(){
-                            var modifier = null;
-                            if(useIndex){
-                                modifier = {$set : {areaId : areaId}};
-                            }
-                            else{
-                                modifier = {$set : {level : _.random(100)}};
-                            }
+                    var makeQuery = function(){
+                        var modifier = useIndex ? {$set : {areaId : areaId}} : {$inc : {exp : 1}};
+                        return Dummy.update(threadId, modifier, {upsert : true});
+                    };
 
-                            return Dummy.update(threadId, modifier, {upsert : true});
-                        });
+                    return autoconn.transaction(function(){
+                        if(transOps === 1){
+                            return makeQuery();
+                        }
+                        else{
+                            return P.each(_.range(transOps), function(){
+                                return makeQuery();
+                            });
+                        }
                     }, shardId)
                     .catch(function(e){
                         logger.error(e.stack);
@@ -82,9 +84,9 @@ describe.skip('performance test', function(){
                 .then(function(){
                     var baseRate = playerCount * 1000 / (Date.now() - startTick);
                     logger.warn(opts.description);
-                    logger.warn('ShardCount: %s, PlayerCount: %s, QueryPerTrans: %s', shardCount, playerCount, queryPerTrans);
-                    logger.warn('Transaction rate: %s', baseRate * transCount);
-                    logger.warn('Query rate: %s', baseRate * queryPerTrans * transCount);
+                    logger.warn('ShardCount: %s, PlayerCount: %s, ops/trans: %s', shardCount, playerCount, transOps);
+                    logger.warn('ops: %s', baseRate * transOps * transCount);
+                    logger.warn('tps: %s', baseRate * transCount);
                 });
             })
             .then(function(){
@@ -97,18 +99,25 @@ describe.skip('performance test', function(){
         };
 
         var testOpts = [
+        // {
+        //     description : '5ops/trans 1 shard',
+        //     shardCount : 1,
+        //     playerCount : 200,
+        //     transOps : 5,
+        //     transCount : 100,
+        // },
         {
             description : 'Transaction 1 shard',
             shardCount : 1,
             playerCount : 200,
-            queryPerTrans : 1,
+            transOps : 1,
             transCount : 500,
         },
         {
             description : 'Query 1 shard',
             shardCount : 1,
             playerCount : 200,
-            queryPerTrans : 1000,
+            transOps : 1000,
             transCount : 1,
         },
         // {
@@ -116,7 +125,7 @@ describe.skip('performance test', function(){
         //     description : 'Transaction 2 shards',
         //     shardCount : 2,
         //     playerCount : 200,
-        //     queryPerTrans : 1,
+        //     transOps : 1,
         //     transCount : 500,
         // },
         // {
@@ -124,14 +133,14 @@ describe.skip('performance test', function(){
         //     description : 'Query 2 shards',
         //     shardCount : 2,
         //     playerCount : 200,
-        //     queryPerTrans : 1000,
+        //     transOps : 1000,
         //     transCount : 1,
         // },
         // {
         //     description : 'Transaction 2 shards random route',
         //     shardCount : 2,
         //     playerCount : 200,
-        //     queryPerTrans : 1,
+        //     transOps : 1,
         //     transCount : 100,
         //     randomRoute : true,
         // },
@@ -139,7 +148,7 @@ describe.skip('performance test', function(){
         //     description : 'Indexed transaction 1 shard',
         //     shardCount : 1,
         //     playerCount : 200,
-        //     queryPerTrans : 1,
+        //     transOps : 1,
         //     transCount : 500,
         //     useIndex : true,
         // },
@@ -147,7 +156,7 @@ describe.skip('performance test', function(){
         //     description : 'Indexed query 1 shard',
         //     shardCount : 1,
         //     playerCount : 200,
-        //     queryPerTrans : 1000,
+        //     transOps : 1000,
         //     useIndex : true,
         //     transCount : 1,
         // },
@@ -155,7 +164,7 @@ describe.skip('performance test', function(){
         //     description : 'Indexed transaction 2 shards',
         //     shardCount : 2,
         //     playerCount : 200,
-        //     queryPerTrans : 1,
+        //     transOps : 1,
         //     transCount : 500,
         //     useIndex : true,
         // },

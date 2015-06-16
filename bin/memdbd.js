@@ -14,8 +14,7 @@ Options:\n\
   -c, --conf path      Config file path\n\
   -s, --shard shardId  Start specific shard\n\
   -d, --daemon         Start as daemon\n\
-  -h, --help           Display this help\n\
-';
+  -h, --help           Display this help\n';
 
 
 if (require.main === module) {

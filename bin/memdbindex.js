@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-'use strict'
+'use strict';
 
 var minimist = require('minimist');
 var indexbuilder = require('../app/indexbuilder');
@@ -11,8 +11,7 @@ Usage: memdbindex [rebuild | drop] [options]\n\
 Options:\n\
   -c, --conf path       Config file path\n\
   -t, --coll collection Collection name\n\
-  -k, --keys key1.key2  Index keys (split with ".")\n\
-';
+  -k, --keys key1.key2  Index keys (split with ".")\n';
 
 var getIndexOpts = function(conf, collName, keys){
     var indexes = conf.collections && conf.collections[collName] && conf.collections[collName].indexes;

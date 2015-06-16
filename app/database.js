@@ -8,7 +8,9 @@ var EventEmitter = require('events').EventEmitter;
 var Connection = require('./connection');
 var Shard = require('./shard');
 var consts = require('./consts');
+var vm = require('vm');
 var AsyncLock = require('async-lock');
+var _ = require('lodash');
 
 // Extend promise
 utils.extendPromise(P);
@@ -21,6 +23,8 @@ var Database = function(opts){
 
     this.connections = {};
     this.connectionLock = new AsyncLock({Promise : P});
+
+    this.dbWrappers = {}; //{connId : dbWrapper}
 
     // Parse index config
     opts.collections = opts.collections || {};
@@ -86,6 +90,15 @@ proto.connect = function(){
     var conn = new Connection(opts);
     this.connections[connId] = conn;
 
+    var self = this;
+    var dbWrapper = {};
+    consts.collMethods.concat(consts.connMethods).forEach(function(method){
+        dbWrapper[method] = function(){
+            return self.execute(connId, method, [].slice.call(arguments));
+        };
+    });
+    this.dbWrappers[connId] = dbWrapper;
+
     this.logger.info('[conn:%s] connection created', connId);
     return connId;
 };
@@ -99,6 +112,7 @@ proto.disconnect = function(connId){
     })
     .then(function(){
         delete this.connections[connId];
+        delete this.dbWrappers[connId];
         this.logger.info('[conn:%s] connection closed', connId);
     });
 };
@@ -107,6 +121,19 @@ proto.disconnect = function(connId){
 proto.execute = function(connId, method, args, opts){
     opts = opts || {};
     var self = this;
+
+    if(method === 'eval'){
+        var script = args[0] || '';
+        var sandbox = args[1] || {};
+        sandbox.require = require;
+        sandbox.P = P;
+        sandbox._ = _;
+        sandbox.db = this.dbWrappers[connId];
+
+        var context = vm.createContext(sandbox);
+
+        return vm.runInContext(script, context);
+    }
 
     // Query in the same connection must execute in series
     // This is usually a client bug here
