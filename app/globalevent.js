@@ -30,8 +30,16 @@ var proto = GlobalEvent.prototype;
 proto.start = function(){
     return P.bind(this)
     .then(function(){
-        this.pub = redis.createClient(this.config.port, this.config.host, this.config.options);
-        this.sub = redis.createClient(this.config.port, this.config.host, this.config.options);
+        this.pub = redis.createClient(this.config.port, this.config.host, {retry_max_delay : 10 * 1000});
+        this.sub = redis.createClient(this.config.port, this.config.host, {retry_max_delay : 10 * 1000});
+
+        var self = this;
+        this.pub.on('error', function(e){
+            self.logger.error(e.stack);
+        });
+        this.sub.on('error', function(e){
+            self.logger.error(e.stack);
+        });
 
         return P.all([this.pub.selectAsync(this.config.db),
             this.sub.selectAsync(this.config.db)]);

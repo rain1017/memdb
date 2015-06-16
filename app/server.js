@@ -17,9 +17,14 @@ exports.start = function(opts){
 
     var db = new Database(opts);
 
+    var clients = {}; // {connId : socket}
+
+    var _isShutingDown = false;
+
     var server = net.createServer(function(socket){
 
         var connId = db.connect();
+        clients[connId] = socket;
 
         var remoteAddress = socket.remoteAddress;
         var protocol = new Protocol({socket : socket});
@@ -59,6 +64,7 @@ exports.start = function(opts){
                 return db.disconnect(connId);
             })
             .then(function(){
+                delete clients[connId];
                 logger.info('[conn:%s] %s disconnected', connId, remoteAddress);
             })
             .catch(function(e){
@@ -87,8 +93,6 @@ exports.start = function(opts){
         process.exit(1);
     });
 
-    var _isShutingDown = false;
-
     var shutdown = function(){
         logger.warn('receive shutdown signal');
 
@@ -98,13 +102,26 @@ exports.start = function(opts){
         _isShutingDown = true;
 
         return P.try(function(){
-            // var deferred = P.defer();
-            // server.once('close', function(){
-            //     logger.debug('on server close');
-            //     deferred.resolve();
-            // });
+            var deferred = P.defer();
+
+            server.once('close', function(){
+                logger.debug('on server close');
+                deferred.resolve();
+            });
+
             server.close();
-            // return deferred.promise;
+
+            Object.keys(clients).forEach(function(connId){
+                try{
+                    clients[connId].end();
+                    clients[connId].destroy();
+                }
+                catch(e){
+                    logger.error(e.stack);
+                }
+            });
+
+            return deferred.promise;
         })
         .then(function(){
             return db.stop();

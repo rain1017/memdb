@@ -5,7 +5,7 @@ var EventEmitter = require('events').EventEmitter;
 var P = require('bluebird');
 var logger = require('memdb-logger').getLogger('memdb', __filename);
 
-var DEFAULT_MAX_MSG_LENGTH = 128 * 1024;
+var DEFAULT_MAX_MSG_LENGTH = 1024 * 1024;
 
 var Protocol = function(opts){
     EventEmitter.call(this);

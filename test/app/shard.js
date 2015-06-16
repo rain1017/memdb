@@ -89,6 +89,9 @@ describe('shard test', function(){
             });
         })
         .then(function(){
+            shard.commit(connId, key);
+        })
+        .then(function(){
             return shard.stop();
         })
         .nodeify(cb);
@@ -184,6 +187,9 @@ describe('shard test', function(){
                 // should also access
                 return shard2.lock('c1', key);
             });
+        })
+        .then(function(){
+            return shard2.commit('c1', key);
         })
         .then(function(){
             return P.all([shard1.stop(), shard2.stop()]);

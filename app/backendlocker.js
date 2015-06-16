@@ -31,7 +31,7 @@ var proto = BackendLocker.prototype;
 proto.start = function(){
     return P.bind(this)
     .then(function(){
-        this.client = redis.createClient(this.config.port, this.config.host, this.config.options);
+        this.client = redis.createClient(this.config.port, this.config.host, {retry_max_delay : 10 * 1000, enable_offline_queue : true});
         var self = this;
         this.client.on('error', function(err){
             self.logger.error(err.stack);
@@ -121,8 +121,14 @@ proto.heartbeat = function(){
         timeout = 1;
     }
 
-    this.logger.debug('heartbeat');
-    return this.client.setexAsync(this._heartbeatKey(this.shardId), timeout, 1);
+    var self = this;
+    return this.client.setexAsync(this._heartbeatKey(this.shardId), timeout, 1)
+    .then(function(){
+        self.logger.debug('heartbeat');
+    })
+    .catch(function(err){
+        self.logger.error(err.stack);
+    });
 };
 
 proto.clearHeartbeat = function(){

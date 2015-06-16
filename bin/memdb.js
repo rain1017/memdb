@@ -27,12 +27,7 @@ Command Reference:\n\n\
     db.update(collection, idOrQuery, modifier)\n\
     db.remove(collection, idOrQuery)\n\
     db.commit()\n\
-    db.rollback()\n\n\
-    coll = db.collection(name)\n\
-    coll.find(idOrQuery)\n\
-    coll.insert(docs)\n\
-    coll.update(idOrQuery, modifier)\n\
-    coll.remove(idOrQuery)\n\n\
+    db.rollback()\n\
     _   last result\n';
 
 var startRepl = function(conn){
@@ -51,16 +46,21 @@ var startRepl = function(conn){
     var originEval = server.eval; //jshint ignore:line
 
     server.eval = function(cmd, context, filename, cb){ //jshint ignore:line
+        if(cmd.trim() === 'help'){
+            console.log(helpCmd);
+            return cb();
+        }
+
         originEval.call(server, cmd, context, filename, function(err, ret){
             if(err){
                 console.log(helpCmd);
-                return cb();
+                return cb(err, ret);
             }
 
             if(P.is(ret)){
                 ret.nodeify(function(err, ret){
                     if(err){
-                        err = err.split('\n')[0] + '\n(Changes are rolledback)';
+                        err = err.split('\n')[0] + '\n (Changes are rolled back)';
                     }
                     cb(err, ret);
                 });
@@ -72,8 +72,11 @@ var startRepl = function(conn){
     };
 
     server.on('exit', function(){
+        conn.removeAllListeners('close');
+
         return conn.close()
         .then(function(){
+            console.log('Bye');
             deferred.resolve();
         }, function(e){
             deferred.reject(e);
@@ -82,6 +85,14 @@ var startRepl = function(conn){
 
     server.context.db = conn;
 
+    conn.on('error', function(e){
+        console.error(e.stack);
+    });
+
+    conn.on('close', function(){
+        console.log('Connection lost');
+        deferred.resolve();
+    });
 
     return deferred.promise;
 };
@@ -112,7 +123,6 @@ if (require.main === module) {
         process.exit(1);
     })
     .then(function(){
-        console.log('Bye');
         process.exit(0);
     })
     .catch(function(e){

@@ -228,10 +228,12 @@ proto.stop = function(){
         return deferred.promise;
     })
     .then(function(){
-        for(var key in this.docs){
-            //force release existing lock
-            this.docs[key]._unlock();
-        }
+        // for(var key in this.docs){
+        //     //force release existing lock
+        //     this.docs[key]._unlock();
+        // }
+
+        // WARN: Make sure all connections are closed now
 
         var self = this;
         return P.mapLimit(Object.keys(this.docs), function(key){
@@ -318,7 +320,7 @@ proto.remove = function(connId, key){
 };
 
 proto.rollback = function(connId, keys){
-    this._ensureState(STATE.RUNNING);
+    // Skip state check
 
     if(!Array.isArray(keys)){
         keys = [keys];

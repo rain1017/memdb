@@ -131,6 +131,8 @@ describe('database test', function(){
             });
         })
         .then(function(){
+            conn.close();
+
             return db2.stop();
         })
         .finally(function(){

@@ -15,7 +15,6 @@ module.exports = {
     backend : {
         engine : 'mongodb', // should be 'mongodb'
         url : 'mongodb://localhost/memdb-test', // mongodb connect string
-        options : {}, // mongodb connect options
     },
 
     // Global locking redis, all shards must connect to the same redis (or redis cluster)

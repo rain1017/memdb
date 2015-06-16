@@ -70,7 +70,17 @@ proto.start = function(){
 
 proto.stop = function(force){
     var self = this;
-    return this.shard.stop(force)
+
+    return P.try(function(){
+        // return P.map(Object.keys(self.connections), function(connId){
+        //     return self.disconnect(connId)
+        //     .catch(function(e){
+        //     });
+        // });
+    })
+    .then(function(){
+        return self.shard.stop(force);
+    })
     .then(function(){
         if(typeof(process.send) === 'function'){
             process.send('stop');
@@ -104,16 +114,15 @@ proto.connect = function(){
 };
 
 proto.disconnect = function(connId){
-    return P.bind(this)
-    .then(function(){
-        var conn = this.getConnection(connId);
-
-        this.execute(connId, 'close', [], {ignoreConcurrent : true});
+    var self = this;
+    return P.try(function(){
+        var conn = self.getConnection(connId);
+        return self.execute(connId, 'close', [], {ignoreConcurrent : true});
     })
     .then(function(){
-        delete this.connections[connId];
-        delete this.dbWrappers[connId];
-        this.logger.info('[conn:%s] connection closed', connId);
+        delete self.connections[connId];
+        delete self.dbWrappers[connId];
+        self.logger.info('[conn:%s] connection closed', connId);
     });
 };
 

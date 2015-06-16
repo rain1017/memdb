@@ -37,7 +37,7 @@ describe.skip('performance test', function(){
             var autoconn = null;
 
             var queryThread = function(threadId){
-                var Dummy = autoconn.collection('dummy');
+                var Dummy = useIndex ? autoconn.collection('player') : autoconn.collection('dummy');
 
                 return P.each(_.range(transCount), function(){
                     var shardId = randomRoute ? _.sample(shardIds) : shardIds[threadId % shardIds.length];
@@ -99,75 +99,75 @@ describe.skip('performance test', function(){
         };
 
         var testOpts = [
-        // {
-        //     description : '5ops/trans 1 shard',
-        //     shardCount : 1,
-        //     playerCount : 200,
-        //     transOps : 5,
-        //     transCount : 100,
-        // },
         {
-            description : 'Transaction 1 shard',
+            description : 'operations (1 shard)',
+            shardCount : 1,
+            playerCount : 200,
+            transOps : 1000,
+            transCount : 1,
+        },
+        {
+            description : 'transactions(1op) (1 shard)',
             shardCount : 1,
             playerCount : 200,
             transOps : 1,
             transCount : 500,
         },
         {
-            description : 'Query 1 shard',
+            description : 'transactions(10ops) (1 shard)',
             shardCount : 1,
+            playerCount : 200,
+            transOps : 5,
+            transCount : 100,
+        },
+        {
+            description : 'operations with index (1 shard)',
+            shardCount : 1,
+            playerCount : 200,
+            transOps : 1000,
+            useIndex : true,
+            transCount : 1,
+        },
+        {
+            description : 'transactions(1op) with index (1 shard)',
+            shardCount : 1,
+            playerCount : 200,
+            transOps : 1,
+            transCount : 500,
+            useIndex : true,
+        },
+        {
+            //bottle neck is client side
+            description : 'transactions(1op) (2 shards)',
+            shardCount : 2,
+            playerCount : 200,
+            transOps : 1,
+            transCount : 500,
+        },
+        {
+            description : 'transactions(1op) (2 shards random route)',
+            shardCount : 2,
+            playerCount : 200,
+            transOps : 1,
+            transCount : 100,
+            randomRoute : true,
+        },
+        {
+            //bottle neck is client side
+            description : 'operations (2 shards)',
+            shardCount : 2,
             playerCount : 200,
             transOps : 1000,
             transCount : 1,
         },
-        // {
-        //     //bottle neck is client side
-        //     description : 'Transaction 2 shards',
-        //     shardCount : 2,
-        //     playerCount : 200,
-        //     transOps : 1,
-        //     transCount : 500,
-        // },
-        // {
-        //     //bottle neck is client side
-        //     description : 'Query 2 shards',
-        //     shardCount : 2,
-        //     playerCount : 200,
-        //     transOps : 1000,
-        //     transCount : 1,
-        // },
-        // {
-        //     description : 'Transaction 2 shards random route',
-        //     shardCount : 2,
-        //     playerCount : 200,
-        //     transOps : 1,
-        //     transCount : 100,
-        //     randomRoute : true,
-        // },
-        // {
-        //     description : 'Indexed transaction 1 shard',
-        //     shardCount : 1,
-        //     playerCount : 200,
-        //     transOps : 1,
-        //     transCount : 500,
-        //     useIndex : true,
-        // },
-        // {
-        //     description : 'Indexed query 1 shard',
-        //     shardCount : 1,
-        //     playerCount : 200,
-        //     transOps : 1000,
-        //     useIndex : true,
-        //     transCount : 1,
-        // },
-        // {
-        //     description : 'Indexed transaction 2 shards',
-        //     shardCount : 2,
-        //     playerCount : 200,
-        //     transOps : 1,
-        //     transCount : 500,
-        //     useIndex : true,
-        // },
+        {
+            description : 'transaction(1op) with index (2 shards)',
+            shardCount : 2,
+            playerCount : 200,
+            transOps : 1,
+            transCount : 500,
+            useIndex : true,
+        },
         ];
 
         return P.each(testOpts, function(testOpt){

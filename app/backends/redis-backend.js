@@ -22,7 +22,7 @@ var RedisBackend = function(opts){
 var proto = RedisBackend.prototype;
 
 proto.start = function(){
-    this.conn = redis.createClient(this.config.port, this.config.host, this.config.options);
+    this.conn = redis.createClient(this.config.port, this.config.host, {retry_max_delay : 10 * 1000});
 
     var self = this;
     this.conn.on('error', function(err){
