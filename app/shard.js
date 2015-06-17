@@ -520,26 +520,27 @@ proto._load = function(key){
 
     var obj = null;
 
-    return P.bind(this)
-    .then(function(){
+    var self = this;
+    return P.try(function(){
         // get backend lock
-        return this._lockBackend(key);
+        return self._lockBackend(key);
     })
     .then(function(){
-        var res = this._resolveKey(key);
-        return this.backend.get(res.name, res.id);
+        var res = self._resolveKey(key);
+
+        return self.backend.get(res.name, res.id);
     })
     .then(function(ret){
         obj = ret;
-        if(!this.config.disableSlave){
+        if(!self.config.disableSlave){
             // Sync data to slave
-            return this.slave.set(key, obj);
+            return self.slave.set(key, obj);
         }
     })
     .then(function(){
-        this._addDoc(key, obj);
+        self._addDoc(key, obj);
 
-        this.logger.info('loaded %s', key);
+        self.logger.info('loaded %s', key);
     });
 };
 
@@ -724,6 +725,7 @@ proto._persistent = function(key){
     });
 };
 
+//TODO: setTimeout is slow, takes 1/100000 sec
 proto._startIdleTimeout = function(key){
     if(!this.config.idleTimeout){
         return;

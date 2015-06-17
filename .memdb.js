@@ -43,7 +43,7 @@ module.exports = {
     log : {
         // Log file path
         path : '/tmp',
-        // Log Level (one of 'ALL', 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'OFF')
+        // Log Level (one of 'ALL', 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL', 'OFF')
         // Please set to WARN on production
         level : 'WARN',
     },

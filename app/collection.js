@@ -302,9 +302,7 @@ proto.lock = function(id){
     }
 
     var self = this;
-    return P.try(function(){
-        return self.shard.lock(self.conn._id, self._key(id));
-    })
+    return this.shard.lock(this.conn._id, this._key(id))
     .then(function(ret){
         self.emit('lock', id);
         return ret;

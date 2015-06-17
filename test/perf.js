@@ -14,7 +14,7 @@ describe.skip('performance test', function(){
     beforeEach(env.flushdb);
     after(env.flushdb);
 
-    it('multiple shards', function(cb){
+    it('standard', function(cb){
         this.timeout(3600 * 1000);
 
         var runTest = function(opts){
@@ -102,72 +102,72 @@ describe.skip('performance test', function(){
         {
             description : 'operations (1 shard)',
             shardCount : 1,
-            playerCount : 200,
+            playerCount : 100,
             transOps : 1000,
             transCount : 1,
         },
         {
             description : 'transactions(1op) (1 shard)',
             shardCount : 1,
-            playerCount : 200,
+            playerCount : 100,
             transOps : 1,
-            transCount : 500,
+            transCount : 1000,
         },
-        {
-            description : 'transactions(10ops) (1 shard)',
-            shardCount : 1,
-            playerCount : 200,
-            transOps : 5,
-            transCount : 100,
-        },
-        {
-            description : 'operations with index (1 shard)',
-            shardCount : 1,
-            playerCount : 200,
-            transOps : 1000,
-            useIndex : true,
-            transCount : 1,
-        },
-        {
-            description : 'transactions(1op) with index (1 shard)',
-            shardCount : 1,
-            playerCount : 200,
-            transOps : 1,
-            transCount : 500,
-            useIndex : true,
-        },
-        {
-            //bottle neck is client side
-            description : 'transactions(1op) (2 shards)',
-            shardCount : 2,
-            playerCount : 200,
-            transOps : 1,
-            transCount : 500,
-        },
-        {
-            description : 'transactions(1op) (2 shards random route)',
-            shardCount : 2,
-            playerCount : 200,
-            transOps : 1,
-            transCount : 100,
-            randomRoute : true,
-        },
-        {
-            //bottle neck is client side
-            description : 'operations (2 shards)',
-            shardCount : 2,
-            playerCount : 200,
-            transOps : 1000,
-            transCount : 1,
-        },
-        {
-            description : 'transaction(1op) with index (2 shards)',
-            shardCount : 2,
-            playerCount : 200,
-            transOps : 1,
-            transCount : 500,
-            useIndex : true,
-        },
+        // {
+        //     description : 'transactions(10ops) (1 shard)',
+        //     shardCount : 1,
+        //     playerCount : 100,
+        //     transOps : 10,
+        //     transCount : 100,
+        // },
+        // {
+        //     description : 'operations with index (1 shard)',
+        //     shardCount : 1,
+        //     playerCount : 100,
+        //     transOps : 1000,
+        //     useIndex : true,
+        //     transCount : 1,
+        // },
+        // {
+        //     description : 'transactions(1op) with index (1 shard)',
+        //     shardCount : 1,
+        //     playerCount : 100,
+        //     transOps : 1,
+        //     transCount : 1000,
+        //     useIndex : true,
+        // },
+        // {
+        //     //bottle neck is client side
+        //     description : 'transactions(1op) (2 shards)',
+        //     shardCount : 2,
+        //     playerCount : 100,
+        //     transOps : 1,
+        //     transCount : 1000,
+        // },
+        // {
+        //     description : 'transactions(1op) (2 shards random route)',
+        //     shardCount : 2,
+        //     playerCount : 100,
+        //     transOps : 1,
+        //     transCount : 100,
+        //     randomRoute : true,
+        // },
+        // {
+        //     //bottle neck is client side
+        //     description : 'operations (2 shards)',
+        //     shardCount : 2,
+        //     playerCount : 100,
+        //     transOps : 1000,
+        //     transCount : 1,
+        // },
+        // {
+        //     description : 'transaction(1op) with index (2 shards)',
+        //     shardCount : 2,
+        //     playerCount : 100,
+        //     transOps : 1,
+        //     transCount : 1000,
+        //     useIndex : true,
+        // },
         ];
 
         return P.each(testOpts, function(testOpt){
@@ -184,6 +184,70 @@ describe.skip('performance test', function(){
         .nodeify(cb);
     });
 
+    it('load/unload', function(cb){
+        this.timeout(300 * 1000);
+
+        var count = 20000;
+        var concurrency = 100;
+        var autoconn = null;
+
+        return env.startCluster('s1', function(config){
+            config.persistentDelay = 3600 * 1000;
+            config.idleTimeout = 3600 * 1000;
+        })
+        .then(function(){
+            return memdb.autoConnect(env.config)
+            .then(function(ret){
+                autoconn = ret;
+            });
+        })
+        .then(function(){
+            var startTick = Date.now();
+            var Player = autoconn.collection('player');
+
+            return P.map(_.range(concurrency), function(groupId){
+                var groupCount = Math.floor(count/concurrency);
+
+                return autoconn.transaction(function(){
+                    return P.each(_.range(groupCount), function(index){
+                        var doc = {_id : groupCount * groupId + index, name : 'rain'};
+                        return Player.insert(doc);
+                    });
+                }, 's1');
+            })
+            .then(function(){
+                var rate = count * 1000 / (Date.now() - startTick);
+                logger.warn('Load Rate: %s', rate);
+            });
+        })
+        .then(function(){
+            var startTick = Date.now();
+            var Player = autoconn.collection('player');
+
+            return P.map(_.range(concurrency), function(groupId){
+                var groupCount = Math.floor(count/concurrency);
+
+                return autoconn.transaction(function(){
+                    return P.each(_.range(groupCount), function(index){
+                        return Player.update({_id : groupCount * groupId + index}, {$set : {name : 'snow'}}, {upsert : true});
+                    });
+                }, 's1');
+            })
+            .then(function(){
+                var rate = count * 1000 / (Date.now() - startTick);
+                logger.warn('Update Rate: %s', rate);
+            });
+        })
+        .finally(function(){
+            var startTick = Date.now();
+            return env.stopCluster()
+            .then(function(){
+                var rate = count * 1000 / (Date.now() - startTick);
+                logger.warn('Unload Rate: %s', rate);
+            });
+        })
+        .nodeify(cb);
+    });
 
     it('mdbgoose', function(cb){
         this.timeout(300 * 1000);
@@ -230,7 +294,7 @@ describe.skip('performance test', function(){
     });
 
 
-    it('gc & idle', function(cb){
+    it.skip('gc & idle', function(cb){
         this.timeout(3600 * 1000);
 
         return env.startCluster('s1', function(config){
@@ -240,18 +304,17 @@ describe.skip('performance test', function(){
             config.idleTimeout = 3600 * 1000;
         })
         .then(function(){
-            return memdb.connectAsync(env.config);
+            return memdb.autoConnect(env.config);
         })
         .then(function(autoconn){
-            return P.each(_.range(10000), function(i){
+            return P.each(_.range(200000), function(i){
                 var doc = {_id : i};
-                for(var j=0; j<1000; j++){
+                for(var j=0; j<10; j++){
                     doc['key' + j] = 'value' + j;
                 }
-                logger.warn('%s %j', i, process.memoryUsage());
                 return autoconn.transaction(function(){
                     return autoconn.collection('player').insert(doc);
-                });
+                }, 's1');
             });
         })
         .then(function(){

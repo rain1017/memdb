@@ -28,7 +28,7 @@ proto.start = function(){
 
         self.conn.on('close', function(){
             self.connected = false;
-            self.logger.warn('backend mongodb disconnected');
+            self.logger.error('backend mongodb disconnected');
         });
 
         self.conn.on('reconnect', function(){
@@ -46,6 +46,8 @@ proto.start = function(){
 
 proto.stop = function(){
     var self = this;
+
+    this.conn.removeAllListeners('close');
 
     return this.conn.closeAsync()
     .then(function(){
