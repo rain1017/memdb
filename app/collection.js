@@ -204,16 +204,19 @@ proto._findByIndex = function(indexKey, indexValue, fields, opts){
         if(opts && opts.limit){
             ids = ids.slice(0, opts.limit);
         }
-        return P.mapSeries(ids, function(id){
+
+        var docs = [];
+        return P.each(ids, function(id){
             id = utils.unescapeField(id);
             return self.findById(id, fields, opts)
             .then(function(doc){
-                if(!doc){
-                    throw new Error('index - ' + indexKey + ' is corrupted, please rebuild index');
+                // WARN: This is possible that doc is null due to index collection is not locked
+                if(!!doc){
+                    docs.push(doc);
                 }
-                return doc;
             });
-        });
+        })
+        .thenReturn(docs);
     });
 };
 
@@ -443,7 +446,7 @@ proto.commitOneIndex = function(indexKey, indexValue, changedIds, config){
             return indexCollection.remove(indexValue);
         }
         else{
-            throw new Error('index count < 0');
+            throw new Error(util.format('index corrupted: %s %s, please rebuild index', self.name, indexKey));
         }
     });
 };

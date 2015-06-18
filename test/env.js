@@ -20,7 +20,7 @@ var _servers = {}; // {shardId : server}
 
 exports.startCluster = function(shardIds, configOverrideFunc){
     if(!shardIds){
-        throw new Error('shardIds is missing');
+        shardIds = Object.keys(config.shards);
     }
     if(!Array.isArray(shardIds)){
         shardIds = [shardIds];
