@@ -80,7 +80,7 @@ exports.stopCluster = function(){
 
 exports.flushdb = function(cb){
     var promise = P.try(function(){
-        return P.promisify(mongodb.MongoClient.connect)(config.backend.url, config.backend.options)
+        return P.promisify(mongodb.MongoClient.connect)(config.backend.url)
         .then(function(db){
             return db.dropDatabaseAsync()
             .then(function(){

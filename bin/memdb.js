@@ -60,7 +60,7 @@ var startRepl = function(conn){
             if(P.is(ret)){
                 ret.nodeify(function(err, ret){
                     if(err){
-                        err = err.split('\n')[0] + '\n (Changes are rolled back)';
+                        err = err.message + '\n (Changes are rolled back)';
                     }
                     cb(err, ret);
                 });

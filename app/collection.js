@@ -206,6 +206,7 @@ proto._findByIndex = function(indexKey, indexValue, fields, opts){
         }
 
         var docs = [];
+        ids.sort(); // keep id in order, avoid deadlock
         return P.each(ids, function(id){
             id = utils.unescapeField(id);
             return self.findById(id, fields, opts)

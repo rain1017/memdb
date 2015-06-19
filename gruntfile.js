@@ -4,7 +4,7 @@ module.exports = function(grunt) {
     // Unified Watch Object
     var watchFiles = {
         libJS: ['gruntfile.js', 'index.js', 'app/**/*.js', 'bin/**/*.js', 'lib/**/*.js'],
-        testJS: ['test/**/*.js'],
+        testJS: ['test/app/*.js', 'test/bin/*.js', 'test/lib/*.js', 'test/perf.js'],
     };
 
     // Project Configuration

@@ -341,6 +341,8 @@ proto.lock = function(connId, key){
         return true;
     }
 
+    this.logger.debug('[conn:%s] shard.lock(%s) start', connId, key);
+
     var self = this;
     return this.keyLock.acquire(key, function(){
         return P.try(function(){
@@ -350,8 +352,10 @@ proto.lock = function(connId, key){
             return self.docs[key].lock(connId);
         })
         .then(function(){
-            self.logger.debug('[conn:%s] lock(%s)', connId, key);
+            self.logger.debug('[conn:%s] shard.lock(%s) success', connId, key);
             return true;
+        }, function(e){
+            throw new Error(util.format('[conn:%s] shard.lock(%s) failed', connId, key));
         });
     });
 };

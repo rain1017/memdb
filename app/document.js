@@ -24,7 +24,7 @@ var Document = function(opts){ //jshint ignore:line
     this.changed = undefined; // undefined means no change, while null means removed
     this.connId = null; // Connection that hold the document lock
 
-    this.locker = opts.lock;
+    this.locker = opts.locker;
     this.lockKey = opts.lockKey;
     if(!this.locker){
         this.locker = new AsyncLock({
@@ -189,7 +189,17 @@ proto.lock = function(connId){
             deferred.resolve();
         })
         .catch(function(err){
-            deferred.reject(err);
+            if(!deferred.isResolved()){
+                deferred.reject(err);
+            }
+
+            P.try(function(){
+                // trick to get longStackTrace
+                throw new Error(util.format('[conn:%s] doc.lock failed %s', connId, self.lockKey));
+            })
+            .catch(function(e){
+                deferred.reject(e);
+            });
         });
     }
     return deferred.promise;
@@ -210,11 +220,14 @@ proto._unlock = function(){
     if(this.connId === null){
         return;
     }
+    logger.debug('[conn:%s] doc.lock release %s', this.connId, this.lockKey);
+
     this.connId = null;
     var releaseCallback = this.releaseCallback;
     this.releaseCallback = null;
 
     releaseCallback();
+
     this.emit('unlock');
 };
 

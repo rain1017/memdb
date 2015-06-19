@@ -47,7 +47,10 @@ exports.start = function(opts){
                 resp.err = null;
                 resp.data = ret;
             }, function(err){
-                resp.err = err.stack;
+                resp.err = {
+                    message : err.message,
+                    stack : err.stack,
+                };
                 resp.data = null;
             })
             .then(function(){
