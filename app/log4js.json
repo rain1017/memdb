@@ -9,8 +9,8 @@
             "pattern": "-yyyyMMdd",
             "layout": {
                 "type": "basic"
-              }
-            ,"backups": 5,
+            },
+            "backups": 5,
             "category":"memdb"
         },
         {
@@ -19,9 +19,19 @@
             "pattern": "-yyyyMMdd",
             "layout": {
                 "type": "basic"
-              }
-            ,"backups": 5,
+            },
+            "backups": 5,
             "category":"memdb-client"
+        },
+        {
+            "type": "dateFile",
+            "filename": "${opts:base}/memdbtest.log",
+            "pattern": "-yyyyMMdd",
+            "layout": {
+                "type": "basic"
+            },
+            "backups": 5,
+            "category":"test"
         }
     ],
 

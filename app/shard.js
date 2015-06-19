@@ -33,12 +33,13 @@ var DEFAULT_GC_COUNT = 100;
 
 // Idle time before doc is unloaded
 // tune this to balance memory usage and performance
-var DEFAULT_IDLE_TIMEOUT = 600 * 1000;
+// set 0 to never
+var DEFAULT_IDLE_TIMEOUT = 3600 * 1000;
 
 // Persistent delay after doc has commited (in ms)
 // tune this to balance backend data delay and performance
 // set 0 to never
-var DEFAULT_PERSISTENT_DELAY = 300 * 1000;
+var DEFAULT_PERSISTENT_DELAY = 600 * 1000;
 
 // Timeout for readonly doc cache
 var DEFAULT_CACHE_TIMEOUT = 60 * 1000;

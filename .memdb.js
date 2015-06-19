@@ -6,6 +6,8 @@
  * copy this file to /etc/memdb.js or ~/.memdb.js
  *
  * This is plain javascript, you can add any js code here, just export the config
+ *
+ * DO NOT modify it when any memdb shard is running
  */
 
 module.exports = {
@@ -126,19 +128,19 @@ module.exports = {
     // These settings are unstable and may change in later version
 
     // Delay for flush changes to backend storage
-    // set it to large value to improve performance if the data delay in backend storage is not an issue.
-    persistentDelay : 300 * 1000, // number in ms, default 300,000
+    // Set it to large value to improve performance if the data delay in backend storage is not an issue.
+    // persistentDelay : 600 * 1000, // number in ms, default 10 min. 0 indicates never
 
     // Idle time before document is removed from memory.
     // Larger value can improve performance but use more memory.
     // Set it to large value if the documents accessed via this shard is limited.
     // Do not access too many different documents in a short time, which may exhault memory and trigger heavy GC operation.
-    idleTimeout : 600 * 1000, // number in ms, default 600,000
+    // idleTimeout : 3600 * 1000, // number in ms, default 1 hour. 0 indicates never
 
     // GC will be triggered when memory usage reach this limit
     // GC can be very heavy, please adjust idleTimeout to avoid GC.
-    memoryLimit : 1024, // number in MB, default 1024
+    // memoryLimit : 1024, // number in MB, default 1024
 
     // Disable redis replica, DO NOT turn on this in production.
-    disableSlave : false, // default false
+    // disableSlave : false, // default false
 };

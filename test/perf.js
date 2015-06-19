@@ -293,24 +293,27 @@ describe.skip('performance test', function(){
         .nodeify(cb);
     });
 
-
     it.skip('gc & idle', function(cb){
-        this.timeout(3600 * 1000);
+        this.timeout(10000 * 1000);
 
         return env.startCluster('s1', function(config){
             config.memoryLimit = 1024; // 1G
 
             // Set large value to trigger gc, small value to not trigger gc
-            config.idleTimeout = 3600 * 1000;
+            config.idleTimeout = 10000 * 1000;
+            config.persistentDelay = 10000 * 1000;
         })
         .then(function(){
             return memdb.autoConnect(env.config);
         })
         .then(function(autoconn){
-            return P.each(_.range(200000), function(i){
+            return P.each(_.range(1000000), function(i){
                 var doc = {_id : i};
                 for(var j=0; j<10; j++){
                     doc['key' + j] = 'value' + j;
+                }
+                if(i % 100 === 0) {
+                    logger.warn(i);
                 }
                 return autoconn.transaction(function(){
                     return autoconn.collection('player').insert(doc);
