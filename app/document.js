@@ -192,14 +192,6 @@ proto.lock = function(connId){
             if(!deferred.isResolved()){
                 deferred.reject(err);
             }
-
-            P.try(function(){
-                // trick to get longStackTrace
-                throw new Error(util.format('[conn:%s] doc.lock failed %s', connId, self.lockKey));
-            })
-            .catch(function(e){
-                deferred.reject(e);
-            });
         });
     }
     return deferred.promise;
@@ -220,7 +212,6 @@ proto._unlock = function(){
     if(this.connId === null){
         return;
     }
-    logger.debug('[conn:%s] doc.lock release %s', this.connId, this.lockKey);
 
     this.connId = null;
     var releaseCallback = this.releaseCallback;

@@ -31,7 +31,7 @@
     "scripts": {
         "start": "grunt",
         "test": "grunt test",
-        "postinstall": ""
+        "postinstall": "sudo cp ./.memdb.js /etc/memdb.js"
     },
     "dependencies": {
         "memdb-logger": "rain1017/memdb-logger",
