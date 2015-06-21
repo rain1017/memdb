@@ -188,7 +188,16 @@ proto.start = function(){
         }
     })
     .then(function(){
-        return this.globalEvent.addListener('shard$' + this._id, this.onShardEvent.bind(this));
+        var self = this;
+        return this.globalEvent.addListener('shard$' + this._id, function(){
+            var args = [].slice.call(arguments);
+            P.try(function(){
+                return self.onShardEvent.apply(self, args);
+            })
+            .catch(function(e){
+                self.logger.error(e.stack);
+            });
+        });
     })
     .then(function(){
         this.gcInterval = setInterval(this.gc.bind(this), this.config.gcInterval);
@@ -240,6 +249,9 @@ proto.stop = function(){
         return P.mapLimit(Object.keys(this.docs), function(key){
             return self.keyLock.acquire(key, function(){
                 return self._unload(key);
+            })
+            .catch(function(e){
+                self.logger.error(e.stack);
             });
         });
     })
@@ -812,6 +824,9 @@ proto.gc = function(){
         return P.mapLimit(keys, function(key){
             return self.keyLock.acquire(key, function(){
                 return self._unload(key);
+            })
+            .catch(function(e){
+                self.logger.error(e.stack);
             });
         })
         .then(function(){

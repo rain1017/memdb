@@ -72,11 +72,16 @@ proto.stop = function(force){
     var self = this;
 
     return P.try(function(){
-        // return P.map(Object.keys(self.connections), function(connId){
-        //     return self.disconnect(connId)
-        //     .catch(function(e){
-        //     });
-        // });
+        // Make sure no new request come anymore
+
+        // Wait for all operations finish
+        return utils.waitUntil(function(){
+            return !self.connectionLock.isBusy();
+        });
+    })
+    .then(function(){
+      //  var heapdump = require('heapdump');
+      //  return P.promisify(heapdump.writeSnapshot, heapdump)('/tmp/memdb-' + self.shard._id + '.heapsnapshot');
     })
     .then(function(){
         return self.shard.stop(force);
@@ -162,6 +167,7 @@ proto.execute = function(connId, method, args, opts){
         self.logger.debug('[conn:%s] start %s(%j)...', connId, method, args);
 
         var conn = self.getConnection(connId);
+        var startTick = Date.now();
 
         return P.try(function(){
             var func = conn[method];
@@ -171,10 +177,13 @@ proto.execute = function(connId, method, args, opts){
             return func.apply(conn, args);
         })
         .then(function(ret){
-            self.logger.info('[conn:%s] %s(%j) => %j', connId, method, args, ret);
+            var timespan = Date.now() - startTick;
+            var level = timespan < 1000 ? 'info' : 'warn'; // warn slow query
+            self.logger[level]('[conn:%s] %s(%j) => %j (%sms)', connId, method, args, ret, timespan);
             return ret;
         }, function(err){
-            self.logger.error('[conn:%s] %s(%j) =>', connId, method, args, err.stack);
+            var timespan = Date.now() - startTick;
+            self.logger.error('[conn:%s] %s(%j) => %s (%sms)', connId, method, args, err.stack, timespan);
 
             conn.rollback();
 

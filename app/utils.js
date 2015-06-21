@@ -192,3 +192,23 @@ exports.remoteExec = function(ip, cmd, opts){
     });
     return deferred.promise;
 };
+
+exports.waitUntil = function(fn, checkInterval){
+    if(!checkInterval){
+        checkInterval = 100;
+    }
+
+    var deferred = P.defer();
+    var check = function(){
+        if(fn()){
+            deferred.resolve();
+        }
+        else{
+            setTimeout(check, checkInterval);
+        }
+    };
+    check();
+
+    return deferred.promise;
+};
+

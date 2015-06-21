@@ -46,6 +46,11 @@ exports.init = function(confPath, shardId){
     var level = logConf.level || 'INFO';
     memdbLogger.setGlobalLogLevel(memdbLogger.levels[level]);
 
+    // heapdump
+    if(conf.heapdump){
+        require('heapdump');
+    }
+
     _config = conf;
 };
 

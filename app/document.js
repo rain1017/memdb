@@ -190,7 +190,7 @@ proto.lock = function(connId){
         })
         .catch(function(err){
             if(!deferred.isResolved()){
-                deferred.reject(err);
+                deferred.reject(new Error('doc.lock failed - ' + self.lockKey));
             }
         });
     }
@@ -200,11 +200,12 @@ proto.lock = function(connId){
 // Wait existing lock release (not create new lock)
 proto._waitUnlock = function(){
     var deferred = P.defer();
+    var self = this;
     return this.locker.acquire(this.lockKey, function(){
         deferred.resolve();
     })
     .catch(function(err){
-        deferred.reject(err);
+        deferred.reject(new Error('doc._waitUnlock failed - ' + self.lockKey));
     });
 };
 

@@ -143,4 +143,7 @@ module.exports = {
 
     // Disable redis replica, DO NOT turn on this in production.
     // disableSlave : false, // default false
+
+    // Turn on heapdump module (https://www.npmjs.com/package/heapdump)
+    // heapdump : false, // default false
 };

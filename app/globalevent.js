@@ -49,13 +49,18 @@ proto.start = function(){
 
         this.sub.on('message', function(channel, msg){
             var event = channel.slice(self.config.prefix.length);
-            msg = JSON.parse(msg);
+            try{
+                msg = JSON.parse(msg);
+            }
+            catch(err){
+                self.logger.error('invalid message %s', msg);
+            }
 
             if(!self.eventListeners.hasOwnProperty(event)){
                 return P.resolve();
             }
 
-            P.map(self.eventListeners[event], function(listener){
+            P.each(self.eventListeners[event], function(listener){
                 return P.try(function(){
                     self.logger.debug('onEvent %s %j', event, msg);
                     return listener.apply(null, msg);

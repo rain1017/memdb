@@ -106,13 +106,13 @@ describe.skip('performance test', function(){
             transOps : 1000,
             transCount : 1,
         },
-        {
-            description : 'transactions(1op) (1 shard)',
-            shardCount : 1,
-            playerCount : 100,
-            transOps : 1,
-            transCount : 1000,
-        },
+        // {
+        //     description : 'transactions(1op) (1 shard)',
+        //     shardCount : 1,
+        //     playerCount : 100,
+        //     transOps : 1,
+        //     transCount : 1000,
+        // },
         // {
         //     description : 'transactions(10ops) (1 shard)',
         //     shardCount : 1,
@@ -327,6 +327,17 @@ describe.skip('performance test', function(){
             return env.stopCluster();
         })
         .nodeify(cb);
+    });
+
+    it('logger', function(){
+        var startTick = Date.now();
+
+        var count = 100000;
+        for(var i=0; i<count; i++){
+            logger.info(i);
+        }
+        var rate = count * 1000 / (Date.now() - startTick);
+        logger.warn('rate %s', rate);
     });
 });
 

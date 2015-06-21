@@ -2,6 +2,8 @@
 
 // run with node >= 0.12 with --harmony option
 
+// If logLevel >= INFO, change log4js.json - set appender type to fileSync (otherwise log buffer may eat out memory)
+
 var P = require('bluebird');
 var _ = require('lodash');
 var env = require('./env');
@@ -10,8 +12,8 @@ var mongodb = P.promisify(require('mongodb'));
 var logger = memdb.logger.getLogger('test', __filename);
 
 var maxConcurrency = 200;
-var areaPlayerCount = 10; // max player count in one area
-var newPlayerIntervalValue = 20;
+var areaPlayerCount = 10;
+var newPlayerIntervalValue = 10;
 
 var maxPlayerId = 0;
 var concurrency = 0;
@@ -21,7 +23,11 @@ var route = function(id){
     if(id === null || id === undefined){
         return _.sample(shardIds);
     }
-    return shardIds[id % shardIds.length];
+    var index = parseInt(id) % shardIds.length;
+
+    //var index = Math.floor((parseInt(id) % 4) / 2);
+    //logger.warn(shardIds[index]);
+    return shardIds[index];
 };
 
 var playerThread = P.coroutine(function*(db, playerId){
@@ -95,7 +101,7 @@ var playerThread = P.coroutine(function*(db, playerId){
     for(var i=0; i<_.random(10); i++){
         yield P.delay(_.random(1000));
 
-        var areaId = _.random(Math.floor(concurrency / areaPlayerCount) + 1);
+        var areaId = _.random(Math.floor(maxConcurrency / areaPlayerCount) + 1);
         yield playInArea(playerId, areaId);
     }
 
