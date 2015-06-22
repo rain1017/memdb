@@ -12,6 +12,8 @@ var vm = require('vm');
 var AsyncLock = require('async-lock');
 var _ = require('lodash');
 
+var DEFAULT_SLOWQUERY = 2000;
+
 // Extend promise
 utils.extendPromise(P);
 
@@ -25,6 +27,8 @@ var Database = function(opts){
     this.connectionLock = new AsyncLock({Promise : P});
 
     this.dbWrappers = {}; //{connId : dbWrapper}
+
+    opts.slowQuery = opts.slowQuery || DEFAULT_SLOWQUERY;
 
     // Parse index config
     opts.collections = opts.collections || {};
@@ -50,6 +54,7 @@ var Database = function(opts){
     this.logger.info('parsed opts: %j', opts);
 
     this.shard = new Shard(opts);
+
     this.config = opts;
 };
 
@@ -78,10 +83,6 @@ proto.stop = function(force){
         return utils.waitUntil(function(){
             return !self.connectionLock.isBusy();
         });
-    })
-    .then(function(){
-      //  var heapdump = require('heapdump');
-      //  return P.promisify(heapdump.writeSnapshot, heapdump)('/tmp/memdb-' + self.shard._id + '.heapsnapshot');
     })
     .then(function(){
         return self.shard.stop(force);
@@ -178,7 +179,7 @@ proto.execute = function(connId, method, args, opts){
         })
         .then(function(ret){
             var timespan = Date.now() - startTick;
-            var level = timespan < 1000 ? 'info' : 'warn'; // warn slow query
+            var level = timespan < self.config.slowQuery ? 'info' : 'warn'; // warn slow query
             self.logger[level]('[conn:%s] %s(%j) => %j (%sms)', connId, method, args, ret, timespan);
             return ret;
         }, function(err){

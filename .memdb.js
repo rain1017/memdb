@@ -144,6 +144,9 @@ module.exports = {
     // Disable redis replica, DO NOT turn on this in production.
     // disableSlave : false, // default false
 
+    // Slow query time
+    // slowQuery : 2000, // number in ms. default 2000
+
     // Turn on heapdump module (https://www.npmjs.com/package/heapdump)
     // heapdump : false, // default false
 };

@@ -699,6 +699,7 @@ proto._lockBackend = function(key){
                 })
                 .then(function(success){
                     if(success){
+                        self.logger.debug('locked backend doc - %s (%sms)', key, Date.now() - startTick);
                         return;
                     }
 

@@ -13,8 +13,9 @@ var logger = memdb.logger.getLogger('test', __filename);
 
 var maxConcurrency = 200;
 var areaPlayerCount = 10;
-var newPlayerIntervalValue = 10;
+var randomRoute = false; // turn on this can slow down performance
 
+var newPlayerIntervalValue = 10;
 var maxPlayerId = 0;
 var concurrency = 0;
 
@@ -23,10 +24,7 @@ var route = function(id){
     if(id === null || id === undefined){
         return _.sample(shardIds);
     }
-    var index = parseInt(id) % shardIds.length;
-
-    //var index = Math.floor((parseInt(id) % 4) / 2);
-    //logger.warn(shardIds[index]);
+    var index = randomRoute ? _.random(shardIds.length - 1) : parseInt(id) % shardIds.length;
     return shardIds[index];
 };
 

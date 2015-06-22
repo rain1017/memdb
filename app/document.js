@@ -201,12 +201,13 @@ proto.lock = function(connId){
 proto._waitUnlock = function(){
     var deferred = P.defer();
     var self = this;
-    return this.locker.acquire(this.lockKey, function(){
+    this.locker.acquire(this.lockKey, function(){
         deferred.resolve();
     })
     .catch(function(err){
         deferred.reject(new Error('doc._waitUnlock failed - ' + self.lockKey));
     });
+    return deferred.promise;
 };
 
 proto._unlock = function(){
