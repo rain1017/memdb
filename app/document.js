@@ -13,12 +13,18 @@ var DEFAULT_LOCK_TIMEOUT = 10 * 1000;
 var Document = function(opts){ //jshint ignore:line
     opts = opts || {};
 
+    if(!opts.hasOwnProperty('_id')){
+        throw new Error('_id is not specified');
+    }
+    this._id = opts._id;
+
     var doc = opts.doc || null;
     if(typeof(doc) !== 'object'){
         throw new Error('doc must be object');
     }
-
-    this._id = opts._id;
+    if(!!doc){
+        doc._id = this._id;
+    }
 
     this.commited = doc;
     this.changed = undefined; // undefined means no change, while null means removed
@@ -84,6 +90,7 @@ proto.find = function(connId, fields){
                 ret[field] = doc[field];
             }
         });
+        ret._id = this._id;
     }
     else{
         ret = doc;

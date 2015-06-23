@@ -135,7 +135,7 @@ module.exports = {
     // Larger value can improve performance but use more memory.
     // Set it to large value if the documents accessed via this shard is limited.
     // Do not access too many different documents in a short time, which may exhault memory and trigger heavy GC operation.
-    // idleTimeout : 3600 * 1000, // number in ms, default 1 hour. 0 indicates never
+    // idleTimeout : 1800 * 1000, // number in ms, default 30 min. 0 indicates never
 
     // GC will be triggered when memory usage reach this limit
     // GC can be very heavy, please adjust idleTimeout to avoid GC.

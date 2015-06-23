@@ -82,6 +82,10 @@ exports.start = function(opts){
         logger.info('[conn:%s] %s connected', connId, remoteAddress);
     });
 
+    server.on('error', function(err){
+        logger.error(err.stack);
+    });
+
     P.try(function(){
         return P.promisify(server.listen, server)(port, bindIp);
     })

@@ -14,9 +14,9 @@ describe('document test', function(){
         // Get all fields
         doc.find('c1').should.eql(value);
         // Get specified fields
-        doc.find('c1', 'k1').should.eql({k1 : 1});
-        doc.find('c1', {'k1' : true}).should.eql({k1 : 1});
-        doc.find('c1', {'k1' : false}).should.eql({k2 : 1});
+        doc.find('c1', 'k1').should.eql({_id : '1', k1 : 1});
+        doc.find('c1', {'k1' : true}).should.eql({_id : '1', k1 : 1});
+        doc.find('c1', {'k1' : false}).should.eql({_id : '1', k2 : 1});
     });
 
     it('update', function(cb){
@@ -190,7 +190,7 @@ describe('document test', function(){
             // update field
             doc.update('c1', {k1 : 2});
             // read from c2
-            doc.find('c2', 'k1').should.eql({k1 : 1});
+            doc.find('c2', 'k1').should.eql({'_id' : '1', k1 : 1});
             doc.find('c2', {_id : false}).should.eql(value);
             // add field
             doc.update('c1', {k3 : 1});

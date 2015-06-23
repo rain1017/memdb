@@ -66,15 +66,11 @@ describe('mdbgoose test', function(){
                     });
                 })
                 .then(function(){
-                    return Player.findAsync('p1')
-                    .then(function(player){
-                        player._id.should.eql('p1');
-                    });
-                })
-                .then(function(){
-                    return Player.findAsync('p1', null, {lock : true})
-                    .then(function(player){
-                        player._id.should.eql('p1');
+                    return Player.find({_id : 'p1'})
+                    .select('name')
+                    .execAsync()
+                    .then(function(players){
+                        players[0].name.should.eql('rain');
                     });
                 })
                 .then(function(){
@@ -90,7 +86,7 @@ describe('mdbgoose test', function(){
                     });
                 })
                 .then(function(){
-                    return Player.findReadOnlyAsync({_id : 'p1'})
+                    return Player.findReadOnly({_id : 'p1'})
                     .then(function(players){
                         players.length.should.eql(1);
                         players[0]._id.should.eql('p1');
@@ -109,7 +105,7 @@ describe('mdbgoose test', function(){
                     });
                 })
                 .then(function(){
-                    return Player.findAsync('p1');
+                    return Player.findByIdAsync('p1');
                 })
                 .then(function(player){
                     player.name = 'snow';
@@ -123,7 +119,7 @@ describe('mdbgoose test', function(){
                 })
                 .then(function(){
                     return P.try(function(){
-                        return Player.findAsync('p1');
+                        return Player.findByIdAsync('p1');
                     })
                     .then(function(player){
                         logger.debug('%j', player);
@@ -156,7 +152,7 @@ describe('mdbgoose test', function(){
                     });
                 })
                 .then(function(){
-                    return Player.findReadOnlyAsync('p1')
+                    return Player.findByIdReadOnlyAsync('p1')
                     .then(function(ret){
                         logger.debug('%j', ret);
                     });
@@ -176,10 +172,11 @@ describe('mdbgoose test', function(){
             logger.debug('%j', players);
             players.length.should.eql(2);
 
-            return players[0].saveAsync()
-            .catch(function(e){
-                logger.warn(e); // should throw error
-            });
+            // players[0].name = 'changed';
+            // return players[0].saveAsync()
+            // .catch(function(e){
+            //     logger.error(e.stack); // should throw error
+            // });
         })
         .then(function(){
             return mdbgoose.disconnectAsync();

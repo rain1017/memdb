@@ -334,10 +334,10 @@ describe.skip('performance test', function(){
 
         var count = 100000;
         for(var i=0; i<count; i++){
-            logger.info(i);
+            logger.warn('1');
         }
         var rate = count * 1000 / (Date.now() - startTick);
-        logger.warn('rate %s', rate);
+        console.log('rate %s', rate);
     });
 });
 
