@@ -160,9 +160,7 @@ describe('mdbgoose test', function(){
             }, 's1');
         })
         .then(function(){
-            return mdbgoose.transaction(function(){
-                return mdbgoose.autoconn.flushBackend();
-            }, 's1');
+            return mdbgoose.autoconn.flushBackend('s1');
         })
         .then(function(){
             // Call mongodb directly
