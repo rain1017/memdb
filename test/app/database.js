@@ -19,61 +19,46 @@ describe('database test', function(){
     //  //tested in ../lib/connection
     // });
 
-    it('persistent / idle timeout / find readonly', function(cb){
-        var config1 = env.shardConfig('s1');
-        config1.persistentDelay = 100;
-        var db1 = new Database(config1);
+    it('persistent / idle timeout', function(cb){
+        var config = env.shardConfig('s1');
+        config.persistentDelay = 50;
+        config.idleTimeout = 500;
+        var db = new Database(config);
 
-        var config2 = env.shardConfig('s2');
-        config2.idleTimeout = 200;
-        var db2 = new Database(config2);
-
-        var conn1 = null, conn2 = null;
+        var conn = null;
 
         var collName = 'player', doc = {_id : '1', name : 'rain'};
         return P.try(function(){
-            return P.all([db1.start(), db2.start()]);
+            return db.start();
         })
         .then(function(){
-            conn1 = db1.getConnection(db1.connect());
-            conn2 = db2.getConnection(db2.connect());
-        })
-        .then(function(conn){
-            return conn1.insert(collName, doc);
+            conn = db.getConnection(db.connect());
+
+            return conn.insert(collName, doc);
         })
         .then(function(){
-            return conn1.commit();
+            return conn.commit();
         })
-        .delay(500) // doc persistented
+        .delay(300) // doc persistented
         .then(function(){
             // read from backend
-            return conn2.findReadOnly(collName, doc._id)
+            return db.shard.backend.get(collName, doc._id)
             .then(function(ret){
                 ret.should.eql(doc);
             });
         })
+        .delay(500) // doc idle timed out
         .then(function(){
-            // get from cache
-            return conn2.findReadOnly(collName, doc._id)
-            .then(function(ret){
-                ret.should.eql(doc);
-            });
+            db.shard._isLoaded(collName + '$' + doc._id).should.eql(false);
         })
         .then(function(){
-            return conn2.remove(collName, doc._id);
+            return conn.remove(collName, doc._id);
         })
         .then(function(){
-            return conn2.commit();
-        })
-        .delay(500) // doc idle timed out, should persistented
-        .then(function(){
-            return conn1.findReadOnly(collName, doc._id)
-            .then(function(ret){
-                (ret === null).should.eql(true);
-            });
+            return conn.commit();
         })
         .then(function(){
-            return P.all([db1.stop(), db2.stop()]);
+            return db.stop();
         })
         .nodeify(cb);
     });

@@ -138,19 +138,21 @@ proto.findOne = function(query, fields, opts){
 proto.findById = function(id, fields, opts){
     id = this._checkId(id);
 
-    if(opts && opts.readonly){
-        return this.shard.findReadOnly(this.conn._id, this._key(id), fields);
-    }
-
     var self = this;
     return P.try(function(){
-        if(opts && opts.nolock){
-            return;
+        if(opts && opts.readonly){
+            return self.shard.findReadOnly(self.conn._id, self._key(id), fields);
         }
-        return self.lock(id);
-    })
-    .then(function(){
-        return self.shard.find(self.conn._id, self._key(id), fields, opts);
+
+        return P.try(function(){
+            if(opts && opts.nolock){
+                return;
+            }
+            return self.lock(id);
+        })
+        .then(function(){
+            return self.shard.find(self.conn._id, self._key(id), fields, opts);
+        });
     });
 };
 

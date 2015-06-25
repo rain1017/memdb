@@ -89,7 +89,7 @@ exports.flushdb = function(cb){
         });
     })
     .then(function(){
-        return P.map([config.locking, config.event, config.slave], function(redisConfig){
+        return P.map([config.locking, config.slave], function(redisConfig){
 
             var client = redis.createClient(redisConfig.port, redisConfig.host);
             client.select(redisConfig.db);

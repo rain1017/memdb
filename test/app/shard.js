@@ -34,7 +34,7 @@ describe('shard test', function(){
         })
         .then(function(){
             // request to unload doc
-            shard.globalEvent.emit('shard$s1', 'unload', key);
+            shard.$unload(key);
         })
         .delay(20)
         .then(function(){
@@ -75,7 +75,7 @@ describe('shard test', function(){
         })
         .then(function(){
             // request to unload
-            shard.globalEvent.emit('shard$s1', 'unload', key);
+            shard.$unload(key);
         })
         .delay(100)
         .then(function(){
@@ -102,6 +102,15 @@ describe('shard test', function(){
         config.backendLockRetryInterval = 500; // This is required for this test
         var shard1 = new Shard(config);
         var shard2 = new Shard(env.shardConfig('s2'));
+        // fake autoconn
+        shard1.autoconn.$unload = function(shardId, key){
+            shardId.should.eql('s2');
+            return shard2.$unload(key);
+        };
+        shard2.autoconn.$unload = function(shardId, key){
+            shardId.should.eql('s1');
+            return shard1.$unload(key);
+        };
 
         var key = 'user$1', doc = {_id : '1', name : 'rain', age : 30};
         return P.try(function(){
@@ -168,9 +177,16 @@ describe('shard test', function(){
 
     it('backendLock consistency fix', function(cb){
         var shard1 = new Shard(env.shardConfig('s1'));
-        var config = env.shardConfig('s2');
-        config.backendLockTimeout = 500;
-        var shard2 = new Shard(config);
+        var shard2 = new Shard(env.shardConfig('s2'));
+        // fake autoconn
+        shard1.autoconn.$unload = function(shardId, key){
+            shardId.should.eql('s2');
+            return shard2.$unload(key);
+        };
+        shard2.autoconn.$unload = function(shardId, key){
+            shardId.should.eql('s1');
+            return shard1.$unload(key);
+        };
 
         var key = 'user$1', doc = {_id : '1', name : 'rain', age : 30};
         var errCount = 0;

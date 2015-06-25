@@ -133,5 +133,44 @@ describe('autoconnection test', function(){
             return env.stopCluster();
         })
         .nodeify(cb);
-   });
+    });
+
+    it('findReadOnly', function(cb){
+        var autoconn = null;
+
+        return env.startCluster(['s1', 's2'])
+        .then(function(){
+            return memdb.autoConnect({shards : env.config.shards});
+        })
+        .then(function(ret){
+            autoconn = ret;
+
+            // execute in s1
+            return autoconn.transaction(function(){
+                return autoconn.collection('player').insert({_id : 'p1', name : 'rain'});
+            }, 's1');
+        })
+        .then(function(){
+            // read in s2
+            return autoconn.transaction(function(){
+                return autoconn.collection('player').findReadOnly('p1')
+                .then(function(player){
+                    player.name.should.eql('rain');
+                });
+            }, 's2');
+        })
+        .then(function(){
+            // execute in s1
+            return autoconn.transaction(function(){
+                return autoconn.collection('player').remove('p1');
+            }, 's1');
+        })
+        .then(function(){
+            return autoconn.close();
+        })
+        .finally(function(){
+            return env.stopCluster();
+        })
+        .nodeify(cb);
+    });
 });

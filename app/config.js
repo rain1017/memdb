@@ -76,7 +76,6 @@ exports.shardConfig = function(shardId){
     for(var key in shardConf){
         conf[key] = shardConf[key];
     }
-    delete conf.shards;
 
     conf.shardId = shardId;
     return conf;

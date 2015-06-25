@@ -136,7 +136,7 @@ var shutdown = P.coroutine(function*(){
     isShutingDown = true;
 
     try{
-        clearTimeout(newPlayerInterval);
+        clearInterval(newPlayerInterval);
         yield env.stopCluster();
         yield checkConsistency();
     }

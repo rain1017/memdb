@@ -7,12 +7,12 @@ var util = require('util');
 var redis = require('redis');
 var AsyncLock = require('async-lock');
 var EventEmitter = require('events').EventEmitter;
-var GlobalEvent = require('./globalevent');
 var backends = require('./backends');
 var Document = require('./document'); //jshint ignore:line
 var BackendLocker = require('./backendlocker');
 var Slave = require('./slave');
 var utils = require('./utils');
+var AutoConnection = require('../lib/autoconnection');
 
 var STATE = {
     INITED : 0,
@@ -41,13 +41,14 @@ var DEFAULT_IDLE_TIMEOUT = 1800 * 1000;
 // set 0 to never
 var DEFAULT_PERSISTENT_DELAY = 600 * 1000;
 
-// Timeout for readonly doc cache
-var DEFAULT_CACHE_TIMEOUT = 60 * 1000;
-
 // timeout for locking backend doc
 var DEFAULT_BACKEND_LOCK_TIMEOUT = 10 * 1000;
 // retry interval for backend lock
 var DEFAULT_BACKEND_LOCK_RETRY_INTERVAL = 50;
+
+// delay between unload and load
+// Can't load again immediately, prevent 'locking hungry' from other shards
+var DEFAULT_RELOAD_DELAY = 20;
 
 // timeout for locking doc
 var DEFAULT_LOCK_TIMEOUT = 10 * 1000;
@@ -75,18 +76,19 @@ var Shard = function(opts){
 
     this.config = {
         locking : opts.locking || {},
-        event : opts.event || {},
         backend : opts.backend || {},
         slave : opts.slave || {},
 
+        shards : opts.shards || {},
+
         idleTimeout : opts.hasOwnProperty('idleTimeout') ? opts.idleTimeout : DEFAULT_IDLE_TIMEOUT,
         persistentDelay : opts.hasOwnProperty('persistentDelay') ?  opts.persistentDelay : DEFAULT_PERSISTENT_DELAY,
-        cacheTimeout : opts.hasOwnProperty('cacheTimeout') ? opts.cacheTimeout : DEFAULT_CACHE_TIMEOUT,
 
         heartbeatInterval : opts.heartbeatInterval || DEFAULT_HEARTBEAT_INTERVAL,
         heartbeatTimeout : opts.heartbeatTimeout || DEFAULT_HEARTBEAT_TIMEOUT,
         backendLockTimeout : opts.backendLockTimeout || DEFAULT_BACKEND_LOCK_TIMEOUT,
         backendLockRetryInterval : opts.backendLockRetryInterval || DEFAULT_BACKEND_LOCK_RETRY_INTERVAL,
+        reloadDelay : opts.reloadDelay || DEFAULT_RELOAD_DELAY,
         lockTimeout : opts.lockTimeout || DEFAULT_LOCK_TIMEOUT,
 
         memoryLimit : opts.memoryLimit || DEFAULT_MEMORY_LIMIT,
@@ -115,10 +117,11 @@ var Shard = function(opts){
     slaveConf.shardId = this._id;
     this.slave = new Slave(slaveConf);
 
-    // global event
-    var eventConf = this.config.event;
-    eventConf.shardId = this._id;
-    this.globalEvent = new GlobalEvent(eventConf);
+    // memdb client to communicate with other shards
+    this.autoconn = new AutoConnection({
+        shards : this.config.shards,
+        maxConnection : 4,
+    });
 
     // Document storage {key : doc}
     this.docs = {};
@@ -147,9 +150,6 @@ var Shard = function(opts){
         Promise : P,
     });
 
-    // Cached readonly docs {key : doc} (raw doc, not document object)
-    this.cachedDocs = {};
-
     // Current concurrent commiting processes
     this.commitingCount = 0;
 
@@ -169,9 +169,6 @@ proto.start = function(){
 
     return P.bind(this)
     .then(function(){
-        return this.globalEvent.start();
-    })
-    .then(function(){
         return this.backendLocker.start();
     })
     .then(function(){
@@ -186,18 +183,6 @@ proto.start = function(){
         if(!this.config.disableSlave){
             return this.restoreFromSlave();
         }
-    })
-    .then(function(){
-        var self = this;
-        return this.globalEvent.addListener('shard$' + this._id, function(){
-            var args = [].slice.call(arguments);
-            P.try(function(){
-                return self.onShardEvent.apply(self, args);
-            })
-            .catch(function(e){
-                self.logger.error(e.stack);
-            });
-        });
     })
     .then(function(){
         this.gcInterval = setInterval(this.gc.bind(this), this.config.gcInterval);
@@ -261,13 +246,13 @@ proto.stop = function(){
         }
     })
     .then(function(){
-        return this.globalEvent.stop();
-    })
-    .then(function(){
         return this.backend.stop();
     })
     .then(function(){
         return this.backendLocker.stop();
+    })
+    .then(function(){
+        return this.autoconn.close();
     })
     .then(function(){
         this.state = STATE.STOPED;
@@ -429,102 +414,82 @@ proto.commit = function(connId, keys){
     });
 };
 
-// Readonly find without locking backend (data may not up-to-date)
-proto.findReadOnly = function(connId, key, fields){
-    this._ensureState(STATE.RUNNING);
-
-    if(this.cachedDocs.hasOwnProperty(key)){
-        this.logger.debug('[conn:%s] findReadOnly(%s) => (hit cache)', connId, key);
-        return P.resolve(this.cachedDocs[key]);
-    }
-
-    return P.bind(this)
-    .then(function(){
-        if(!!this.docs[key]){
-            return this._doc(key).find(connId);
-        }
-
-        return P.bind(this)
-        .then(function(){
-            return this.backendLocker.getHolderId(key);
-        })
-        .then(function(shardId){
-            if(!shardId){
-                return;
-            }
-            // notify holder to persistent change
-            return this.globalEvent.emit('shard$' + shardId, 'persistent', key)
-            .delay(this.config.backendLockRetryInterval); // wait some time
-        })
-        .then(function(){
-            var res = this._resolveKey(key);
-            return this.backend.get(res.name, res.id);
-        });
-    })
-    .then(function(doc){
-        if(!this.cachedDocs.hasOwnProperty(key)){
-            this.cachedDocs[key] = doc;
-
-            if(this.config.cacheTimeout > 0){
-                var self = this;
-                setTimeout(function(){
-                    delete self.cachedDocs[key];
-                    self.logger.debug('remove cached doc %s', key);
-                }, this.config.cacheTimeout);
-            }
-        }
-
-        this.logger.debug('[conn:%s] findReadOnly(%s) => (miss cache) %j', connId, key, doc);
-        return doc;
-    });
-};
-
 proto.isLocked = function(connId, key){
     return this.docs[key] && this.docs[key].isLocked(connId);
 };
 
-proto.onShardEvent = function(method, arg){
+proto.findReadOnly = function(connId, key, fields){
+    this._ensureState(STATE.RUNNING);
+    var self = this;
+
+    if(this._isLoaded(key)){
+        return this.find(connId, key, fields);
+    }
+    return P.try(function(){
+        return self.backendLocker.getHolderId(key);
+    })
+    .then(function(shardId){
+        if(!shardId || shardId === self._id){
+            return self.find(connId, key, fields);
+        }
+        return self.autoconn.$findReadOnly(shardId, key, fields);
+    });
+};
+
+// Called by other shards
+proto.$unload = function(key){
     if(this.state !== STATE.RUNNING){
-        return;
+        return false;
+    }
+    if(this.unloadingKeys[key]){
+        return false;
     }
 
-    this.logger.debug('onShardEvent(%s, %j)', method, arg);
+    this.unloadingKeys[key] = true;
 
     var self = this;
-    if(method === 'unload'){
-        var key = arg;
-        if(!this.unloadingKeys[key]){
-            this.unloadingKeys[key] = true;
+    var deferred = P.defer();
 
-            return self.keyLock.acquire(key, function(){
-                if(!self.docs[key]){
-                    // possibly a redundant backend lock is held
-                    // may caused by unsuccessful unload
-                    self.logger.warn('this shard does not hold %s', key);
-                    return P.try(function(){
-                        return self.slave.del(key);
-                    })
-                    .then(function(){
-                        return self._unlockBackend(key);
-                    });
-                }
-
-                return self._unload(key);
+    this.keyLock.acquire(key, function(){
+        if(!self.docs[key]){
+            // possibly timing issue
+            // or a redundant backend lock is held caused by unsuccessful unload
+            self.logger.debug('this shard does not hold %s', key);
+            return P.try(function(){
+                return P.try(function(){
+                    return self.slave.del(key);
+                })
+                .then(function(){
+                    return self._unlockBackend(key);
+                });
             })
-            .finally(function(){
-                delete self.unloadingKeys[key];
+            .then(function(){
+                deferred.resolve(true);
+            }, function(e){
+                deferred.reject(e);
+                throw e;
             });
         }
-    }
-    else if(method === 'persistent'){
-        var key = arg; //jshint ignore:line
-        return self.keyLock.acquire(key, function(){
-            return self._persistent(key);
-        });
-    }
-    else{
-        throw new Error('invalid shard event method - ' + method);
-    }
+
+        return P.try(function(){
+            return self._unload(key);
+        })
+        .then(function(){
+            deferred.resolve(true);
+        }, function(e){
+            deferred.reject(e);
+            throw e;
+        })
+        .delay(self.config.reloadDelay);
+    })
+    .catch(function(e){
+        self.logger.error(e.stack);
+    })
+    .finally(function(){
+        delete self.unloadingKeys[key];
+    });
+
+    return deferred.promise;
 };
 
 // internal method, not concurrency safe
@@ -659,9 +624,7 @@ proto._unload = function(key){
     })
     .then(function(){
         this.logger.info('unloaded %s', key);
-    })
-    // Can't load again immediately, prevent 'locking hungry' from other shards
-    .delay(this.config.backendLockRetryInterval);
+    });
 };
 
 // internal method, not concurrency safe
@@ -674,7 +637,7 @@ proto._lockBackend = function(key){
         if(success){
             return;
         }
-        // Wait and try
+
         var startTick = Date.now();
 
         var tryLock = function(wait){
@@ -690,12 +653,22 @@ proto._lockBackend = function(key){
                 return P.try(function(){
                     if(shardId){
                         // notify holder to unload the doc
-                        return self.globalEvent.emit('shard$' + shardId, 'unload', key);
+                        return self.autoconn.$unload(shardId, key)
+                        .catch(function(e){
+                            return false;
+                        });
+                    }
+                    else{
+                        return true;
                     }
                 })
-                .delay(wait / 2 + _.random(wait))
-                .then(function(){
-                    return self.backendLocker.tryLock(key);
+                .then(function(success){
+                    if(success){
+                        return self.backendLocker.tryLock(key);
+                    }
+                    else{
+                        return false;
+                    }
                 })
                 .then(function(success){
                     if(success){
@@ -706,7 +679,12 @@ proto._lockBackend = function(key){
                     if(Date.now() - startTick >= self.config.backendLockTimeout){
                         throw new Error('lock backend doc - ' + key + ' timed out');
                     }
-                    return tryLock(wait);
+
+                    // delay some time and try again
+                    return P.delay(wait / 2 + _.random(wait))
+                    .then(function(){
+                        return tryLock(wait);
+                    });
                 });
             });
         };

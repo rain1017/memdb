@@ -78,6 +78,15 @@ proto.flushBackend = function(){
     return this.shard.flushBackend(this._id);
 };
 
+// for internal use
+proto.$unload = function(key){
+    return this.shard.$unload(key);
+};
+// for internal use
+proto.$findReadOnly = function(key, fields){
+    return this.shard.find(null, key, fields);
+};
+
 proto.getCollection = function(name, isIndex){
     if(!isIndex && name && name.indexOf('index.') === 0){
         throw new Error('Collection name can not begin with "index."');
