@@ -12,7 +12,7 @@ var DEFAULT_PORT = 31017;
 exports.start = function(opts){
     var logger = memdbLogger.getLogger('memdb', __filename, 'shard:' + opts.shardId);
 
-    var bindIp = opts.bindIp || '0.0.0.0';
+    var bind = opts.bind || '0.0.0.0';
     var port = opts.port || DEFAULT_PORT;
 
     var db = new Database(opts);
@@ -87,13 +87,13 @@ exports.start = function(opts){
     });
 
     P.try(function(){
-        return P.promisify(server.listen, server)(port, bindIp);
+        return P.promisify(server.listen, server)(port, bind);
     })
     .then(function(){
         return db.start();
     })
     .then(function(){
-        logger.warn('server started on %s:%s', bindIp, port);
+        logger.warn('server started on %s:%s', bind, port);
     })
     .catch(function(err){
         logger.error(err.stack);

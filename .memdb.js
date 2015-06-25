@@ -98,7 +98,7 @@ module.exports = {
             // listen port
             port : 31017,
             // bind Ip
-            bindIp : '0.0.0.0',
+            bind : '0.0.0.0',
 
             // Add any shard specific settings here
             // slave : {
