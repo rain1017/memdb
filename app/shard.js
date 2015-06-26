@@ -653,10 +653,7 @@ proto._lockBackend = function(key){
                 return P.try(function(){
                     if(shardId){
                         // notify holder to unload the doc
-                        return self.autoconn.$unload(shardId, key)
-                        .catch(function(e){
-                            return false;
-                        });
+                        return self.autoconn.$unload(shardId, key);
                     }
                     else{
                         return true;
