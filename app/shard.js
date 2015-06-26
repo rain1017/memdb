@@ -120,7 +120,7 @@ var Shard = function(opts){
     // memdb client to communicate with other shards
     this.autoconn = new AutoConnection({
         shards : this.config.shards,
-        maxConnection : 4,
+        concurrentInConnection : true,
     });
 
     // Document storage {key : doc}

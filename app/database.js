@@ -137,6 +137,11 @@ proto.execute = function(connId, method, args, opts){
     opts = opts || {};
     var self = this;
 
+    if(method[0] === '$'){ // Internal method (allow concurrent call)
+        var conn = this.getConnection(connId);
+        return conn[method].apply(conn, args);
+    }
+
     if(method === 'eval'){
         var script = args[0] || '';
         var sandbox = args[1] || {};
