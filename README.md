@@ -13,9 +13,7 @@ Distributed transactional in memory database
 
 - [x] __Transaction__ : Full transaction support like traditional database, data consistency is guaranteed. 'row' based locking mechanism is used.
 
-- [x] __Object Based__ : JSON object based data, schemaless.
-
-- [x] __High Availability__ : Each shard is backed by one or more replica, you will never lose any commited data.
+- [x] __Simple__ : Mongodb-like API, very easy to learn if you have a mongodb background.
 
 __Comparison with other databases__
 
