@@ -26,8 +26,7 @@
 <li><p><strong>Performance</strong> : In memory data access which is extremely fast.</p></li>
 <li><p><strong>Scalable</strong> : System is horizontally scalable by adding more shards.</p></li>
 <li><p><strong>Transaction</strong> : Full transaction support like traditional database, data consistency is guaranteed. 'row' based locking mechanism is used.</p></li>
-<li><p><strong>Object Based</strong> : JSON object based data, schemaless.</p></li>
-<li><p><strong>High Availability</strong> : Each shard is backed by one or more replica, you will never lose any commited data.</p></li>
+<li><p><strong>Simple</strong> : Mongodb-like API, very easy to learn if you have a mongodb background.</p></li>
 </ul>
 
 <p><strong>Comparison with other databases</strong></p>
@@ -136,7 +135,7 @@ memdb<span class="pl-k">&gt;</span> db.rollback() <span class="pl-c">// rollback
 <span class="pl-c1">true</span>
 memdb<span class="pl-k">&gt;</span> db.<span class="pl-c1">find</span>(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, <span class="pl-c1">1</span>, <span class="pl-s"><span class="pl-pds">'</span>name<span class="pl-pds">'</span></span>)
 { name<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>rain<span class="pl-pds">'</span></span> }
-memdb<span class="pl-k">&gt;</span> db.<span class="pl-c1">remove</span>(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, <span class="pl-c1">1</span>) <span class="pl-c">// remove doc</span>
+memdb<span class="pl-k">&gt;</span> db.remove(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, <span class="pl-c1">1</span>) <span class="pl-c">// remove doc</span>
 <span class="pl-c1">1</span>
 memdb<span class="pl-k">&gt;</span> db.commit()
 <span class="pl-c1">true</span>
@@ -150,13 +149,14 @@ memdb<span class="pl-k">&gt;</span> <span class="pl-k">^</span>D (to exit)</pre>
 <div class="highlight highlight-js"><pre><span class="pl-c">// To run the sample:</span>
 <span class="pl-c">// npm install memdb-client</span>
 <span class="pl-c">// run with node &gt;= 0.12 with --harmony option</span>
-<span class="pl-c">// We assure you have started shard 's1' on localhost:31017, 's2' on localhost:31018.</span>
+<span class="pl-c">// We assume you have started shard 's1' on localhost:31017, 's2' on localhost:31018.</span>
 
 <span class="pl-k">var</span> memdb <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>memdb-client<span class="pl-pds">'</span></span>);
 <span class="pl-k">var</span> P <span class="pl-k">=</span> memdb.Promise; <span class="pl-c">// just bluebird promise</span>
 
 <span class="pl-k">var</span> main <span class="pl-k">=</span> P.coroutine(<span class="pl-k">function*</span>(){
-    <span class="pl-c">// All database access should via this autoconn object, you can preserve autoconn object in a global module that can be accessed anywhere</span>
+    <span class="pl-c">// All database access should via this autoconn object, </span>
+    <span class="pl-c">// you can preserve autoconn object in a global module that can be accessed anywhere</span>
     <span class="pl-k">var</span> autoconn <span class="pl-k">=</span> <span class="pl-k">yield</span> memdb.autoConnect({
         shards <span class="pl-k">:</span> { <span class="pl-c">// Specify all shards here</span>
             s1 <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port <span class="pl-k">:</span> <span class="pl-c1">31017</span>},
@@ -202,7 +202,7 @@ memdb<span class="pl-k">&gt;</span> <span class="pl-k">^</span>D (to exit)</pre>
     <span class="pl-c">// Since we just accessed this doc in s1, the doc will 'fly' from shard s1 to s2</span>
     <span class="pl-c">// In real production you should avoid these kind of data 'fly' by routing transaction to proper shard</span>
     <span class="pl-k">yield</span> autoconn.transaction(P.coroutine(<span class="pl-k">function*</span>(){
-        <span class="pl-k">yield</span> Player.<span class="pl-c1">remove</span>(doc._id);
+        <span class="pl-k">yield</span> Player.remove(doc._id);
     }), <span class="pl-s"><span class="pl-pds">'</span>s2<span class="pl-pds">'</span></span>);
 
     <span class="pl-c">// Close all connections</span>
@@ -221,7 +221,7 @@ memdb<span class="pl-k">&gt;</span> <span class="pl-k">^</span>D (to exit)</pre>
 <div class="highlight highlight-js"><pre><span class="pl-c">// To run the sample:</span>
 <span class="pl-c">// npm install memdb-client</span>
 <span class="pl-c">// run with node &gt;= 0.12 with --harmony option</span>
-<span class="pl-c">// We assure you have started shard 's1' on localhost:31017</span>
+<span class="pl-c">// We assume you have started shard 's1' on localhost:31017</span>
 
 <span class="pl-k">var</span> memdb <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>memdb-client<span class="pl-pds">'</span></span>);
 <span class="pl-k">var</span> P <span class="pl-k">=</span> memdb.Promise;
@@ -267,12 +267,12 @@ memdb<span class="pl-k">&gt;</span> <span class="pl-k">^</span>D (to exit)</pre>
         <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-s"><span class="pl-pds">'</span>%j<span class="pl-pds">'</span></span>, doc);
 
         <span class="pl-c">// find player by areaId, return array of players</span>
-        <span class="pl-c">// index for areaId should be configured in memdb.json</span>
+        <span class="pl-c">// (index should be configured in .memdb.js)</span>
         <span class="pl-k">var</span> docs <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.findAsync({areaId <span class="pl-k">:</span> <span class="pl-c1">1</span>});
         <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-s"><span class="pl-pds">'</span>%j<span class="pl-pds">'</span></span>, docs);
 
         <span class="pl-c">// find player by deviceType and deviceId</span>
-        <span class="pl-c">// a compound index should be configured in memdb.json</span>
+        <span class="pl-c">// (index should be configured in .memdb.js)</span>
         player <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.findOneAsync({deviceType <span class="pl-k">:</span> <span class="pl-c1">1</span>, deviceId <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>id1<span class="pl-pds">'</span></span>});
 
         <span class="pl-c">// update player</span>
