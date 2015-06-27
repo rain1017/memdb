@@ -13,7 +13,7 @@ var logger = memdb.logger.getLogger('test', __filename);
 
 var maxConcurrency = 200;
 var areaPlayerCount = 10;
-var randomRoute = true; // turn on this can slow down performance
+var randomRoute = false; // turn on this can slow down performance
 
 var newPlayerIntervalValue = 10;
 var maxPlayerId = 0;

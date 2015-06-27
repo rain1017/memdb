@@ -189,7 +189,7 @@ proto.execute = function(connId, method, args, opts){
             return ret;
         }, function(err){
             var timespan = Date.now() - startTick;
-            self.logger.error('[conn:%s] %s(%j) => %s (%sms)', connId, method, args, err.stack, timespan);
+            self.logger.error('[conn:%s] %s(%j) => %s (%sms)', connId, method, args, err.stack ? err.stack : err, timespan);
 
             conn.rollback();
 

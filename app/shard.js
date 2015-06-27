@@ -127,7 +127,7 @@ var Shard = function(opts){
     this.docs = {};
 
     // Newly commited docs (for incremental _save)
-    this.commitedKeys = {}; // {key : true}
+    this.commitedKeys = {}; // {key : version}
 
     // Idle timeout before unload
     this.idleTimeouts = {}; // {key : timeout}
@@ -223,11 +223,6 @@ proto.stop = function(){
         return deferred.promise;
     })
     .then(function(){
-        // for(var key in this.docs){
-        //     //force release existing lock
-        //     this.docs[key]._unlock();
-        // }
-
         // WARN: Make sure all connections are closed now
 
         var self = this;
@@ -347,13 +342,13 @@ proto.lock = function(connId, key){
             return self._load(key);
         })
         .then(function(){
-            return self.docs[key].lock(connId);
-        })
-        .then(function(){
-            self.logger.debug('[conn:%s] shard.lock(%s) success', connId, key);
-            return true;
-        }, function(e){
-            throw new Error(util.format('[conn:%s] shard.lock(%s) failed', connId, key));
+            return self.docs[key].lock(connId)
+            .then(function(){
+                self.logger.debug('[conn:%s] shard.lock(%s) success', connId, key);
+                return true;
+            }, function(e){
+                throw new Error(util.format('[conn:%s] shard.lock(%s) failed', connId, key));
+            });
         });
     });
 };
@@ -454,14 +449,13 @@ proto.$unload = function(key){
         if(!self.docs[key]){
             // possibly timing issue
             // or a redundant backend lock is held caused by unsuccessful unload
-            self.logger.debug('this shard does not hold %s', key);
+            self.logger.warn('this shard does not hold %s', key);
+
             return P.try(function(){
-                return P.try(function(){
-                    return self.slave.del(key);
-                })
-                .then(function(){
-                    return self._unlockBackend(key);
-                });
+                return self.slave.del(key);
+            })
+            .then(function(){
+                return self._unlockBackend(key);
             })
             .then(function(){
                 deferred.resolve(true);
@@ -553,7 +547,7 @@ proto._addDoc = function(key, obj){
     });
 
     doc.on('commit', function(){
-        self.commitedKeys[key] = true;
+        self._setCommited(key);
 
         // delay sometime and persistent to backend
         if(!self.persistentTimeouts.hasOwnProperty(key) && self.config.persistentDelay > 0){
@@ -594,13 +588,6 @@ proto._unload = function(key){
         return doc._waitUnlock();
     })
     .then(function(){
-        this._cancelIdleTimeout(key);
-
-        if(this.persistentTimeouts.hasOwnProperty(key)){
-            clearTimeout(this.persistentTimeouts[key]);
-            delete this.persistentTimeouts[key];
-        }
-
         // Persistent immediately
         return this._persistent(key);
     })
@@ -611,6 +598,13 @@ proto._unload = function(key){
         }
     })
     .then(function(){
+        this._cancelIdleTimeout(key);
+
+        if(this.persistentTimeouts.hasOwnProperty(key)){
+            clearTimeout(this.persistentTimeouts[key]);
+            delete this.persistentTimeouts[key];
+        }
+
         doc.removeAllListeners('commit');
         doc.removeAllListeners('updateIndex');
         doc.removeAllListeners('lock');
@@ -701,20 +695,18 @@ proto._persistent = function(key){
     }
 
     var doc = this._doc(key)._getCommited();
-    // Doc may changed again during persistent, so delete the flag now.
-    delete this.commitedKeys[key];
+    var ver = this.commitedKeys[key]; // get current version
 
     var self = this;
     var res = this._resolveKey(key);
 
     return this.backend.set(res.name, res.id, doc)
     .then(function(){
+        // no new change, remove the flag
+        if(self.commitedKeys[key] === ver){
+            delete self.commitedKeys[key];
+        }
         self.logger.debug('persistented %s', key);
-    }, function(e){
-        // Persistent failed, reset the changed flag
-        self.commitedKeys[key] = true;
-        // rethrow
-        throw e;
     });
 };
 
@@ -741,6 +733,13 @@ proto._startIdleTimeout = function(key){
 proto._cancelIdleTimeout = function(key){
     clearTimeout(this.idleTimeouts[key]);
     delete this.idleTimeouts[key];
+};
+
+proto._setCommited = function(key){
+    if(!this.commitedKeys.hasOwnProperty(key)){
+        this.commitedKeys[key] = 0;
+    }
+    this.commitedKeys[key]++;
 };
 
 // Flush changes to backend storage
@@ -838,10 +837,10 @@ proto.restoreFromSlave = function(){
         .then(function(items){
             var self = this;
             return P.mapLimit(Object.keys(items), function(key){
-                return P.try(function(){
+                return self.keyLock.acquire(key, function(){
                     self._addDoc(key, items[key]);
                     // persistent all docs to backend
-                    self.commitedKeys[key] = true;
+                    self._setCommited(key);
                     return self._persistent(key);
                 });
             });
