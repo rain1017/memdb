@@ -69,7 +69,7 @@ proto.start = function(){
         if(typeof(process.send) === 'function'){
             process.send('start');
         }
-        self.logger.warn('database started');
+        self.logger.info('database started');
     });
 };
 
@@ -91,7 +91,7 @@ proto.stop = function(force){
         if(typeof(process.send) === 'function'){
             process.send('stop');
         }
-        self.logger.warn('database stoped');
+        self.logger.info('database stoped');
     });
 };
 
