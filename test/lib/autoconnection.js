@@ -9,14 +9,15 @@ var logger = require('memdb-logger').getLogger('test', __filename);
 
 describe('autoconnection test', function(){
     beforeEach(env.flushdb);
-    after(env.flushdb);
 
     it('concurrent execute', function(cb){
         var shardId = Object.keys(env.config.shards)[0];
         var user1 = {_id : '1', name : 'rain', level : 0};
         var autoconn = null;
 
-        return env.startCluster(shardId)
+        return P.try(function(){
+            return env.startCluster(shardId);
+        })
         .then(function(){
             return memdb.autoConnect(env.config);
         })
@@ -106,7 +107,9 @@ describe('autoconnection test', function(){
     it('autoconnect to multiple shards', function(cb){
         var autoconn = null;
 
-        return env.startCluster(['s1', 's2'])
+        return P.try(function(){
+            return env.startCluster(['s1', 's2']);
+        })
         .then(function(){
             return memdb.autoConnect({shards : env.config.shards});
         })
@@ -138,7 +141,9 @@ describe('autoconnection test', function(){
     it('findReadOnly', function(cb){
         var autoconn = null;
 
-        return env.startCluster(['s1', 's2'])
+        return P.try(function(){
+            return env.startCluster(['s1', 's2']);
+        })
         .then(function(){
             return memdb.autoConnect({shards : env.config.shards});
         })

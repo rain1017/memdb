@@ -9,7 +9,6 @@ var logger = require('memdb-logger').getLogger('test', __filename);
 
 describe('connection test', function(){
     beforeEach(env.flushdb);
-    after(env.flushdb);
 
     it('find/update/insert/remove/commit/rollback', function(cb){
         var conn = null;
@@ -18,7 +17,9 @@ describe('connection test', function(){
         var user2 = {_id : '2', name : 'tina', age : 24};
         var news1 = {_id : '1', text : 'hello'};
 
-        return env.startCluster('s1')
+        return P.try(function(){
+            return env.startCluster('s1');
+        })
         .then(function(){
             return memdb.connect(env.config.shards.s1)
             .then(function(ret){
@@ -105,7 +106,9 @@ describe('connection test', function(){
         var Player = null;
         var errCount = 0;
 
-        return env.startCluster('s1')
+        return P.try(function(){
+            return env.startCluster('s1');
+        })
         .then(function(){
             return memdb.connect(env.config.shards.s1)
             .then(function(ret){
@@ -189,7 +192,9 @@ describe('connection test', function(){
         var conn = null;
         var Player = null;
 
-        return env.startCluster('s1')
+        return P.try(function(){
+            return env.startCluster('s1');
+        })
         .then(function(){
             return memdb.connect(env.config.shards.s1)
             .then(function(ret){
@@ -242,7 +247,9 @@ describe('connection test', function(){
     it('concurrent query on same connection', function(cb){
         var conn = null;
 
-        return env.startCluster('s1')
+        return P.try(function(){
+            return env.startCluster('s1');
+        })
         .then(function(){
             return memdb.connect(env.config.shards.s1)
             .then(function(ret){
@@ -267,7 +274,9 @@ describe('connection test', function(){
     it('eval', function(cb){
         var conn = null;
 
-        return env.startCluster('s1')
+        return P.try(function(){
+            return env.startCluster('s1');
+        })
         .then(function(){
             return memdb.connect(env.config.shards.s1)
             .then(function(ret){
@@ -314,7 +323,9 @@ describe('connection test', function(){
         var Collection = null;
         var errCount = 0;
 
-        return env.startCluster('s1')
+        return P.try(function(){
+            return env.startCluster('s1');
+        })
         .then(function(){
             return memdb.connect(env.config.shards.s1)
             .then(function(ret){

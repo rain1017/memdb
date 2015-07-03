@@ -3,8 +3,8 @@
 var P = require('bluebird');
 var path = require('path');
 var child_process = require('child_process');
-var Launcher = require('../lib').test.Launcher;
 var memdbConfig = require('../app/config');
+var utils = require('../app/utils');
 var memdbLogger = require('memdb-logger');
 var logger = memdbLogger.getLogger('test', __filename);
 
@@ -12,22 +12,40 @@ var configPath = path.join(__dirname, '../.memdb.js');
 memdbConfig.init(configPath);
 var config = memdbConfig.clusterConfig();
 
-var launcher = new Launcher({
-                        memdbd : path.join(__dirname, '../bin/memdbd.js'),
-                        conf : configPath,
-                    });
+var memdbClusterPath = path.join(__dirname, '../bin/memdbcluster');
 
 exports.startCluster = function(shardIds, configOverrideFunc){
-    return launcher.startCluster(shardIds, configOverrideFunc);
+    var newConfigPath = configPath;
+    if(typeof(configOverrideFunc) === 'function'){
+        var newConfig = utils.clone(config);
+        configOverrideFunc(newConfig);
+        newConfigPath = '/tmp/.memdb-test.json';
+        fs.writeFileSync(newConfigPath, JSON.stringify(newConfig));
+    }
+
+    var args = [memdbClusterPath, 'start', '--conf=' + newConfigPath];
+    if(shardIds){
+        if(!Array.isArray(shardIds)){
+            shardIds = [shardIds];
+        }
+        shardIds.forEach(function(shardId){
+            args.push('--shard=' + shardId);
+        });
+    }
+
+    var output = child_process.execFileSync(process.execPath, args).toString();
+    logger.info(output.toString());
 };
 
 exports.stopCluster = function(){
-    return launcher.stopCluster();
+    var output = child_process.execFileSync(process.execPath, [memdbClusterPath, 'stop', '--conf=' + configPath]);
+    logger.info(output.toString());
 };
 
 exports.flushdb = function(cb){
-    var promise = launcher.flushdb();
-    return (typeof(cb) === 'function') ? promise.nodeify(cb) : promise;
+    var output = child_process.execFileSync(process.execPath, [memdbClusterPath, 'drop', '--conf=' + configPath]);
+    logger.info(output.toString());
+    cb();
 };
 
 exports.shardConfig = function(shardId){

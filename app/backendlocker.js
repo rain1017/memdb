@@ -39,22 +39,22 @@ proto.start = function(){
         return this.client.selectAsync(this.config.db);
     })
     .then(function(){
-        return this.isAlive();
-    })
-    .then(function(ret){
-        if(ret){
-            throw new Error('Current shard is running in some other process');
+        if(this.shardId){
+            return this.isAlive()
+            .then(function(ret){
+                if(ret){
+                    throw new Error('Current shard is running in some other process');
+                }
+            });
         }
     })
     .then(function(){
-        if(this.config.heartbeatInterval > 0){
+        if(this.shardId && this.config.heartbeatInterval > 0){
+            this.heartbeatInterval = setInterval(this.heartbeat.bind(this), this.config.heartbeatInterval);
             return this.heartbeat();
         }
     })
     .then(function(){
-        if(this.config.heartbeatInterval > 0){
-            this.heartbeatInterval = setInterval(this.heartbeat.bind(this), this.config.heartbeatInterval);
-        }
         this.logger.info('backendLocker started %s:%s:%s', this.config.host, this.config.port, this.config.db);
     });
 };
@@ -73,11 +73,11 @@ proto.stop = function(){
     });
 };
 
-proto.tryLock = function(docId){
+proto.tryLock = function(docId, shardId){
     this.logger.debug('tryLock %s', docId);
 
     var self = this;
-    return this.client.setnxAsync(this._docKey(docId), this.shardId)
+    return this.client.setnxAsync(this._docKey(docId), shardId || this.shardId)
     .then(function(ret){
         if(ret === 1){
             self.logger.debug('locked %s', docId);
@@ -93,11 +93,11 @@ proto.getHolderId = function(docId){
     return this.client.getAsync(this._docKey(docId));
 };
 
-proto.isHeld = function(docId){
+proto.isHeld = function(docId, shardId){
     var self = this;
     return this.getHolderId(docId)
     .then(function(ret){
-        return ret === self.shardId;
+        return ret === (shardId || self.shardId);
     });
 };
 
@@ -136,10 +136,7 @@ proto.clearHeartbeat = function(){
 };
 
 proto.isAlive = function(shardId){
-    if(!shardId){
-        shardId = this.shardId;
-    }
-    return this.client.existsAsync(this._heartbeatKey(shardId))
+    return this.client.existsAsync(this._heartbeatKey(shardId || this.shardId))
     .then(function(ret){
         return !!ret;
     });

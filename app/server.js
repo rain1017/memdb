@@ -10,7 +10,10 @@ var Protocol = require('./protocol');
 var DEFAULT_PORT = 31017;
 
 exports.start = function(opts){
+    var deferred = P.defer();
+
     var logger = memdbLogger.getLogger('memdb', __filename, 'shard:' + opts.shardId);
+    logger.warn('starting %s...', opts.shardId);
 
     var bind = opts.bind || '0.0.0.0';
     var port = opts.port || DEFAULT_PORT;
@@ -84,6 +87,10 @@ exports.start = function(opts){
 
     server.on('error', function(err){
         logger.error(err.stack);
+
+        if(!deferred.isResolved()){
+            deferred.reject(err);
+        }
     });
 
     P.try(function(){
@@ -94,10 +101,11 @@ exports.start = function(opts){
     })
     .then(function(){
         logger.warn('server started on %s:%s', bind, port);
+        deferred.resolve();
     })
     .catch(function(err){
         logger.error(err.stack);
-        process.exit(1);
+        deferred.reject(err);
     });
 
     var shutdown = function(){
@@ -138,9 +146,9 @@ exports.start = function(opts){
         })
         .finally(function(){
             logger.warn('server closed');
-            setTimeout(function(){
+            memdbLogger.shutdown(function(){
                 process.exit(0);
-            }, 200);
+            });
         });
     };
 
@@ -150,4 +158,6 @@ exports.start = function(opts){
     process.on('uncaughtException', function(err) {
         logger.error('Uncaught exception: %s', err.stack);
     });
+
+    return deferred.promise;
 };

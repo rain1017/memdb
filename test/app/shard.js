@@ -9,7 +9,6 @@ var logger = require('memdb-logger').getLogger('test', __filename);
 
 describe('shard test', function(){
     beforeEach(env.flushdb);
-    after(env.flushdb);
 
     it('load/unload/find/update/insert/remove/commit/rollback', function(cb){
         var shard = new Shard(env.shardConfig('s1'));

@@ -7,7 +7,6 @@ var env = require('../env');
 
 describe('backends test', function(){
     beforeEach(env.flushdb);
-    after(env.flushdb);
 
     var testFunc = function(backend){
         var item1 = {name : 'test', id : 1, doc : {_id : 1, k : 1}};

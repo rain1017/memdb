@@ -9,7 +9,6 @@ var logger = require('memdb-logger').getLogger('test', __filename);
 
 describe('slave test', function(){
     beforeEach(env.flushdb);
-    after(env.flushdb);
 
     it('set/del', function(cb){
         var opts = env.config.slave;

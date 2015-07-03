@@ -11,13 +11,9 @@ var _config = null;
 
 exports.init = function(confPath, shardId){
     var searchPaths = [];
-    if(confPath){
-        searchPaths.push(confPath);
-    }
-
     var homePath = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
 
-    searchPaths = searchPaths.concat([path.join(homePath, '.memdb.js'), '/etc/memdb.js']);
+    searchPaths = confPath ? [confPath] : [path.join(homePath, '.memdb.js'), '/etc/memdb.js'];
 
     var conf = null;
     for(var i=0; i<searchPaths.length; i++){

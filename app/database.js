@@ -66,9 +66,6 @@ proto.start = function(){
     var self = this;
     return this.shard.start()
     .then(function(){
-        if(typeof(process.send) === 'function'){
-            process.send('start');
-        }
         self.logger.info('database started');
     });
 };
@@ -88,9 +85,6 @@ proto.stop = function(force){
         return self.shard.stop(force);
     })
     .then(function(){
-        if(typeof(process.send) === 'function'){
-            process.send('stop');
-        }
         self.logger.info('database stoped');
     });
 };

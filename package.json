@@ -43,8 +43,7 @@
         "mongodb": "~2.0.28",
         "mongoose": "4.0.5",
         "minimist" : "~1.1.1",
-        "node-uuid" : "~1.4.3",
-        "daemon" : "~1.1.0"
+        "node-uuid" : "~1.4.3"
     },
     "devDependencies": {
         "should": "~4.5.0",

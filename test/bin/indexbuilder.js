@@ -10,13 +10,14 @@ var logger = require('memdb-logger').getLogger('test', __filename);
 
 describe('indexbuilder test', function(){
     beforeEach(env.flushdb);
-    after(env.flushdb);
 
     it('rebuild', function(cb){
         var shardId = 's1';
         var autoconn = null;
 
-        return env.startCluster(shardId)
+        return P.try(function(){
+            return env.startCluster(shardId);
+        })
         .then(function(){
             return memdb.autoConnect(env.config)
             .then(function(ret){
@@ -75,7 +76,7 @@ describe('indexbuilder test', function(){
         .then(function(){
             return autoconn.close();
         })
-        .then(function(){
+        .finally(function(){
             return env.stopCluster();
         })
         .nodeify(cb);

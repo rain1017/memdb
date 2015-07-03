@@ -9,7 +9,6 @@ var logger = require('memdb-logger').getLogger('test', __filename);
 
 describe('database test', function(){
     beforeEach(env.flushdb);
-    after(env.flushdb);
 
     // it('find/update/insert/remove/commit/rollback', function(cb){
     //  //tested in ../lib/connection

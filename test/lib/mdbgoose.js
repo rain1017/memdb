@@ -9,7 +9,6 @@ var logger = require('memdb-logger').getLogger('test', __filename);
 
 describe('mdbgoose test', function(){
     beforeEach(env.flushdb);
-    after(env.flushdb);
 
     it('mdbgoose', function(cb){
         var mdbgoose = memdb.goose;
