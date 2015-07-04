@@ -139,7 +139,12 @@ if (require.main === module) {
             });
         }
         else if(cmd === 'status'){
-            return getActiveShards(config.clusterConfig().locking)
+            var clusterConfig = config.clusterConfig();
+            console.log('config: %s', config.path);
+            console.log('backend: %s', clusterConfig.backend.url);
+            console.log('locking: %s:%s:%s', clusterConfig.locking.host, clusterConfig.locking.port, clusterConfig.locking.db);
+            console.log('shards:');
+            return getActiveShards(clusterConfig.locking)
             .then(function(activeShardIds){
                 shardIds.forEach(function(shardId){
                     var shardConfig = config.shardConfig(shardId);

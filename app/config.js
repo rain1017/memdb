@@ -18,7 +18,9 @@ exports.init = function(confPath, shardId){
     var conf = null;
     for(var i=0; i<searchPaths.length; i++){
         if(fs.existsSync(searchPaths[i])){
-            conf = require(path.resolve(searchPaths[i]));
+            confPath = path.resolve(searchPaths[i]);
+            conf = require(confPath);
+            exports.path = confPath;
             break;
         }
     }
