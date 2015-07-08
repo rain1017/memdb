@@ -28,6 +28,8 @@ var Database = function(opts){
 
     this.dbWrappers = {}; //{connId : dbWrapper}
 
+    this.rateCounter = utils.rateCounter();
+
     opts.slowQuery = opts.slowQuery || DEFAULT_SLOWQUERY;
 
     // Parse index config
@@ -72,6 +74,8 @@ proto.start = function(){
 
 proto.stop = function(force){
     var self = this;
+
+    this.rateCounter.stop();
 
     return P.try(function(){
         // Make sure no new request come anymore
@@ -136,7 +140,16 @@ proto.execute = function(connId, method, args, opts){
         return conn[method].apply(conn, args);
     }
 
-    if(method === 'eval'){
+    this.rateCounter.inc();
+
+    if(method === 'info'){
+        return {
+            connId : connId,
+            // operation rate for last 1, 5, 15 minutes
+            ops : [this.rateCounter.rate(60), this.rateCounter.rate(300), this.rateCounter.rate(900)],
+        };
+    }
+    else if(method === 'eval'){
         var script = args[0] || '';
         var sandbox = args[1] || {};
         sandbox.require = require;
@@ -148,6 +161,7 @@ proto.execute = function(connId, method, args, opts){
 
         return vm.runInContext(script, context);
     }
+
 
     // Query in the same connection must execute in series
     // This is usually a client bug here

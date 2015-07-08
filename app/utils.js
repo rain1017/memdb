@@ -212,3 +212,69 @@ exports.waitUntil = function(fn, checkInterval){
     return deferred.promise;
 };
 
+exports.rateCounter = function(opts){
+    opts = opts || {};
+    var perserveSeconds = opts.perserveSeconds || 3600;
+    var sampleSeconds = opts.sampleSeconds || 5;
+
+    var counts = {};
+    var cleanInterval = null;
+
+    var getCurrentSlot = function(){
+        return Math.floor(Date.now() / 1000 / sampleSeconds);
+    };
+
+    var beginSlot = getCurrentSlot();
+
+    var counter = {
+        inc : function(){
+            var slotNow = getCurrentSlot();
+            if(!counts.hasOwnProperty(slotNow)){
+                counts[slotNow] = 0;
+            }
+            counts[slotNow]++;
+        },
+
+        reset : function(){
+            counts = {};
+            beginSlot = getCurrentSlot();
+        },
+
+        clean : function(){
+            var slotNow = getCurrentSlot();
+            Object.keys(counts).forEach(function(slot){
+                if(slot < slotNow - Math.floor(perserveSeconds / sampleSeconds)){
+                    delete counts[slot];
+                }
+            });
+        },
+
+        rate : function(lastSeconds){
+            var slotNow = getCurrentSlot();
+            var total = 0;
+            var startSlot = slotNow - Math.floor(lastSeconds / sampleSeconds);
+            if(startSlot < beginSlot){
+                startSlot = beginSlot;
+            }
+            for(var slot = startSlot; slot < slotNow; slot++){
+                total += counts[slot] || 0;
+            }
+            return total / ((slotNow - startSlot) * sampleSeconds);
+        },
+
+        stop : function(){
+            clearInterval(cleanInterval);
+        },
+
+        counts : function(){
+            return counts;
+        }
+    };
+
+    cleanInterval = setInterval(function(){
+        counter.clean();
+    }, sampleSeconds * 1000);
+
+    return counter;
+};
+

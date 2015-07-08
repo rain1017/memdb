@@ -128,6 +128,9 @@ proto.findOne = function(query, fields, opts){
     opts.limit = 1;
     return this.find(query, fields, opts)
     .then(function(docs){
+        if(!Array.isArray(docs)){
+            return docs;
+        }
         if(docs.length === 0){
             return null;
         }

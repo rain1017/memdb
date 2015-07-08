@@ -66,7 +66,9 @@ describe.skip('performance test', function(){
                 });
             };
 
-            return env.startCluster(shardIds)
+            return P.try(function(){
+                env.startCluster(shardIds);
+            })
             .then(function(){
                 var config = {
                     shards : env.config.shards,
@@ -191,9 +193,11 @@ describe.skip('performance test', function(){
         var concurrency = 100;
         var autoconn = null;
 
-        return env.startCluster('s1', function(config){
-            config.persistentDelay = 3600 * 1000;
-            config.idleTimeout = 3600 * 1000;
+        return P.try(function(){
+            return env.startCluster('s1', function(config){
+                config.persistentDelay = 3600 * 1000;
+                config.idleTimeout = 3600 * 1000;
+            });
         })
         .then(function(){
             return memdb.autoConnect(env.config)
@@ -262,7 +266,9 @@ describe.skip('performance test', function(){
             exp : Number,
         }, {collection : 'player'}));
 
-        return env.startCluster('s1')
+        return P.try(function(){
+            return env.startCluster('s1');
+        })
         .then(function(){
             return mdbgoose.connectAsync(env.config);
         })
@@ -296,12 +302,14 @@ describe.skip('performance test', function(){
     it.skip('gc & idle', function(cb){
         this.timeout(10000 * 1000);
 
-        return env.startCluster('s1', function(config){
-            config.memoryLimit = 1024; // 1G
+        return P.try(function(){
+            return env.startCluster('s1', function(config){
+                config.memoryLimit = 1024; // 1G
 
-            // Set large value to trigger gc, small value to not trigger gc
-            config.idleTimeout = 10000 * 1000;
-            config.persistentDelay = 10000 * 1000;
+                // Set large value to trigger gc, small value to not trigger gc
+                config.idleTimeout = 10000 * 1000;
+                config.persistentDelay = 10000 * 1000;
+            });
         })
         .then(function(){
             return memdb.autoConnect(env.config);

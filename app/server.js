@@ -37,14 +37,7 @@ exports.start = function(opts){
             var resp = {seq : msg.seq};
 
             P.try(function(){
-                if(msg.method === 'info'){
-                    return {
-                        connId : connId
-                    };
-                }
-                else{
-                    return db.execute(connId, msg.method, msg.args);
-                }
+                return db.execute(connId, msg.method, msg.args);
             })
             .then(function(ret){
                 resp.err = null;
