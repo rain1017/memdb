@@ -4,6 +4,7 @@ var P = require('bluebird');
 var Logger = require('memdb-logger');
 var utils = require('./utils');
 var util = require('util');
+var os = require('os');
 var EventEmitter = require('events').EventEmitter;
 var Connection = require('./connection');
 var Shard = require('./shard');
@@ -28,7 +29,8 @@ var Database = function(opts){
 
     this.dbWrappers = {}; //{connId : dbWrapper}
 
-    this.rateCounter = utils.rateCounter();
+    this.opsCounter = utils.rateCounter();
+    this.tpsCounter = utils.rateCounter();
 
     opts.slowQuery = opts.slowQuery || DEFAULT_SLOWQUERY;
 
@@ -75,7 +77,8 @@ proto.start = function(){
 proto.stop = function(force){
     var self = this;
 
-    this.rateCounter.stop();
+    this.opsCounter.stop();
+    this.tpsCounter.stop();
 
     return P.try(function(){
         // Make sure no new request come anymore
@@ -140,13 +143,15 @@ proto.execute = function(connId, method, args, opts){
         return conn[method].apply(conn, args);
     }
 
-    this.rateCounter.inc();
-
     if(method === 'info'){
         return {
             connId : connId,
-            // operation rate for last 1, 5, 15 minutes
-            ops : [this.rateCounter.rate(60), this.rateCounter.rate(300), this.rateCounter.rate(900)],
+            mem : process.memoryUsage(),
+            // rate for last 1, 5, 15 minutes
+            ops : [this.opsCounter.rate(60), this.opsCounter.rate(300), this.opsCounter.rate(900)],
+            tps : [this.tpsCounter.rate(60), this.tpsCounter.rate(300), this.tpsCounter.rate(900)],
+            lps : [this.shard.loadCounter.rate(60), this.shard.loadCounter.rate(300), this.shard.loadCounter.rate(900)],
+            ups : [this.shard.unloadCounter.rate(60), this.shard.unloadCounter.rate(300), this.shard.unloadCounter.rate(900)],
         };
     }
     else if(method === 'eval'){
@@ -161,7 +166,6 @@ proto.execute = function(connId, method, args, opts){
 
         return vm.runInContext(script, context);
     }
-
 
     // Query in the same connection must execute in series
     // This is usually a client bug here
@@ -179,6 +183,13 @@ proto.execute = function(connId, method, args, opts){
     return this.connectionLock.acquire(connId, function(cb){
 
         self.logger.debug('[conn:%s] start %s(%j)...', connId, method, args);
+
+        if(method === 'commit' || method === 'rollback'){
+            self.tpsCounter.inc();
+        }
+        else{
+            self.opsCounter.inc();
+        }
 
         var conn = self.getConnection(connId);
         var startTick = Date.now();

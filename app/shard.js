@@ -156,6 +156,9 @@ var Shard = function(opts){
     // Current key unloading task
     this.unloadingKeys = {};
 
+    this.loadCounter = utils.rateCounter();
+    this.unloadCounter = utils.rateCounter();
+
     this.state = STATE.INITED;
 };
 
@@ -236,6 +239,9 @@ proto.stop = function(){
         });
     })
     .then(function(){
+        this.loadCounter.stop();
+        this.unloadCounter.stop();
+
         if(!this.config.disableSlave){
             return this.slave.stop();
         }
@@ -516,6 +522,7 @@ proto._load = function(key){
     .then(function(){
         self._addDoc(key, obj);
 
+        self.loadCounter.inc();
         self.logger.info('loaded %s', key);
     });
 };
@@ -617,6 +624,8 @@ proto._unload = function(key){
         return this._unlockBackend(key);
     })
     .then(function(){
+        this.unloadCounter.inc();
+
         this.logger.info('unloaded %s', key);
     });
 };
