@@ -5,6 +5,7 @@ var memdbLogger = require('memdb-logger');
 var net = require('net');
 var http = require('http');
 var P = require('bluebird');
+var uuid = require('node-uuid');
 var Protocol = require('./protocol');
 
 var DEFAULT_PORT = 31017;
@@ -20,24 +21,40 @@ exports.start = function(opts){
 
     var db = new Database(opts);
 
-    var clients = {}; // {connId : socket}
+    var sockets = {};
 
     var _isShutingDown = false;
 
     var server = net.createServer(function(socket){
 
-        var connId = db.connect();
-        clients[connId] = socket;
+        var clientId = uuid.v4();
+        sockets[clientId] = socket;
 
+        var connIds = {};
         var remoteAddress = socket.remoteAddress;
         var protocol = new Protocol({socket : socket});
 
         protocol.on('msg', function(msg){
-            logger.debug('[conn:%s] %s => %j', connId, remoteAddress, msg);
+            logger.debug('[conn:%s] %s => %j', msg.connId, remoteAddress, msg);
             var resp = {seq : msg.seq};
 
             P.try(function(){
-                return db.execute(connId, msg.method, msg.args);
+                if(msg.method === 'connect'){
+                    var connId = db.connect();
+                    connIds[connId] = true;
+                    msg.connId = connId;
+                    return connId;
+                }
+                if(!msg.connId){
+                    throw new Error('connId is required');
+                }
+                if(msg.method === 'disconnect'){
+                    return db.disconnect(msg.connId)
+                    .then(function(){
+                        delete connIds[msg.connId];
+                    });
+                }
+                return db.execute(msg.connId, msg.method, msg.args);
             })
             .then(function(ret){
                 resp.err = null;
@@ -51,7 +68,7 @@ exports.start = function(opts){
             })
             .then(function(){
                 protocol.send(resp);
-                logger.debug('[conn:%s] %s <= %j', connId, remoteAddress, resp);
+                logger.debug('[conn:%s] %s <= %j', msg.connId, remoteAddress, resp);
             })
             .catch(function(e){
                 logger.error(e.stack);
@@ -59,12 +76,13 @@ exports.start = function(opts){
         });
 
         protocol.on('close', function(){
-            P.try(function(){
+            P.map(Object.keys(connIds), function(connId){
                 return db.disconnect(connId);
             })
             .then(function(){
-                delete clients[connId];
-                logger.info('[conn:%s] %s disconnected', connId, remoteAddress);
+                connIds = {};
+                delete sockets[clientId];
+                logger.info('client %s disconnected', remoteAddress);
             })
             .catch(function(e){
                 logger.error(e.stack);
@@ -75,7 +93,7 @@ exports.start = function(opts){
             logger.error(e.stack);
         });
 
-        logger.info('[conn:%s] %s connected', connId, remoteAddress);
+        logger.info('client %s connected', remoteAddress);
     });
 
     server.on('error', function(err){
@@ -119,10 +137,10 @@ exports.start = function(opts){
 
             server.close();
 
-            Object.keys(clients).forEach(function(connId){
+            Object.keys(sockets).forEach(function(id){
                 try{
-                    clients[connId].end();
-                    clients[connId].destroy();
+                    sockets[id].end();
+                    sockets[id].destroy();
                 }
                 catch(e){
                     logger.error(e.stack);
