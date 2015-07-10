@@ -35,7 +35,7 @@
     },
     "dependencies": {
         "memdb-logger": "rain1017/memdb-logger",
-        "bluebird": "~2.9.24",
+        "bluebird": "2.9.24",
         "lodash": "~3.7.0",
         "async-lock": "~0.3.5",
         "redis": "~0.12.1",
