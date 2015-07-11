@@ -42,24 +42,28 @@ describe.skip('performance test', function(){
                 return P.each(_.range(transCount), function(){
                     var shardId = randomRoute ? _.sample(shardIds) : shardIds[threadId % shardIds.length];
 
-                    // Make sure same areaId route to same shard
+                    //Make sure same areaId route to same shard
                     var areaId = randomRoute ? _.random(areaCount) : Math.floor(_.random(areaCount) / shardIds.length) * shardIds.length + threadId % shardIds.length;
 
-                    var makeQuery = function(){
+                    var makeQuery = function(id){
                         var modifier = useIndex ? {$set : {areaId : areaId}} : {$inc : {exp : 1}};
-                        return Dummy.update(threadId, modifier, {upsert : true});
+
+                        return Dummy.update(id, modifier, {upsert : true});
                     };
 
                     return autoconn.transaction(function(){
                         if(transOps === 1){
-                            return makeQuery();
+                            return makeQuery(threadId);
                         }
                         else{
-                            return P.each(_.range(transOps), function(){
-                                return makeQuery();
+                            return P.each(_.range(transOps), function(id){
+                                return makeQuery(threadId);
+                                //return makeQuery((threadId % 1000) * 2 + id % 2);
+                                //.delay(5);
                             });
                         }
                     }, shardId)
+                    //.delay(_.random(6000))
                     .catch(function(e){
                         logger.error(e.stack);
                     });
@@ -72,7 +76,8 @@ describe.skip('performance test', function(){
             .then(function(){
                 var config = {
                     shards : env.config.shards,
-                    maxPendingTask : 1000,
+                    maxConnection : 64,
+                    maxPendingTask : 4096,
                 };
                 return memdb.autoConnect(config)
                 .then(function(ret){

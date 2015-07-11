@@ -172,12 +172,32 @@ exports.$pull = function(doc, param){
         var arr = utils.getObjPath(doc, path);
         if(Array.isArray(arr)){
             var value = param[path];
-            for(var i in arr){
-                if(arr[i] === value){
-                    arr.splice(i, 1);
-                    break;
-                }
+            var i = arr.indexOf(value);
+            if(i !== -1){
+                arr.splice(i, 1);
             }
+        }
+    }
+    return doc;
+};
+
+exports.$pullAll = function(doc, param){
+    if(doc === null){
+        throw new Error('doc not exist');
+    }
+    for(var path in param){
+        var arr = utils.getObjPath(doc, path);
+        if(Array.isArray(arr)){
+            var values = param[path];
+            if(!Array.isArray(values)){
+                values = [values];
+            }
+            values.forEach(function(value){
+                var i = arr.indexOf(value);
+                if(i !== -1){
+                    arr.splice(i, 1);
+                }
+            }); //jshint ignore:line
         }
     }
     return doc;

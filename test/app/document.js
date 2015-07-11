@@ -5,6 +5,7 @@ var _ = require('lodash');
 var should = require('should');
 var assert = require('assert');
 var Document = require('../../app/document'); // jshint ignore:line
+var utils = require('../../app/utils');
 var logger = require('memdb-logger').getLogger('test', __filename);
 
 describe('document test', function(){
@@ -104,8 +105,7 @@ describe('document test', function(){
     });
 
     it('commit/rollback/lock/unlock', function(cb){
-        var value = {k1 : 1};
-        var doc = new Document({_id : '1', doc : value, watchedFields : ['k1']});
+        var doc = new Document({_id : '1', doc : {k1 : 1}, watchedFields : ['k1']});
 
         doc.on('updateUncommited', function(connId, field, oldValue, newValue){
             logger.debug(field, oldValue, newValue);
@@ -160,7 +160,7 @@ describe('document test', function(){
             return doc.lock('c1');
         })
         .then(function(){
-            doc.insert('c1', value);
+            doc.insert('c1', {k1 : 1});
             doc.rollback('c1');
             assert(doc.find('c1') === null);
 
@@ -168,16 +168,16 @@ describe('document test', function(){
             return doc.lock('c1');
         })
         .then(function(){
-            doc.insert('c1', value);
+            doc.insert('c1', {k1 : 1});
             doc.commit('c1');
-            doc.find('c1', {_id : false}).should.eql(value);
+            doc.find('c1', {_id : false}).should.eql({k1 : 1});
         })
         .nodeify(cb);
     });
 
     it('read from other connections', function(cb){
         var value = {k1 : 1, k2 : 1};
-        var doc = new Document({_id : '1', doc : value, watchedFields : ['k1', 'k2']});
+        var doc = new Document({_id : '1', doc : utils.clone(value), watchedFields : ['k1', 'k2']});
 
         doc.on('updateUncommited', function(connId, field, oldValue, newValue){
             logger.debug(field, oldValue, newValue);
@@ -219,7 +219,7 @@ describe('document test', function(){
             return doc.lock('c1');
         })
         .then(function(){
-            doc.insert('c1', value);
+            doc.insert('c1', utils.clone(value));
             assert(doc.find('c2') === null);
             doc.commit('c1');
             doc.find('c2', {_id : false}).should.eql(value);

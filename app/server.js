@@ -7,6 +7,7 @@ var http = require('http');
 var P = require('bluebird');
 var uuid = require('node-uuid');
 var Protocol = require('./protocol');
+var utils = require('./utils');
 
 var DEFAULT_PORT = 31017;
 
@@ -21,7 +22,7 @@ exports.start = function(opts){
 
     var db = new Database(opts);
 
-    var sockets = {};
+    var sockets = utils.forceHashMap();
 
     var _isShutingDown = false;
 
@@ -30,7 +31,7 @@ exports.start = function(opts){
         var clientId = uuid.v4();
         sockets[clientId] = socket;
 
-        var connIds = {};
+        var connIds = utils.forceHashMap();
         var remoteAddress = socket.remoteAddress;
         var protocol = new Protocol({socket : socket});
 
@@ -80,7 +81,7 @@ exports.start = function(opts){
                 return db.disconnect(connId);
             })
             .then(function(){
-                connIds = {};
+                connIds = utils.forceHashMap();
                 delete sockets[clientId];
                 logger.info('client %s disconnected', remoteAddress);
             })

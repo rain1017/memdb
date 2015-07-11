@@ -83,8 +83,9 @@ proto.find = function(connId, fields){
         }
     }
 
-    var ret = {};
+    var ret = null;
     if(includeFields.length > 0){
+        ret = {};
         includeFields.forEach(function(field){
             if(doc.hasOwnProperty(field)){
                 ret[field] = doc[field];
@@ -92,11 +93,17 @@ proto.find = function(connId, fields){
         });
         ret._id = this._id;
     }
+    else if(excludeFields.length > 0){
+        ret = {};
+        for(var key in doc){
+            ret[key] = doc[key];
+        }
+        excludeFields.forEach(function(key){
+            delete ret[key];
+        });
+    }
     else{
         ret = doc;
-        excludeFields.forEach(function(field){
-            delete ret[field];
-        });
     }
 
     return ret;

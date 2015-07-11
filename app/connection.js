@@ -16,7 +16,7 @@ var Connection = function(opts){
     this.config = opts.config || {};
     this.collections = {};
 
-    this.lockedKeys = {};
+    this.lockedKeys = utils.forceHashMap();
 
     this.logger = Logger.getLogger('memdb', __filename, 'shard:' + this.shard._id);
 };

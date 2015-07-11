@@ -6,7 +6,7 @@
 
 var P = require('bluebird');
 var backends = require('./backends');
-var BackendLocker = require('./backendLocker');
+var BackendLocker = require('./backendlocker');
 var Document = require('./document'); //jshint ignore:line
 var Collection = require('./collection');
 var utils = require('./utils');
@@ -92,15 +92,15 @@ exports.rebuild = function(conf, collName, keys, opts){
             })
             .then(function(doc){
                 if(!doc){
-                    doc = {_id: indexValue, ids : {}, count : 0};
+                    doc = {_id: indexValue, ids : []};
                 }
                 else if(opts.unique){
                     throw new Error('Duplicate value for unique key ' + indexKey);
                 }
 
-                var id = utils.escapeField(item._id);
-                doc.ids[id] = 1;
-                doc.count++;
+                if(doc.ids.indexOf(item._id) === -1){
+                    doc.ids.push(item._id);
+                }
                 return backend.set(indexCollName, indexValue, doc);
             });
         });

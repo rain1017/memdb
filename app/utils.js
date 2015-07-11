@@ -278,3 +278,10 @@ exports.rateCounter = function(opts){
     return counter;
 };
 
+// trick v8 to not use hidden class
+// https://github.com/joyent/node/issues/25661
+exports.forceHashMap = function(){
+    var obj = {k : 1};
+    delete obj.k;
+    return obj;
+};

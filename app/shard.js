@@ -124,16 +124,16 @@ var Shard = function(opts){
     });
 
     // Document storage {key : doc}
-    this.docs = {};
+    this.docs = utils.forceHashMap();
 
     // Newly commited docs (for incremental _save)
-    this.commitedKeys = {}; // {key : version}
+    this.commitedKeys = utils.forceHashMap(); // {key : version}
 
     // Idle timeout before unload
-    this.idleTimeouts = {}; // {key : timeout}
+    this.idleTimeouts = utils.forceHashMap(); // {key : timeout}
 
     // Doc persistent timeout
-    this.persistentTimeouts = {}; // {key : timeout}
+    this.persistentTimeouts = utils.forceHashMap(); // {key : timeout}
 
     // GC interval
     this.gcInterval = null;
@@ -154,7 +154,7 @@ var Shard = function(opts){
     this.commitingCount = 0;
 
     // Current key unloading task
-    this.unloadingKeys = {};
+    this.unloadingKeys = utils.forceHashMap();
 
     this.loadCounter = utils.rateCounter();
     this.unloadCounter = utils.rateCounter();
@@ -393,7 +393,7 @@ proto.commit = function(connId, keys){
             return self.slave.set(key, doc);
         }
         else{
-            var docs = {};
+            var docs = utils.forceHashMap();
             keys.forEach(function(key){
                 docs[key] = self._doc(key)._getChanged();
             });
@@ -791,9 +791,6 @@ proto.gc = function(){
         self.logger.warn('Start GC. Memory usage is too high, please reduce idleTimeout. %j', usage);
 
         var startTick = Date.now();
-
-        // remove all cached docs
-        self.cachedDocs = {};
 
         // remove some doc
         var keys = [], count = 0;

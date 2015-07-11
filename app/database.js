@@ -24,10 +24,10 @@ var Database = function(opts){
 
     this.logger = Logger.getLogger('memdb', __filename, 'shard:' + opts.shardId);
 
-    this.connections = {};
+    this.connections = utils.forceHashMap();
     this.connectionLock = new AsyncLock({Promise : P});
 
-    this.dbWrappers = {}; //{connId : dbWrapper}
+    this.dbWrappers = utils.forceHashMap(); //{connId : dbWrapper}
 
     this.opsCounter = utils.rateCounter();
     this.tpsCounter = utils.rateCounter();

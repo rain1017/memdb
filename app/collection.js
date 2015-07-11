@@ -20,9 +20,9 @@ var Collection = function(opts){
     this.config.maxCollision = this.config.maxCollision || DEFAULT_MAX_COLLISION;
 
     // {indexKey : {indexValue : {id1 : 1, id2 : -1}}}
-    this.changedIndexes = {};
+    this.changedIndexes = utils.forceHashMap();
 
-    this.pendingIndexTasks = {}; //{id, [Promise]}
+    this.pendingIndexTasks = utils.forceHashMap(); //{id, [Promise]}
 
     this.updateIndexEvent = 'updateIndex$' + this.name + '$' + this.conn._id;
     this.shard.on(this.updateIndexEvent, this.onUpdateIndex.bind(this));
@@ -187,16 +187,21 @@ proto._findByIndex = function(indexKey, indexValue, fields, opts){
 
     return P.try(function(){
         opts.nolock = true; // force not using lock
-        return indexCollection.findById(indexValue, 'ids', opts);
+        return indexCollection.findById(indexValue, 'format ids', opts);
     })
     .then(function(doc){
         opts.nolock = nolock; // restore param
 
-        var ids = doc ? doc.ids : {};
+        var ids = utils.forceHashMap();
+
+        if(doc){
+            doc.ids.forEach(function(id){
+                ids[id] = 1;
+            });
+        }
 
         var changedIds = (self.changedIndexes[indexKey] && self.changedIndexes[indexKey][indexValue]) || {};
         for(var id in changedIds){
-            id = utils.escapeField(id);
             if(changedIds[id] === 1){
                 ids[id] = 1;
             }
@@ -213,7 +218,6 @@ proto._findByIndex = function(indexKey, indexValue, fields, opts){
         var docs = [];
         ids.sort(); // keep id in order, avoid deadlock
         return P.each(ids, function(id){
-            id = utils.unescapeField(id);
             return self.findById(id, fields, opts)
             .then(function(doc){
                 // WARN: This is possible that doc is null due to index collection is not locked
@@ -329,14 +333,14 @@ proto.onUpdateIndex = function(id, indexKey, oldValue, newValue){
             throw new Error('index - ' + indexKey + ' not configured');
         }
         if(!self.changedIndexes[indexKey]){
-            self.changedIndexes[indexKey] = {};
+            self.changedIndexes[indexKey] = utils.forceHashMap();
         }
 
         var changedIndex = self.changedIndexes[indexKey];
 
         if(oldValue !== null){
             if(!changedIndex[oldValue]){
-                changedIndex[oldValue] = {};
+                changedIndex[oldValue] = utils.forceHashMap();
             }
             if(changedIndex[oldValue][id] === 1){
                 delete changedIndex[oldValue][id];
@@ -347,7 +351,7 @@ proto.onUpdateIndex = function(id, indexKey, oldValue, newValue){
         }
         if(newValue !== null){
             if(!changedIndex[newValue]){
-                changedIndex[newValue] = {};
+                changedIndex[newValue] = utils.forceHashMap();
             }
             if(changedIndex[newValue][id] === -1){
                 delete changedIndex[oldValue][id];
@@ -400,12 +404,12 @@ proto.commitIndex = function(){
         });
     })
     .then(function(){
-        self.changedIndexes = {};
+        self.changedIndexes = utils.forceHashMap();
     });
 };
 
 proto.rollbackIndex = function(){
-    this.changedIndexes = {};
+    this.changedIndexes = utils.forceHashMap();
 };
 
 // indexKey: json encoded sorted fields array
@@ -414,28 +418,27 @@ proto.commitOneIndex = function(indexKey, indexValue, changedIds, config){
 
     var indexCollection = this.conn.getCollection(this._indexCollectionName(indexKey), true);
 
-    var modifier = {$set : {}, $unset: {}};
+    var modifier = {$pushAll : {ids : []}, $pullAll : {ids : []}};
+
     var countDelta = 0;
     for(var id in changedIds){
-        // Escape id since field name can not contain '$' or '.'
-        var escapedId = utils.escapeField(id);
-
         if(changedIds[id] === 1){
-            modifier.$set['ids.' + escapedId] = 1;
+            modifier.$pushAll.ids.push(id);
             countDelta++;
         }
         else{
-            modifier.$unset['ids.' + escapedId] = 1;
+            modifier.$pullAll.ids.push(id);
             countDelta--;
         }
     }
 
     var self = this;
     return P.try(function(){
-        return indexCollection.find(indexValue, 'count');
+        return indexCollection.find(indexValue, 'ids');
     })
     .then(function(ret){
-        var oldCount = ret ? ret.count : 0;
+        var oldCount = ret ? ret.ids.length : 0;
+
         var newCount = oldCount + countDelta;
         if(config.unique && newCount > 1){
             throw new Error('duplicate value - ' + indexValue + ' for unique index - ' + indexKey);
@@ -445,7 +448,6 @@ proto.commitOneIndex = function(indexKey, indexValue, changedIds, config){
         }
 
         if(newCount > 0){
-            modifier.$set.count = newCount;
             return indexCollection.update(indexValue, modifier, {upsert : true});
         }
         else if(newCount === 0){
