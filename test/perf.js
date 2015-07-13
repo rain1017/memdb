@@ -2,6 +2,7 @@
 
 var P = require('bluebird');
 var _ = require('lodash');
+var util = require('util');
 var utils = require('../app/utils');
 var should = require('should');
 var env = require('./env');
@@ -94,6 +95,12 @@ describe.skip('performance test', function(){
                     logger.warn('ShardCount: %s, PlayerCount: %s, ops/trans: %s', shardCount, playerCount, transOps);
                     logger.warn('ops: %s', baseRate * transOps * transCount);
                     logger.warn('tps: %s', baseRate * transCount);
+                });
+            })
+            .then(function(){
+                return autoconn.info('s1')
+                .then(function(info){
+                    logger.warn(util.inspect(info));
                 });
             })
             .then(function(){

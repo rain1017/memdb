@@ -278,6 +278,59 @@ exports.rateCounter = function(opts){
     return counter;
 };
 
+exports.hrtimer = function(autoStart){
+    var total = 0;
+    var starttime = null;
+
+    var timer = {
+        start : function(){
+            if(starttime){
+                return;
+            }
+            starttime = process.hrtime();
+        },
+        stop : function(){
+            if(!starttime){
+                return;
+            }
+            var timedelta = process.hrtime(starttime);
+            total += timedelta[0] * 1000 + timedelta[1] / 1000000;
+            return total;
+        },
+        total : function(){
+            return total; //in ms
+        },
+    };
+
+    if(autoStart){
+        timer.start();
+    }
+    return timer;
+};
+
+exports.timeCounter = function(){
+    var counts = {};
+
+    return {
+        add : function(name, time){
+            if(!counts.hasOwnProperty(name)){
+                counts[name] = [0, 0, 0]; // total, count, average
+            }
+            var count = counts[name];
+            count[0] += time;
+            count[1]++;
+            count[2] = count[0] / count[1];
+        },
+        reset : function(){
+            counts = {};
+        },
+        getCounts : function(){
+            return counts;
+        },
+    };
+};
+
+
 // trick v8 to not use hidden class
 // https://github.com/joyent/node/issues/25661
 exports.forceHashMap = function(){

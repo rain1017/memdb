@@ -61,7 +61,7 @@ var Database = function(opts){
 
     this.config = opts;
 
-    this.totalTimes = {};
+    this.timeCounter = utils.timeCounter();
 };
 
 util.inherits(Database, EventEmitter);
@@ -155,15 +155,16 @@ proto.execute = function(connId, method, args, opts){
             tps : [this.tpsCounter.rate(60), this.tpsCounter.rate(300), this.tpsCounter.rate(900)],
             lps : [this.shard.loadCounter.rate(60), this.shard.loadCounter.rate(300), this.shard.loadCounter.rate(900)],
             ups : [this.shard.unloadCounter.rate(60), this.shard.unloadCounter.rate(300), this.shard.unloadCounter.rate(900)],
-            totalTimes : this.totalTimes,
+            counter : this.timeCounter.getCounts(),
         };
     }
     else if(method === 'resetCounter'){
-        this.totalTimes = {};
         this.opsCounter.reset();
         this.tpsCounter.reset();
         this.shard.loadCounter.reset();
         this.shard.unloadCounter.reset();
+
+        this.timeCounter.reset();
         return;
     }
     else if(method === 'eval'){
@@ -204,7 +205,7 @@ proto.execute = function(connId, method, args, opts){
         }
 
         var conn = self.getConnection(connId);
-        var startTime = process.hrtime();
+        var hrtimer = utils.hrtimer(true);
 
         return P.try(function(){
             var func = conn[method];
@@ -214,24 +215,19 @@ proto.execute = function(connId, method, args, opts){
             return func.apply(conn, args);
         })
         .then(function(ret){
-            var hrtimespan = process.hrtime(startTime);
-            var timespan = hrtimespan[0] * 1000 + hrtimespan[1] / 1000000;
+            var timespan = hrtimer.stop();
             var level = timespan < self.config.slowQuery ? 'info' : 'warn'; // warn slow query
             self.logger[level]('[conn:%s] %s(%j) => %j (%sms)', connId, method, args, ret, timespan);
 
-            var category = method + ':' + (args.length > 0 ? args[0] : '');
-            if(!self.totalTimes.hasOwnProperty(category)){
-                self.totalTimes[category] = [0, 0, 0];
+            var category = method;
+            if(consts.collMethods.indexOf(method) !== -1){
+                category += ':' + args[0];
             }
-            var values = self.totalTimes[category];
-            values[0] += timespan;
-            values[1] += 1;
-            values[2] = values[0] / values[1];
+            self.timeCounter.add(category, timespan);
 
             return ret;
         }, function(err){
-            var hrtimespan = process.hrtime(startTime);
-            var timespan = hrtimespan[0] * 1000 + hrtimespan[1] / 1000000;
+            var timespan = hrtimer.stop();
             self.logger.error('[conn:%s] %s(%j) => %s (%sms)', connId, method, args, err.stack ? err.stack : err, timespan);
 
             conn.rollback();
