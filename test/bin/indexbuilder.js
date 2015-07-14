@@ -42,7 +42,7 @@ describe('indexbuilder test', function(){
             return env.stopCluster();
         })
         .then(function(){
-            var script = path.join(__dirname, '../../bin/memdbindex.js');
+            var script = path.join(__dirname, '../../bin/memdbindex');
             var args = ['--conf=' + env.configPath, '--coll=player', '--keys=areaId'];
 
             return P.try(function(){

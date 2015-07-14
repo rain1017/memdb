@@ -22,7 +22,7 @@ Options:\n\
 WARN: Make sure memdb is installed using the same folder and same config on all servers\n';
 
 var start = function(confPath, shardConfig){
-    var memdbd = path.join(__dirname, 'memdbd.js');
+    var memdbd = path.join(__dirname, 'memdbd');
     var nodePath = process.execPath;
     var cmd = util.format('%s %s --conf=%s --shard=%s --daemon', nodePath, memdbd, confPath || '', shardConfig.shardId);
     return utils.remoteExec(shardConfig.host, cmd, {user : shardConfig.user});

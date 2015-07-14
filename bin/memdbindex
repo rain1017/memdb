@@ -2,8 +2,6 @@
 'use strict';
 
 var minimist = require('minimist');
-var indexbuilder = require('../app/indexbuilder');
-var config = require('../app/config');
 
 var helpContent = '\
 MemDB Index Builder\n\n\
@@ -35,6 +33,7 @@ if (require.main === module){
         process.exit(0);
     }
 
+    var config = require('../app/config');
     config.init(argv.conf || argv.c);
     var conf = config.shardConfig(config.getShardIds()[0]);
 
@@ -47,6 +46,8 @@ if (require.main === module){
         throw new Error('keys not specified');
     }
     keys = keys.split('.').sort();
+
+    var indexbuilder = require('../app/indexbuilder');
 
     if(cmd === 'rebuild'){
         var opts = getIndexOpts(conf, collName, keys);
