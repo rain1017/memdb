@@ -99,8 +99,6 @@ if (require.main === module) {
     var config = require('../app/config');
     config.init(confPath);
 
-    require('memdb-logger').setGlobalLogLevel('OFF'); //turn off logger
-
     var shardIds = argv.shard || argv.s;
     if(!shardIds){
         shardIds = config.getShardIds();

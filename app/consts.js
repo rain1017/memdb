@@ -8,4 +8,7 @@ exports.collMethods = ['find', 'findOne', 'findById',
 
 exports.connMethods = ['commit', 'rollback', 'eval', 'info', 'resetCounter', 'flushBackend', '$unload', '$findReadOnly'];
 
+exports.version = require('../package').version;
+exports.minClientVersion = '0.4';
+
 module.exports = exports;

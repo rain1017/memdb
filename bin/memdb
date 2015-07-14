@@ -18,7 +18,7 @@ Options:\n\
   --help            display help\n\n\
 Example: \n\
 memdb -h127.0.0.1 -p31017\n\
-memdb -s s1 -c .memdb.js\n';
+memdb -s s1 -c memdb.conf.js\n';
 
 var helpCmd = '\n\
 Command Reference:\n\n\
@@ -98,6 +98,9 @@ var startRepl = function(conn){
 };
 
 if (require.main === module) {
+    // turn off logger by default
+    memdbLogger.setGlobalLogLevel(memdbLogger.levels.OFF);
+
     console.log('MemDB shell');
 
     var argv = minimist(process.argv.slice(2));
@@ -128,9 +131,6 @@ if (require.main === module) {
         connectOpts.host = argv.host || argv.h || '127.0.0.1';
         connectOpts.port = argv.port || argv.p || 31017;
     }
-
-    // turn off logger
-    memdbLogger.setGlobalLogLevel(memdbLogger.levels.OFF);
 
     var memdb = require('../lib');
     var conn = null;

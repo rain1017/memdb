@@ -3,7 +3,6 @@
  * MemDB config template
  *
  * Please modify it on your needs
- * copy this file to /etc/memdb.js or ~/.memdb.js
  *
  * This is plain javascript, you can add any js code here, just export the config
  *
@@ -16,7 +15,7 @@ module.exports = {
     // Global backend storage, all shards must connect to the same mongodb (or mongodb cluster)
     backend : {
         engine : 'mongodb', // should be 'mongodb'
-        url : 'mongodb://localhost/memdb-test', // mongodb connect string
+        url : 'mongodb://localhost/memdb', // mongodb connect string
     },
 
     // Global locking redis, all shards must connect to the same redis (or redis cluster)
@@ -36,8 +35,8 @@ module.exports = {
 
     // Log settings
     log : {
-        // Log file path
-        path : '/tmp',
+        // Log file path, default ~/.memdb
+        path : process.env.HOME + '/.memdb/log',
         // Log Level (one of 'ALL', 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL', 'OFF')
         // Please set to WARN on production
         level : 'WARN',
@@ -55,10 +54,10 @@ module.exports = {
     user : process.env.USER,
 
     // Collection settings for index
+    /* modify it on your need
     collections : {
         // Collection name
         player : {
-            // Index setting, modify it on your need
             indexes : [
                 {
                     // Index keys
@@ -78,6 +77,7 @@ module.exports = {
             ]
         }
     },
+    */
 
 
     // *** Shard specific settings ***
@@ -109,14 +109,14 @@ module.exports = {
             host : '127.0.0.1',
             port : 31018,
         },
-        s3 : {
-            host : '127.0.0.1',
-            port : 31019,
-        },
-        s4 : {
-            host : '127.0.0.1',
-            port : 31020,
-        },
+        // s3 : {
+        //     host : '127.0.0.1',
+        //     port : 31019,
+        // },
+        // s4 : {
+        //     host : '127.0.0.1',
+        //     port : 31020,
+        // },
     },
 
 

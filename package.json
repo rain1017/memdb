@@ -1,9 +1,9 @@
 {
     "name": "memdb-server",
     "description": "distributed transactional in memory database",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "author": "rain1017",
-    "private" : true,
+    "private" : false,
     "homepage" : "https://github.com/rain1017/memdb",
     "repository" : {
         "type" : "git",
@@ -23,18 +23,18 @@
         "node": ">=0.10.x"
     },
     "bin" : {
-        "memdbd" : "./bin/memdbd.js",
-        "memdb" : "./bin/memdb.js",
-        "memdbindex" : "./bin/memdbindex.js",
-        "memdbcluster" : "./bin/memdbcluster.js"
+        "memdbd" : "./bin/memdbd",
+        "memdb" : "./bin/memdb",
+        "memdbindex" : "./bin/memdbindex",
+        "memdbcluster" : "./bin/memdbcluster"
     },
     "scripts": {
         "start": "grunt",
         "test": "grunt test",
-        "postinstall": "sudo cp ./.memdb.js /etc/memdb.js"
+        "postinstall": "mkdir -p ~/.memdb && cp -n ./memdb.conf.js ~/.memdb/ || true"
     },
     "dependencies": {
-        "memdb-logger": "rain1017/memdb-logger",
+        "memdb-logger": "~0.1.7",
         "bluebird": "2.9.24",
         "lodash": "~3.7.0",
         "async-lock": "~0.3.5",
@@ -43,7 +43,8 @@
         "mongodb": "~2.0.28",
         "mongoose": "4.0.5",
         "minimist" : "~1.1.1",
-        "node-uuid" : "~1.4.3"
+        "node-uuid" : "~1.4.3",
+        "mkdirp": "~0.5.1"
     },
     "devDependencies": {
         "should": "~4.5.0",

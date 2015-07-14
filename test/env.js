@@ -2,13 +2,14 @@
 
 var P = require('bluebird');
 var path = require('path');
+var os = require('os');
 var child_process = require('child_process');
 var memdbConfig = require('../app/config');
 var utils = require('../app/utils');
 var memdbLogger = require('memdb-logger');
 var logger = memdbLogger.getLogger('test', __filename);
 
-var configPath = path.join(__dirname, '../.memdb.js');
+var configPath = path.join(__dirname, './memdb.conf.js');
 memdbConfig.init(configPath);
 var config = memdbConfig.clusterConfig();
 
@@ -19,7 +20,7 @@ exports.startCluster = function(shardIds, configOverrideFunc){
     if(typeof(configOverrideFunc) === 'function'){
         var newConfig = utils.clone(config);
         configOverrideFunc(newConfig);
-        newConfigPath = '/tmp/.memdb-test.json';
+        newConfigPath = path.join(os.tmpDir(), 'memdb-test.conf.json');
         fs.writeFileSync(newConfigPath, JSON.stringify(newConfig));
     }
 

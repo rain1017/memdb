@@ -8,6 +8,7 @@ var P = require('bluebird');
 var uuid = require('node-uuid');
 var Protocol = require('./protocol');
 var utils = require('./utils');
+var consts = require('./consts');
 
 var DEFAULT_PORT = 31017;
 
@@ -41,6 +42,10 @@ exports.start = function(opts){
 
             P.try(function(){
                 if(msg.method === 'connect'){
+                    var clientVersion = msg.args[0];
+                    if(parseFloat(clientVersion) < parseFloat(consts.minClientVersion)){
+                        throw new Error('client version not supported, please upgrade');
+                    }
                     var connId = db.connect();
                     connIds[connId] = true;
                     msg.connId = connId;

@@ -148,6 +148,7 @@ proto.execute = function(connId, method, args, opts){
     if(method === 'info'){
         return {
             connId : connId,
+            ver : consts.version,
             uptime : process.uptime(),
             mem : process.memoryUsage(),
             // rate for last 1, 5, 15 minutes

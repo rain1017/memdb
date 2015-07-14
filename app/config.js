@@ -3,6 +3,7 @@
 var P = require('bluebird');
 var path = require('path');
 var fs = require('fs');
+var mkdirp = require('mkdirp');
 var memdbLogger = require('memdb-logger');
 var logger = memdbLogger.getLogger('memdb', __filename);
 var utils = require('./utils');
@@ -13,7 +14,7 @@ exports.init = function(confPath, shardId){
     var searchPaths = [];
     var homePath = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
 
-    searchPaths = confPath ? [confPath] : [path.join(homePath, '.memdb.js'), '/etc/memdb.js'];
+    searchPaths = confPath ? [confPath] : [path.join(homePath, '.memdb/memdb.conf.js'), '/etc/memdb.conf.js'];
 
     var conf = null;
     for(var i=0; i<searchPaths.length; i++){
@@ -36,9 +37,10 @@ exports.init = function(confPath, shardId){
     // Configure log
     var logConf = conf.log || {};
 
-    var logPath = logConf.path || '/tmp';
+    var logPath = logConf.path || path.join(homePath, '.memdb/log');
+    mkdirp(logPath);
 
-    //console.log('all output going to: %s/memdb-%s.log', logPath, shardId || '$');
+    console.log('all output going to: %s', logPath);
     memdbLogger.configure(path.join(__dirname, 'log4js.json'), {shardId : shardId || '$', base : logPath});
 
     var level = logConf.level || 'INFO';

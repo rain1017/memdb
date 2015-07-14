@@ -1,11 +1,8 @@
 {
     "appenders": [
         {
-            "type": "console"
-        },
-        {
             "type": "dateFile",
-            "filename": "${opts:base}/memdb-${opts:shardId}.log",
+            "filename": "${opts:base}/memdb-server-${opts:shardId}.log",
             "pattern": "-yyyyMMdd",
             "layout": {
                 "type": "basic"
@@ -15,7 +12,7 @@
         },
         {
             "type": "dateFile",
-            "filename": "${opts:base}/memdbclient.log",
+            "filename": "${opts:base}/memdb-client.log",
             "pattern": "-yyyyMMdd",
             "layout": {
                 "type": "basic"
@@ -25,7 +22,7 @@
         },
         {
             "type": "dateFile",
-            "filename": "${opts:base}/memdbtest.log",
+            "filename": "${opts:base}/memdb-test.log",
             "pattern": "-yyyyMMdd",
             "layout": {
                 "type": "basic"
