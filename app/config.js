@@ -40,7 +40,7 @@ exports.init = function(confPath, shardId){
     var logPath = logConf.path || path.join(homePath, '.memdb/log');
     mkdirp(logPath);
 
-    console.log('all output going to: %s', logPath);
+    console.log('log path: %s', logPath);
     memdbLogger.configure(path.join(__dirname, 'log4js.json'), {shardId : shardId || '$', base : logPath});
 
     var level = logConf.level || 'INFO';

@@ -91,6 +91,7 @@ proto.stop = function(force){
         });
     })
     .then(function(){
+        self.logger.debug('all requests finished');
         return self.shard.stop(force);
     })
     .then(function(){
@@ -184,20 +185,14 @@ proto.execute = function(connId, method, args, opts){
     // Query in the same connection must execute in series
     // This is usually a client bug here
     if(this.connectionLock.isBusy(connId) && !opts.ignoreConcurrent){
-        P.try(function(){
-            // Must pass error in a promise in order to get the longStackTrace
-            throw new Error();
-        })
-        .catch(function(err){
-            self.logger.warn('[conn:%s] concurrent query on same connection, bug in client? %s(%j)', connId, method, args, err);
-        });
+        var err = new Error(util.format('[conn:%s] concurrent query on same connection. %s(%j)', connId, method, args));
+        this.logger.error(err);
+        throw err;
     }
 
     // Ensure series execution in same connection
     return this.connectionLock.acquire(connId, function(cb){
-
         self.logger.debug('[conn:%s] start %s(%j)...', connId, method, args);
-
         if(method === 'commit' || method === 'rollback'){
             self.tpsCounter.inc();
         }
@@ -205,10 +200,12 @@ proto.execute = function(connId, method, args, opts){
             self.opsCounter.inc();
         }
 
-        var conn = self.getConnection(connId);
         var hrtimer = utils.hrtimer(true);
+        var conn = null;
 
         return P.try(function(){
+            conn = self.getConnection(connId);
+
             var func = conn[method];
             if(typeof(func) !== 'function'){
                 throw new Error('unsupported command - ' + method);
@@ -231,7 +228,9 @@ proto.execute = function(connId, method, args, opts){
             var timespan = hrtimer.stop();
             self.logger.error('[conn:%s] %s(%j) => %s (%sms)', connId, method, args, err.stack ? err.stack : err, timespan);
 
-            conn.rollback();
+            if(conn){
+                conn.rollback();
+            }
 
             // Rethrow to client
             throw err;

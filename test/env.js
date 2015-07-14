@@ -46,7 +46,9 @@ exports.stopCluster = function(){
 exports.flushdb = function(cb){
     var output = child_process.execFileSync(process.execPath, [memdbClusterPath, 'drop', '--conf=' + configPath]);
     logger.info(output.toString());
-    cb();
+    if(typeof(cb) === 'function'){
+        cb();
+    }
 };
 
 exports.shardConfig = function(shardId){

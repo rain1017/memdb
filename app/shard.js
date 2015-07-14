@@ -211,6 +211,8 @@ proto.stop = function(){
         return this.taskLock.acquire('', function(){});
     })
     .then(function(){
+        this.logger.debug('all running tasks finished');
+
         // Wait for all commit process finish
         var deferred = P.defer();
         var self = this;
@@ -226,6 +228,7 @@ proto.stop = function(){
         return deferred.promise;
     })
     .then(function(){
+        this.logger.debug('all commit processes finished');
         // WARN: Make sure all connections are closed now
 
         var self = this;
@@ -239,6 +242,8 @@ proto.stop = function(){
         });
     })
     .then(function(){
+        this.logger.debug('all docs unloaded');
+
         this.loadCounter.stop();
         this.unloadCounter.stop();
 

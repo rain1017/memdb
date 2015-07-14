@@ -246,6 +246,7 @@ describe('connection test', function(){
 
     it('concurrent query on same connection', function(cb){
         var conn = null;
+        var errCount = 0;
 
         return P.try(function(){
             return env.startCluster('s1');
@@ -259,10 +260,17 @@ describe('connection test', function(){
         .then(function(){
             var Player = conn.collection('player');
             Player.insert({_id : 1, name : 'rain'});
-            Player.remove({_id : 1});
+            Player.remove({_id : 1})
+            .catch(function(e){
+                errCount++;
+            });
+        })
+        .delay(200)
+        .then(function(){
             return conn.commit();
         })
         .then(function(){
+            errCount.should.eql(1);
             return conn.close();
         })
         .finally(function(){

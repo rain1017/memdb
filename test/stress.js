@@ -8,7 +8,7 @@ var P = require('bluebird');
 var _ = require('lodash');
 var env = require('./env');
 var memdb = require('../lib');
-var mongodb = P.promisify(require('mongodb'));
+var mongodb = P.promisifyAll(require('mongodb'));
 var logger = memdb.logger.getLogger('test', __filename);
 
 var maxConcurrency = 200;
@@ -137,20 +137,20 @@ var shutdown = P.coroutine(function*(){
 
     try{
         clearInterval(newPlayerInterval);
-        yield env.stopCluster();
+        env.stopCluster();
         yield checkConsistency();
     }
     catch(e){
         logger.error(e.stack);
     }
     finally{
-        setTimeout(process.exit, 100);
+        memdb.logger.shutdown(process.exit);
     }
 });
 
 var main = P.coroutine(function*(){
-    yield env.flushdb();
-    yield env.startCluster();
+    env.flushdb();
+    env.startCluster();
 
     var autoconn = yield memdb.autoConnect(env.config);
 
