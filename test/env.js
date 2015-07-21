@@ -3,6 +3,7 @@
 var P = require('bluebird');
 var path = require('path');
 var os = require('os');
+var fs = require('fs');
 var child_process = require('child_process');
 var memdbConfig = require('../app/config');
 var utils = require('../app/utils');

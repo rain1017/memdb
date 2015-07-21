@@ -1,6 +1,7 @@
 'use strict';
 
 module.exports = {
+
     backend : {
         engine : 'mongodb',
         url : 'mongodb://localhost/memdb-test',
@@ -19,11 +20,11 @@ module.exports = {
     },
 
     log : {
-        level : 'WARN',
+        level : 'DEBUG',
     },
 
     promise : {
-        longStackTraces : false,
+        longStackTraces : true,
     },
 
     collections : {
@@ -46,19 +47,19 @@ module.exports = {
     shards : {
         s1 : {
             host : '127.0.0.1',
-            port : 31017,
+            port : 32017,
         },
         s2 : {
             host : '127.0.0.1',
-            port : 31018,
+            port : 32018,
         },
         s3 : {
             host : '127.0.0.1',
-            port : 31019,
+            port : 32019,
         },
         s4 : {
             host : '127.0.0.1',
-            port : 31020,
+            port : 32020,
         },
     },
 };

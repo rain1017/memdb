@@ -120,7 +120,9 @@ proto.connect = function(){
     this.dbWrappers[connId] = dbWrapper;
 
     this.logger.info('[conn:%s] connection created', connId);
-    return connId;
+    return {
+        connId : connId,
+    };
 };
 
 proto.disconnect = function(connId){
@@ -157,6 +159,7 @@ proto.execute = function(connId, method, args, opts){
             tps : [this.tpsCounter.rate(60), this.tpsCounter.rate(300), this.tpsCounter.rate(900)],
             lps : [this.shard.loadCounter.rate(60), this.shard.loadCounter.rate(300), this.shard.loadCounter.rate(900)],
             ups : [this.shard.unloadCounter.rate(60), this.shard.unloadCounter.rate(300), this.shard.unloadCounter.rate(900)],
+            pps : [this.shard.persistentCounter.rate(60), this.shard.persistentCounter.rate(300), this.shard.persistentCounter.rate(900)],
             counter : this.timeCounter.getCounts(),
         };
     }
@@ -165,6 +168,7 @@ proto.execute = function(connId, method, args, opts){
         this.tpsCounter.reset();
         this.shard.loadCounter.reset();
         this.shard.unloadCounter.reset();
+        this.shard.persistentCounter.reset();
 
         this.timeCounter.reset();
         return;

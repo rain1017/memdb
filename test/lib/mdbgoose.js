@@ -25,14 +25,12 @@ describe('mdbgoose test', function(){
         }, {collection : 'player', versionKey: false}));
 
         return P.try(function(){
-            return env.startCluster('s1');
+            return env.startCluster('s1', function(config){
+                config.persistentDelay = 0;
+            });
         })
         .then(function(ret){
             return mdbgoose.connectAsync(env.config);
-        })
-        .then(function(){
-            // connect to backend mongodb
-            return mdbgoose.connectMongoAsync(env.config.backend.url);
         })
         .then(function(){
             return mdbgoose.transaction(function(){
@@ -158,9 +156,7 @@ describe('mdbgoose test', function(){
                 });
             }, 's1');
         })
-        .then(function(){
-            return mdbgoose.autoconn.flushBackend('s1');
-        })
+        .delay(1000)
         .then(function(){
             // Call mongodb directly
             return Player.findMongoAsync();

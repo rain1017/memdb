@@ -31,7 +31,7 @@ describe('database test', function(){
             return db.start();
         })
         .then(function(){
-            conn = db.getConnection(db.connect());
+            conn = db.getConnection(db.connect().connId);
 
             return conn.insert(collName, doc);
         })
@@ -76,7 +76,7 @@ describe('database test', function(){
             return db1.start();
         })
         .then(function(){
-            conn = db1.getConnection(db1.connect());
+            conn = db1.getConnection(db1.connect().connId);
         })
         .then(function(){
             return conn.insert('player', player1);
@@ -96,7 +96,7 @@ describe('database test', function(){
             return db2.start();
         })
         .then(function(){
-            conn = db2.getConnection(db2.connect());
+            conn = db2.getConnection(db2.connect().connId);
         })
         .then(function(){
             return P.try(function(){

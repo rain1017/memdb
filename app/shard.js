@@ -158,6 +158,7 @@ var Shard = function(opts){
 
     this.loadCounter = utils.rateCounter();
     this.unloadCounter = utils.rateCounter();
+    this.persistentCounter = utils.rateCounter();
 
     this.state = STATE.INITED;
 };
@@ -246,6 +247,7 @@ proto.stop = function(){
 
         this.loadCounter.stop();
         this.unloadCounter.stop();
+        this.persistentCounter.stop();
 
         if(!this.config.disableSlave){
             return this.slave.stop();
@@ -562,7 +564,7 @@ proto._addDoc = function(key, obj){
         self._setCommited(key);
 
         // delay sometime and persistent to backend
-        if(!self.persistentTimeouts.hasOwnProperty(key) && self.config.persistentDelay > 0){
+        if(!self.persistentTimeouts.hasOwnProperty(key) && self.config.persistentDelay >= 0){
             self.persistentTimeouts[key] = setTimeout(function(){
                 delete self.persistentTimeouts[key];
                 return self.keyLock.acquire(key, function(){
@@ -720,6 +722,8 @@ proto._persistent = function(key){
         if(self.commitedKeys[key] === ver){
             delete self.commitedKeys[key];
         }
+
+        self.persistentCounter.inc();
         self.logger.debug('persistented %s', key);
     });
 };
