@@ -13,7 +13,7 @@ Distributed transactional in memory database
 
 - [x] __Transaction__ : Full transaction support like traditional database, data consistency is guaranteed. 'row' based locking mechanism is used.
 
-- [x] __Simple__ : Mongodb-like API, very easy to learn if you have a mongodb background.
+- [x] __Simple__ : It's just a 'mongodb' with transaction support.
 
 __Comparison with other databases__
 
