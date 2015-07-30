@@ -4,13 +4,13 @@
     "version": "0.4.0",
     "author": "rain1017",
     "private" : false,
-    "homepage" : "https://github.com/rain1017/memdb",
+    "homepage" : "https://github.com/memdb/memdb",
     "repository" : {
         "type" : "git",
-        "url" : "https://github.com/rain1017/memdb.git"
+        "url" : "https://github.com/memdb/memdb.git"
     },
     "bugs" : {
-        "url" : "https://github.com/rain1017/memdb/issues"
+        "url" : "https://github.com/memdb/memdb/issues"
     },
     "keywords" : [
         "memory",
@@ -35,16 +35,17 @@
     },
     "dependencies": {
         "memdb-logger": "~0.1.7",
-        "bluebird": "2.9.30",
+        "bluebird": "2.9.34",
         "lodash": "~3.7.0",
         "async-lock": "~0.3.5",
         "redis": "~0.12.1",
-        "hiredis": "~0.3.0",
-        "mongodb": "~2.0.28",
-        "mongoose": "4.0.5",
+        "hiredis": "~0.4.0",
+        "mongodb": "2.0.39",
+        "mongoose": "4.1.0",
         "minimist" : "~1.1.1",
         "node-uuid" : "~1.4.3",
-        "mkdirp": "~0.5.1"
+        "mkdirp": "~0.5.1",
+        "heapdump": "~0.3.5"
     },
     "devDependencies": {
         "should": "~4.5.0",
@@ -58,7 +59,6 @@
         "grunt-concurrent": "~0.4.1",
         "grunt-nodemon": "~0.2.0",
         "grunt-node-inspector": "~0.1.3",
-        "heapdump": "~0.3.5",
         "blanket" : "~1.1.6"
     }
 }

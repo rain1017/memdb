@@ -2,8 +2,8 @@
 
 Distributed transactional in memory database
 
-[![Build Status](https://travis-ci.org/rain1017/memdb.svg?branch=master)](https://travis-ci.org/rain1017/memdb)
-[![Dependencies Status](https://david-dm.org/rain1017/memdb.svg)](https://david-dm.org/rain1017/memdb)
+[![Build Status](https://travis-ci.org/memdb/memdb.svg?branch=master)](https://travis-ci.org/memdb/memdb)
+[![Dependencies Status](https://david-dm.org/memdb/memdb.svg)](https://david-dm.org/memdb/memdb)
 
 ## Why memdb?
 
@@ -26,7 +26,7 @@ __MemDB__    | __High (Memory)__ | __Yes__                   | __Yes__          
 
 ## Documents
 
-### [The Wiki](https://github.com/rain1017/memdb/wiki)
+### [The Wiki](https://github.com/memdb/memdb/wiki)
 
 ## Quick Start
 
@@ -241,7 +241,7 @@ __[quick-pomelo](http://quickpomelo.com)__ is a rapid and robust game server fra
 
 MemDB - distributed transactional in memory database
 
-Copyright (C) rain1017
+Copyright (C) memdb
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

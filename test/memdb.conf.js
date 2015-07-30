@@ -20,11 +20,11 @@ module.exports = {
     },
 
     log : {
-        level : 'DEBUG',
+        level : 'WARN',
     },
 
     promise : {
-        longStackTraces : true,
+        longStackTraces : false,
     },
 
     collections : {

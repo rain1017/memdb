@@ -1,3 +1,9 @@
+0.4.0 / 2015-07-30
+==================
+* Stablize
+* Performance improvement
+* Bug fixes
+
 0.3.0 / 2015-06-01
 ==================
 * Support more mongodb API
