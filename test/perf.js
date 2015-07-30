@@ -327,17 +327,26 @@ describe.skip('performance test', function(){
             return memdb.autoConnect(env.config);
         })
         .then(function(autoconn){
-            return P.each(_.range(1000000), function(i){
-                var doc = {_id : i};
-                for(var j=0; j<10; j++){
-                    doc['key' + j] = 'value' + j;
-                }
-                if(i % 100 === 0) {
-                    logger.warn(i);
-                }
-                return autoconn.transaction(function(){
-                    return autoconn.collection('player').insert(doc);
-                }, 's1');
+            var concurrency = 100;
+            var count = 1000000;
+
+            return P.map(_.range(concurrency), function(thread){
+
+                return P.each(_.range(Math.floor(count / concurrency)), function(i){
+                    i = i * concurrency + thread;
+
+                    var doc = {_id : i};
+                    for(var j=0; j<10; j++){
+                        doc['key' + j] = 'value' + j;
+                    }
+                    if(i % 100 === 0) {
+                        logger.warn(i);
+                    }
+                    return autoconn.transaction(function(){
+                        return autoconn.collection('player').insert(doc);
+                    }, 's1');
+                });
+
             });
         })
         .then(function(){

@@ -46,10 +46,11 @@ exports.start = function(opts){
                     if(parseFloat(clientVersion) < parseFloat(consts.minClientVersion)){
                         throw new Error('client version not supported, please upgrade');
                     }
-                    var connId = db.connect();
+                    var connId = db.connect().connId;
                     connIds[connId] = true;
-                    msg.connId = connId;
-                    return connId;
+                    return {
+                        connId : connId,
+                    };
                 }
                 if(!msg.connId){
                     throw new Error('connId is required');

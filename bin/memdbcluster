@@ -164,7 +164,7 @@ if (require.main === module) {
             });
         }
         else{
-            throw new Error('invalid command - %s', cmd);
+            throw new Error('invalid command - ' + cmd);
         }
     })
     .catch(function(e){
