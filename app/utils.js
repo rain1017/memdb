@@ -171,7 +171,7 @@ exports.remoteExec = function(ip, cmd, opts){
     }
     // run remote via ssh
     else{
-        child = child_process.spawn('ssh', '-o StrictHostKeyChecking=no', [user + '@' + ip, 'bash -c \'' + cmd + '\'']);
+        child = child_process.spawn('ssh', ['-o StrictHostKeyChecking=no', user + '@' + ip, 'bash -c \'' + cmd + '\'']);
     }
 
     var deferred = P.defer();

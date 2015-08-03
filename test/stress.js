@@ -15,8 +15,8 @@ var mongodb = P.promisifyAll(require('mongodb'));
 var logger = memdb.logger.getLogger('test', __filename);
 
 var isMaster = true;
-var concurrency = 100;
-var areaCount = 20;
+var concurrency = 1000;
+var areaCount = 200;
 var maxAreaPlayers = 10;
 var randomRoute = false; // turn on this can slow down performance
 
@@ -64,7 +64,7 @@ var playerThread = P.coroutine(function*(db, playerId){
         }
 
         for(var i=0; i<_.random(10); i++){
-            yield P.delay(_.random(100));
+            yield P.delay(_.random(1000));
 
             // earn scores from other players in the area
             yield db.transaction(P.coroutine(function*(){
@@ -105,7 +105,7 @@ var playerThread = P.coroutine(function*(db, playerId){
     }), route(playerId));
 
     for(var i=0; i<_.random(10); i++){
-        yield P.delay(_.random(1000));
+        yield P.delay(_.random(10 * 1000));
 
         var areaId = _.random(areaCount);
         yield playInArea(playerId, areaId);
