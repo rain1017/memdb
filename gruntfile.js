@@ -57,9 +57,9 @@ module.exports = function(grunt) {
         },
         nodemon: {
             dev: {
-                script: 'app/server.js',
+                script: 'bin/memdbd',
                 options: {
-                    args : ['--conf=./test/memdb.json', '--shard=s1'],
+                    args : ['--conf=./test/memdb.conf.js', '--shard=s1'],
                     nodeArgs: ['--debug'],
                     ext: 'js,html',
                     watch: watchFiles.serverJS

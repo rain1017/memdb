@@ -4,27 +4,35 @@
 
 // If logLevel >= INFO, change log4js.json - set appender type to fileSync (otherwise log buffer may eat out memory)
 
+var minimist = require('minimist');
+var crypto = require('crypto');
 var P = require('bluebird');
 var _ = require('lodash');
+var uuid = require('node-uuid');
 var env = require('./env');
 var memdb = require('../lib');
 var mongodb = P.promisifyAll(require('mongodb'));
 var logger = memdb.logger.getLogger('test', __filename);
 
-var maxConcurrency = 200;
-var areaPlayerCount = 10;
+var isMaster = true;
+var concurrency = 100;
+var areaCount = 20;
+var maxAreaPlayers = 10;
 var randomRoute = false; // turn on this can slow down performance
 
 var newPlayerIntervalValue = 10;
-var maxPlayerId = 0;
-var concurrency = 0;
+var currentConcurrency = 0;
 
 var route = function(id){
     var shardIds = Object.keys(env.config.shards);
     if(id === null || id === undefined){
         return _.sample(shardIds);
     }
-    var index = randomRoute ? _.random(shardIds.length - 1) : parseInt(id) % shardIds.length;
+
+    var md5 = crypto.createHash('md5').update(String(id)).digest('hex');
+    var hash = parseInt(md5.substr(0, 8), 16);
+
+    var index = randomRoute ? _.random(shardIds.length - 1) : (hash % shardIds.length);
     return shardIds[index];
 };
 
@@ -42,7 +50,7 @@ var playerThread = P.coroutine(function*(db, playerId){
                 area = {_id : areaId, playerCount : 0};
                 yield Area.insert(area);
             }
-            if(area.playerCount >= areaPlayerCount){
+            if(area.playerCount >= maxAreaPlayers){
                 return false;
             }
             yield Area.update(areaId, {$inc : {playerCount : 1}});
@@ -99,7 +107,7 @@ var playerThread = P.coroutine(function*(db, playerId){
     for(var i=0; i<_.random(10); i++){
         yield P.delay(_.random(1000));
 
-        var areaId = _.random(Math.floor(maxConcurrency / areaPlayerCount) + 1);
+        var areaId = _.random(areaCount);
         yield playInArea(playerId, areaId);
     }
 
@@ -125,7 +133,6 @@ var checkConsistency = P.coroutine(function*(){
     }
 });
 
-
 var isShutingDown = false;
 var newPlayerInterval = null;
 
@@ -137,8 +144,10 @@ var shutdown = P.coroutine(function*(){
 
     try{
         clearInterval(newPlayerInterval);
-        env.stopCluster();
-        yield checkConsistency();
+        if(isMaster){
+            env.stopCluster();
+            yield checkConsistency();
+        }
     }
     catch(e){
         logger.error(e.stack);
@@ -148,24 +157,39 @@ var shutdown = P.coroutine(function*(){
     }
 });
 
-var main = P.coroutine(function*(){
-    env.flushdb();
-    env.startCluster();
+var main = P.coroutine(function*(opts){
+    isMaster = !opts.slave;
+    if(opts.hasOwnProperty('concurrency')){
+        concurrency = parseInt(opts.concurrency);
+    }
+    if(opts.hasOwnProperty('areaCount')){
+        areaCount = parseInt(opts.areaCount);
+    }
+    if(opts.hasOwnProperty('maxAreaPlayers')){
+        maxAreaPlayers = parseInt(opts.maxAreaPlayers);
+    }
+    if(opts.hasOwnProperty('randomRoute')){
+        randomRoute = !!opts.randomRoute;
+    }
+
+    if(isMaster){
+        env.flushdb();
+        env.startCluster();
+    }
 
     var autoconn = yield memdb.autoConnect(env.config);
 
     newPlayerInterval = setInterval(P.coroutine(function*(){
-        if(concurrency >= maxConcurrency){
-            return;
+        if(currentConcurrency >= concurrency){
+           return;
         }
 
-        concurrency++;
-        maxPlayerId++;
+        currentConcurrency++;
 
-        var playerId = maxPlayerId.toString();
+        var playerId = uuid.v4();
         try{
             logger.warn('player %s start', playerId);
-            logger.warn('current concurrency: %s', concurrency);
+            logger.warn('current concurrency: %s', currentConcurrency);
             yield playerThread(autoconn, playerId);
         }
         catch(e){
@@ -173,7 +197,7 @@ var main = P.coroutine(function*(){
         }
         finally{
             logger.warn('player %s finish', playerId);
-            concurrency--;
+            currentConcurrency--;
         }
     }), newPlayerIntervalValue);
 
@@ -182,5 +206,6 @@ var main = P.coroutine(function*(){
 });
 
 if (require.main === module) {
-    main();
+    var opts = minimist(process.argv.slice(2));
+    main(opts);
 }
