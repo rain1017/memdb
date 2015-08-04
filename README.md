@@ -7,13 +7,13 @@ Distributed transactional in memory database
 
 ## Why memdb?
 
-- [x] __Performance__ : In memory data access which is extremely fast.
+- [x] __Performance__ : In memory data access, up to 25,000 ops/shard (tested on EC2 c4.xlarge).
 
-- [x] __Scalable__ : System is horizontally scalable by adding more shards.
+- [x] __Horizontally Scalable__ : Performance grows linearly by adding more shards.
 
-- [x] __Transaction__ : Full transaction support like traditional database, data consistency is guaranteed. 'row' based locking mechanism is used.
+- [x] __ACID Transaction__ : Full [ACID](https://en.wikipedia.org/wiki/ACID) transaction support on distributed environment.
 
-- [x] __Simple__ : It's just a 'mongodb' with transaction support.
+- [x] __MongoDB Compatible__ : It's just a 'mongodb' with transaction support, built-in 'mongoose' support.
 
 __Comparison with other databases__
 
