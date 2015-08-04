@@ -1,6 +1,6 @@
 # memdb
 
-The world first distributed ACID transaction 'mongodb'
+The world first distributed ACID transaction 'MongoDB'
 
 [![Build Status](https://travis-ci.org/memdb/memdb.svg?branch=master)](https://travis-ci.org/memdb/memdb)
 [![Dependencies Status](https://david-dm.org/memdb/memdb.svg)](https://david-dm.org/memdb/memdb)
@@ -47,19 +47,19 @@ sudo npm install -g memdb-server
 
 ### Configure MemDB
 
-Modify settings in `.memdb.js` on your need. Please read comments carefully.
+Modify settings in `~/.memdb/memdb.conf.js` on your need. Please read comments carefully.
 
 ### Start MemDB
 
 Use `memdbcluster` to control lifecycle of memdb server cluster
 ```
-memdbcluster [start | stop | status] [--conf=.memdb.js] [--shard=shardId]
+memdbcluster [start | stop | status] [--conf=memdb.conf.js] [--shard=shardId]
 ```
 
 ### Play with memdb shell
 
 ```js
-$ memdb -h 127.0.0.1 -p 31017 // specify the shard's host and port to connect
+$ memdb -s s1 [--conf=memdb.conf.js] // specify the shard's id to connect
 MemDB shell
 connected to 127.0.0.1:31017
 memdb> db.insert('player', {_id : 1, name : 'rain'}) // insert a doc to 'player' collection
@@ -232,6 +232,12 @@ if (require.main === module) {
     main().finally(process.exit);
 }
 ```
+
+### Basic rules of memdb
+
+* Data is not bind to specified shard, you can access any data from any shard.
+* All operations inside a single transaction must be executed on one single shard.
+* Access the same data from the same shard if possible, which will maximize performance.
 
 ## Quick-pomelo
 __[quick-pomelo](http://quickpomelo.com)__ is a rapid and robust game server framework based on memdb
