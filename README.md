@@ -1,6 +1,6 @@
 # memdb
 
-Distributed transactional in memory database
+The world first distributed ACID transaction 'mongodb'
 
 [![Build Status](https://travis-ci.org/memdb/memdb.svg?branch=master)](https://travis-ci.org/memdb/memdb)
 [![Dependencies Status](https://david-dm.org/memdb/memdb.svg)](https://david-dm.org/memdb/memdb)
