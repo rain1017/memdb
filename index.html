@@ -5,7 +5,7 @@
     <title>MemDB by rain1017</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
-    <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
     <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
   </head>
@@ -23,10 +23,10 @@
 <a id="why-memdb" class="anchor" href="#why-memdb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Why memdb?</h2>
 
 <ul>
-<li><p><strong>Performance</strong> : In memory data access which is extremely fast.</p></li>
-<li><p><strong>Scalable</strong> : System is horizontally scalable by adding more shards.</p></li>
-<li><p><strong>Transaction</strong> : Full transaction support like traditional database, data consistency is guaranteed. 'row' based locking mechanism is used.</p></li>
-<li><p><strong>Simple</strong> : It's just a 'mongodb' with transaction support.</p></li>
+<li><p><strong>Performance</strong> : In memory data access, up to 25,000 ops/shard (tested on EC2 c4.xlarge).</p></li>
+<li><p><strong>Horizontally Scalable</strong> : Performance grows linearly by adding more shards.</p></li>
+<li><p><strong>ACID Transaction</strong> : Full <a href="https://en.wikipedia.org/wiki/ACID">ACID</a> transaction support on distributed environment.</p></li>
+<li><p><strong>MongoDB Compatible</strong> : It's just a 'mongodb' with transaction support, built-in 'mongoose' support.</p></li>
 </ul>
 
 <p><strong>Comparison with other databases</strong></p>
@@ -77,7 +77,7 @@
 <a id="documents" class="anchor" href="#documents" aria-hidden="true"><span class="octicon octicon-link"></span></a>Documents</h2>
 
 <h3>
-<a id="the-wiki" class="anchor" href="#the-wiki" aria-hidden="true"><span class="octicon octicon-link"></span></a><a href="https://github.com/rain1017/memdb/wiki">The Wiki</a>
+<a id="the-wiki" class="anchor" href="#the-wiki" aria-hidden="true"><span class="octicon octicon-link"></span></a><a href="https://github.com/memdb/memdb/wiki">The Wiki</a>
 </h3>
 
 <h2>
@@ -299,7 +299,7 @@ memdb<span class="pl-k">&gt;</span> <span class="pl-k">^</span>D (to exit)</pre>
 
 <p>MemDB - distributed transactional in memory database</p>
 
-<p>Copyright (C) rain1017</p>
+<p>Copyright (C) memdb</p>
 
 <p>This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -335,4 +335,3 @@ along with this program.  If not, see <a href="http://www.gnu.org/licenses/">htt
 
   </body>
 </html>
-
