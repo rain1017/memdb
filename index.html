@@ -105,20 +105,20 @@
 <h3>
 <a id="configure-memdb" class="anchor" href="#configure-memdb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Configure MemDB</h3>
 
-<p>Modify settings in <code>.memdb.js</code> on your need. Please read comments carefully.</p>
+<p>Modify settings in <code>~/.memdb/memdb.conf.js</code> on your need. Please read comments carefully.</p>
 
 <h3>
 <a id="start-memdb" class="anchor" href="#start-memdb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Start MemDB</h3>
 
 <p>Use <code>memdbcluster</code> to control lifecycle of memdb server cluster</p>
 
-<pre><code>memdbcluster [start | stop | status] [--conf=.memdb.js] [--shard=shardId]
+<pre><code>memdbcluster [start | stop | status] [--conf=memdb.conf.js] [--shard=shardId]
 </code></pre>
 
 <h3>
 <a id="play-with-memdb-shell" class="anchor" href="#play-with-memdb-shell" aria-hidden="true"><span class="octicon octicon-link"></span></a>Play with memdb shell</h3>
 
-<div class="highlight highlight-js"><pre>$ memdb <span class="pl-k">-</span>h <span class="pl-c1">127.0</span>.<span class="pl-c1">0.1</span> <span class="pl-k">-</span>p <span class="pl-c1">31017</span> <span class="pl-c">// specify the shard's host and port to connect</span>
+<div class="highlight highlight-js"><pre>$ memdb <span class="pl-k">-</span>s s1 [<span class="pl-k">--</span>conf<span class="pl-k">=</span>memdb.conf.js] <span class="pl-c">// specify the shard's id to connect</span>
 MemDB shell
 connected to <span class="pl-c1">127.0</span>.<span class="pl-c1">0.1</span><span class="pl-k">:</span><span class="pl-c1">31017</span>
 memdb<span class="pl-k">&gt;</span> db.insert(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, {_id <span class="pl-k">:</span> <span class="pl-c1">1</span>, name <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>rain<span class="pl-pds">'</span></span>}) <span class="pl-c">// insert a doc to 'player' collection</span>
@@ -288,6 +288,15 @@ memdb<span class="pl-k">&gt;</span> <span class="pl-k">^</span>D (to exit)</pre>
 <span class="pl-k">if</span> (<span class="pl-c1">require</span>.main <span class="pl-k">===</span> <span class="pl-c1">module</span>) {
     main().finally(<span class="pl-c1">process</span>.exit);
 }</pre></div>
+
+<h3>
+<a id="basic-rules-of-memdb" class="anchor" href="#basic-rules-of-memdb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Basic rules of memdb</h3>
+
+<ul>
+<li>Data is not bind to specified shard, you can access any data from any shard.</li>
+<li>All operations inside a single transaction must be executed on one single shard.</li>
+<li>Access the same data from the same shard if possible, which will maximize performance.</li>
+</ul>
 
 <h2>
 <a id="quick-pomelo" class="anchor" href="#quick-pomelo" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick-pomelo</h2>
