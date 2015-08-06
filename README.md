@@ -1,6 +1,6 @@
-# memdb
+# MemDB
 
-The world first distributed ACID transaction 'MongoDB'
+The world first distributed ACID transactional 'MongoDB'
 
 [![Build Status](https://travis-ci.org/memdb/memdb.svg?branch=master)](https://travis-ci.org/memdb/memdb)
 [![Dependencies Status](https://david-dm.org/memdb/memdb.svg)](https://david-dm.org/memdb/memdb)
@@ -141,8 +141,6 @@ var main = P.coroutine(function*(){
     }
 
     // Make transcation in another shard
-    // Since we just accessed this doc in s1, the doc will 'fly' from shard s1 to s2
-    // In real production you should avoid these kind of data 'fly' by routing transaction to proper shard
     yield autoconn.transaction(P.coroutine(function*(){
         yield Player.remove(doc._id);
     }), 's2');
@@ -162,8 +160,28 @@ Mdbgoose is the 'mongoose' for memdb
 
 ```js
 // To run the sample:
+//
+// Add the following index config in memdb.conf.js and restart memdbcluster
+// collections : {
+//     player : {
+//         indexes : [
+//             {
+//                 keys : ['areaId'],
+//                 valueIgnore : {
+//                     areaId : ['', -1],
+//                 },
+//             },
+//             {
+//                 keys : ['deviceType', 'deviceId'],
+//                 unique : true,
+//             },
+//         ]
+//     }
+// }
+//
 // npm install memdb-client
 // run with node >= 0.12 with --harmony option
+//
 // We assume you have started shard 's1' on localhost:31017
 
 var memdb = require('memdb-client');
@@ -245,19 +263,17 @@ __[quick-pomelo](http://quickpomelo.com)__ is a rapid and robust game server fra
 
 ## License
 
-MemDB - distributed transactional in memory database
+Copyright 2015 The MemDB Authors.
 
-Copyright (C) memdb
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+    http://www.apache.org/licenses/LICENSE-2.0
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+implied. See the License for the specific language governing
+permissions and limitations under the License. See the AUTHORS file
+for names of contributors.

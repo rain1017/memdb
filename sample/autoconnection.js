@@ -1,3 +1,18 @@
+// Copyright 2015 The MemDB Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License. See the AUTHORS file
+// for names of contributors.
+
 'use strict';
 
 // npm install memdb-client
@@ -53,8 +68,6 @@ var main = P.coroutine(function*(){
     }
 
     // Make transcation in another shard
-    // Since we just accessed this doc in s1, the doc will 'fly' from shard s1 to s2
-    // In real production you should avoid these kind of data 'fly' by routing transaction to proper shard
     yield autoconn.transaction(P.coroutine(function*(){
         yield Player.remove(doc._id);
     }), 's2');
