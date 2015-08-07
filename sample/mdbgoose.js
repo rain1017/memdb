@@ -80,16 +80,14 @@ var main = P.coroutine(function*(){
         yield player.saveAsync();
 
         // find player by id
-        var doc = yield Player.findAsync('p1');
+        var doc = yield Player.findByIdAsync('p1');
         console.log('%j', doc);
 
         // find player by areaId, return array of players
-        // index for areaId should be configured in memdb.json
         var docs = yield Player.findAsync({areaId : 1});
         console.log('%j', docs);
 
         // find player by deviceType and deviceId
-        // a compound index should be configured in memdb.json
         player = yield Player.findOneAsync({deviceType : 1, deviceId : 'id1'});
 
         // update player

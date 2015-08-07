@@ -1,7 +1,7 @@
 {
     "name": "memdb-server",
     "description": "The world first distributed ACID transaction 'MongoDB'",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "author": "rain1017",
     "private" : false,
     "homepage" : "https://github.com/memdb/memdb",

@@ -1,4 +1,4 @@
-# MemDB ![logo](https://github.com/rain1017/memdb/wiki/images/logo.png)
+# MemDB ![logo](https://github.com/memdb/memdb/wiki/images/logo.png)
 
 [![Build Status](https://travis-ci.org/memdb/memdb.svg?branch=master)](https://travis-ci.org/memdb/memdb)
 [![Dependencies Status](https://david-dm.org/memdb/memdb.svg)](https://david-dm.org/memdb/memdb)
@@ -13,8 +13,7 @@
 
 - [x] __MongoDB Compatible__ : It's just a 'MongoDB' with transaction support, built-in 'Mongoose' support. 
 
-## Architecture
-![Architecture](https://github.com/rain1017/memdb/wiki/images/architecture.png)
+![Architecture](https://github.com/memdb/memdb/wiki/images/architecture.png)
 
 ## [The Wiki](https://github.com/memdb/memdb/wiki)
 
@@ -75,15 +74,13 @@ memdb> ^D (to exit)
 
 ### Nodejs Client with AutoConnection
 
-AutoConnection manages a pool of connections for each shard, execute transaction on specified shard, and auto commit on transaction complete or rollback on failure.
-
 ```js
 var memdb = require('memdb-client');
-var P = memdb.Promise; // just bluebird promise
+// just bluebird promise
+var P = memdb.Promise;
 
 var main = P.coroutine(function*(){
-    // All database access should via this autoconn object, 
-    // you can preserve autoconn object in a global module that can be accessed anywhere    
+    // All database access should via this autoconn object, you can preserve autoconn object in a global module that can be accessed anywhere
     var autoconn = yield memdb.autoConnect({
         shards : { // Specify all shards here
             s1 : {host : '127.0.0.1', port : 31017},
@@ -176,6 +173,7 @@ var main = P.coroutine(function*(){
     yield mdbgoose.connectAsync({
         shards : { // specify all shards here
             s1 : {host : '127.0.0.1', port: 31017},
+            s2 : {host : '127.0.0.1', port: 31018},
         }
     });
 
@@ -195,16 +193,14 @@ var main = P.coroutine(function*(){
         yield player.saveAsync();
 
         // find player by id
-        var doc = yield Player.findAsync('p1');
+        var doc = yield Player.findByIdAsync('p1');
         console.log('%j', doc);
 
         // find player by areaId, return array of players
-        // (index should be configured in .memdb.js)
         var docs = yield Player.findAsync({areaId : 1});
         console.log('%j', docs);
 
         // find player by deviceType and deviceId
-        // (index should be configured in .memdb.js)
         player = yield Player.findOneAsync({deviceType : 1, deviceId : 'id1'});
 
         // update player
@@ -254,6 +250,11 @@ npm install memdb-client
 ```
 node --harmony sample.js
 ```
+
+### Tips
+* Data is not bind to specified shard, you can access any data from any shard.
+* All operations inside a single transaction must be executed on one single shard.
+* Access the same data from the same shard if possible, which will maximize performance.
 
 __Please read [The Wiki](https://github.com/memdb/memdb/wiki) for further reference__
 
