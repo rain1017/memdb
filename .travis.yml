@@ -4,5 +4,5 @@ node_js:
 env:
   - NODE_ENV=travis
 services:
-  - redis
+  - redis-server
   - mongodb
