@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/memdb/memdb.svg?branch=master)](https://travis-ci.org/memdb/memdb)
 [![Dependencies Status](https://david-dm.org/memdb/memdb.svg)](https://david-dm.org/memdb/memdb)
 
-## The world first distributed ACID transactional 'MongoDB'
+__The world first distributed ACID transactional 'MongoDB'__
 
 - [x] __Performance__ : In memory data access, up to 25,000 ops/shard (tested on EC2 c4.xlarge).
 
@@ -13,9 +13,7 @@
 
 - [x] __MongoDB Compatible__ : It's just a 'MongoDB' with transaction support, built-in 'Mongoose' support. 
 
-## Documents
-
-### [The Wiki](https://github.com/memdb/memdb/wiki)
+## [The Wiki](https://github.com/memdb/memdb/wiki)
 
 ## Quick Start
 
@@ -222,7 +220,7 @@ if (require.main === module) {
 ```
 
 To run the sample above:
-* Add the following index config in memdb.conf.js and restart memdbcluster
+* Add the following index config in memdb.conf.js
 ```
 collections : {
     player : {
@@ -238,6 +236,12 @@ collections : {
     }
 }
 ```
+* Restart memdb cluster
+```
+memdbcluster stop
+memdbcluster drop // drop existing data if database is not empty
+memdbcluster start
+```
 * Make sure you have started shard 's1' on localhost:31017
 * Install npm dependencies
 ```
@@ -248,17 +252,15 @@ npm install memdb-client
 node --harmony sample.js
 ```
 
-### Architecture
+## Architecture
 ![Architecture](https://github.com/rain1017/memdb/wiki/images/architecture.png)
 
-### Further Read
+__Please read [The Wiki](https://github.com/memdb/memdb/wiki) for further reference__
 
-* [The Wiki](https://github.com/memdb/memdb/wiki)
-
-### Contact Us
+## Contact Us
+* [Github Issue](https://github.com/memdb/memdb/issues)
+* Mailing list: [memdbd@googlegroups.com](https://groups.google.com/forum/#!forum/memdbd)
 * Email: [memdbd@gmail.com](mailto:memdbd@gmail.com)
-* Facebook: 
-* Twitter: 
 
 ## License
 
