@@ -280,7 +280,7 @@ describe('connection test', function(){
                 errCount++;
             });
         })
-        .delay(200)
+        .delay(500)
         .then(function(){
             return conn.commit();
         })
