@@ -1,11 +1,9 @@
 # MemDB
 
-The world first distributed ACID transactional 'MongoDB'
-
 [![Build Status](https://travis-ci.org/memdb/memdb.svg?branch=master)](https://travis-ci.org/memdb/memdb)
 [![Dependencies Status](https://david-dm.org/memdb/memdb.svg)](https://david-dm.org/memdb/memdb)
 
-## Why memdb?
+## The world first distributed ACID transactional 'MongoDB'
 
 - [x] __Performance__ : In memory data access, up to 25,000 ops/shard (tested on EC2 c4.xlarge).
 
@@ -13,16 +11,7 @@ The world first distributed ACID transactional 'MongoDB'
 
 - [x] __ACID Transaction__ : Full [ACID](https://en.wikipedia.org/wiki/ACID) transaction support on distributed environment.
 
-- [x] __MongoDB Compatible__ : It's just a 'mongodb' with transaction support, built-in 'mongoose' support.
-
-__Comparison with other databases__
-
-Database | Performance      | Horizontally Scalable | Transaction Support | Data Structure  
----------|------------------|-----------------------|---------------------|-----------------
-MySQL    | Medium (Disk I/O)| No                    | __Yes (InnoDB)__   | Row based       
-MongoDB  | Medium (Disk I/O)| __Yes__                   | No  (except some basic atomic modifier) | __Object(BSON)__   
-Redis    | __High (Memory)__ | __Yes__                   | No  (.multi can do some 'transaction like' thing) | Very Elemental  
-__MemDB__    | __High (Memory)__ | __Yes__                   | __Yes__                 | __Object(JSON)__   
+- [x] __MongoDB Compatible__ : It's just a 'MongoDB' with transaction support, built-in 'Mongoose' support. 
 
 ## Documents
 
@@ -32,7 +21,7 @@ __MemDB__    | __High (Memory)__ | __Yes__                   | __Yes__          
 
 ### Install Dependencies
 
-* Install [Node.js >=v0.10](https://nodejs.org/download/)
+* Install [Node.js](https://nodejs.org/download/)
 
 * Install [Redis](http://redis.io/download)
 
@@ -83,22 +72,17 @@ true
 memdb> ^D (to exit)
 ```
 
-### Nodejs client using AutoConnection
+### Nodejs Client with AutoConnection
 
 AutoConnection manages a pool of connections for each shard, execute transaction on specified shard, and auto commit on transaction complete or rollback on failure.
 
 ```js
-// To run the sample:
-// npm install memdb-client
-// run with node >= 0.12 with --harmony option
-// We assume you have started shard 's1' on localhost:31017, 's2' on localhost:31018.
-
 var memdb = require('memdb-client');
 var P = memdb.Promise; // just bluebird promise
 
 var main = P.coroutine(function*(){
     // All database access should via this autoconn object, 
-    // you can preserve autoconn object in a global module that can be accessed anywhere
+    // you can preserve autoconn object in a global module that can be accessed anywhere    
     var autoconn = yield memdb.autoConnect({
         shards : { // Specify all shards here
             s1 : {host : '127.0.0.1', port : 31017},
@@ -154,36 +138,22 @@ if (require.main === module) {
 }
 ```
 
-### Nodejs client using MdbGoose
+To run the sample above
+* Make sure you have started shard 's1' on localhost:31017, 's2' on localhost:31018.
+* Install npm dependencies
+```
+npm install memdb-client
+```
+* run with node >= 0.12 with --harmony option
+```
+node --harmony sample.js
+```
 
-Mdbgoose is the 'mongoose' for memdb
+### Mdbgoose
+
+Mdbgoose is a modified [Mongoose](http://mongoosejs.com) version that work for memdb
 
 ```js
-// To run the sample:
-//
-// Add the following index config in memdb.conf.js and restart memdbcluster
-// collections : {
-//     player : {
-//         indexes : [
-//             {
-//                 keys : ['areaId'],
-//                 valueIgnore : {
-//                     areaId : ['', -1],
-//                 },
-//             },
-//             {
-//                 keys : ['deviceType', 'deviceId'],
-//                 unique : true,
-//             },
-//         ]
-//     }
-// }
-//
-// npm install memdb-client
-// run with node >= 0.12 with --harmony option
-//
-// We assume you have started shard 's1' on localhost:31017
-
 var memdb = require('memdb-client');
 var P = memdb.Promise;
 var mdbgoose = memdb.goose;
@@ -251,15 +221,44 @@ if (require.main === module) {
 }
 ```
 
-### Basic rules of memdb
+To run the sample above:
+* Add the following index config in memdb.conf.js and restart memdbcluster
+```
+collections : {
+    player : {
+        indexes : [
+            {
+                keys : ['areaId'],
+            },
+            {
+                keys : ['deviceType', 'deviceId'],
+                unique : true,
+            },
+        ]
+    }
+}
+```
+* Make sure you have started shard 's1' on localhost:31017
+* Install npm dependencies
+```
+npm install memdb-client
+```
+* Run with node >= 0.12 with --harmony option
+```
+node --harmony sample.js
+```
 
-* Data is not bind to specified shard, you can access any data from any shard.
-* All operations inside a single transaction must be executed on one single shard.
-* Access the same data from the same shard if possible, which will maximize performance.
+### Architecture
+![Architecture](https://github.com/rain1017/memdb/wiki/images/architecture.png)
 
-## Quick-pomelo
-__[quick-pomelo](http://quickpomelo.com)__ is a rapid and robust game server framework based on memdb
+### Further Read
 
+* [The Wiki](https://github.com/memdb/memdb/wiki)
+
+### Contact Us
+* Email: [memdbd@gmail.com](mailto:memdbd@gmail.com)
+* Facebook: 
+* Twitter: 
 
 ## License
 
