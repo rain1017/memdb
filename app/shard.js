@@ -57,7 +57,7 @@ var DEFAULT_IDLE_TIMEOUT = 1800 * 1000;
 var DEFAULT_PERSISTENT_DELAY = 600 * 1000;
 
 // timeout for locking backend doc
-var DEFAULT_BACKEND_LOCK_TIMEOUT = 10 * 1000;
+var DEFAULT_BACKEND_LOCK_TIMEOUT = 30 * 1000;
 // retry interval for backend lock
 var DEFAULT_BACKEND_LOCK_RETRY_INTERVAL = 50;
 
@@ -66,7 +66,7 @@ var DEFAULT_BACKEND_LOCK_RETRY_INTERVAL = 50;
 var DEFAULT_RELOAD_DELAY = 20;
 
 // timeout for locking doc
-var DEFAULT_LOCK_TIMEOUT = 10 * 1000;
+var DEFAULT_LOCK_TIMEOUT = 30 * 1000;
 
 // heartbeat settings, must be multiple of 1000
 var DEFAULT_HEARTBEAT_INTERVAL = 2 * 1000;

@@ -13,7 +13,7 @@
 
 - [x] __MongoDB Compatible__ : It's just a 'MongoDB' with transaction support, built-in 'Mongoose' support. 
 
-![Architecture](https://github.com/memdb/memdb/wiki/images/architecture.png)
+![memdbshell.gif](https://github.com/memdb/memdb/wiki/images/memdbshell.gif)
 
 ## [The Wiki](https://github.com/memdb/memdb/wiki)
 
@@ -46,31 +46,7 @@ memdbcluster [start | stop | status] [--conf=memdb.conf.js] [--shard=shardId]
 ```
 
 ### Play with memdb shell
-
-```js
-$ memdb -s s1 [--conf=memdb.conf.js] // specify the shard's id to connect
-MemDB shell
-connected to 127.0.0.1:31017
-memdb> db.insert('player', {_id : 1, name : 'rain'}) // insert a doc to 'player' collection
-'1'
-memdb> db.find('player', 1)  // find doc by id
-{ _id: '1', name: 'rain' }
-memdb> db.commit() // commit changes
-true
-memdb> db.update('player', 1, {$set : {name : 'snow'}}) // update doc
-1
-memdb> db.find('player', 1, 'name')
-{ name: 'snow' }
-memdb> db.rollback() // rollback changes
-true
-memdb> db.find('player', 1, 'name')
-{ name: 'rain' }
-memdb> db.remove('player', 1) // remove doc
-1
-memdb> db.commit()
-true
-memdb> ^D (to exit)
-```
+See the top GIF, note how ACID transaction works.
 
 ### Nodejs Client with AutoConnection
 
