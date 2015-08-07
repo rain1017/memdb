@@ -1,9 +1,9 @@
-# MemDB
+# MemDB ![logo](https://github.com/rain1017/memdb/wiki/images/logo.png)
 
 [![Build Status](https://travis-ci.org/memdb/memdb.svg?branch=master)](https://travis-ci.org/memdb/memdb)
 [![Dependencies Status](https://david-dm.org/memdb/memdb.svg)](https://david-dm.org/memdb/memdb)
 
-__The world first distributed ACID transactional 'MongoDB'__
+### The world first distributed ACID transactional 'MongoDB'
 
 - [x] __Performance__ : In memory data access, up to 25,000 ops/shard (tested on EC2 c4.xlarge).
 
@@ -12,6 +12,9 @@ __The world first distributed ACID transactional 'MongoDB'__
 - [x] __ACID Transaction__ : Full [ACID](https://en.wikipedia.org/wiki/ACID) transaction support on distributed environment.
 
 - [x] __MongoDB Compatible__ : It's just a 'MongoDB' with transaction support, built-in 'Mongoose' support. 
+
+## Architecture
+![Architecture](https://github.com/rain1017/memdb/wiki/images/architecture.png)
 
 ## [The Wiki](https://github.com/memdb/memdb/wiki)
 
@@ -251,9 +254,6 @@ npm install memdb-client
 ```
 node --harmony sample.js
 ```
-
-## Architecture
-![Architecture](https://github.com/rain1017/memdb/wiki/images/architecture.png)
 
 __Please read [The Wiki](https://github.com/memdb/memdb/wiki) for further reference__
 
