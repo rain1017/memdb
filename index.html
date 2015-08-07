@@ -26,7 +26,7 @@
 <li><p><strong>MongoDB Compatible</strong> : It's just a 'MongoDB' with transaction support, built-in 'Mongoose' support. </p></li>
 </ul>
 
-<p><img src="https://github.com/memdb/memdb/wiki/images/architecture.png" alt="Architecture"></p>
+<p><img src="https://github.com/memdb/memdb/wiki/images/memdbshell.gif" alt="memdbshell.gif"></p>
 
 <h2>
 <a id="the-wiki" class="anchor" href="#the-wiki" aria-hidden="true"><span class="octicon octicon-link"></span></a><a href="https://github.com/memdb/memdb/wiki">The Wiki</a>
@@ -70,28 +70,7 @@
 <h3>
 <a id="play-with-memdb-shell" class="anchor" href="#play-with-memdb-shell" aria-hidden="true"><span class="octicon octicon-link"></span></a>Play with memdb shell</h3>
 
-<div class="highlight highlight-js"><pre>$ memdb <span class="pl-k">-</span>s s1 [<span class="pl-k">--</span>conf<span class="pl-k">=</span>memdb.conf.js] <span class="pl-c">// specify the shard's id to connect</span>
-MemDB shell
-connected to <span class="pl-c1">127.0</span>.<span class="pl-c1">0.1</span><span class="pl-k">:</span><span class="pl-c1">31017</span>
-memdb<span class="pl-k">&gt;</span> db.insert(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, {_id <span class="pl-k">:</span> <span class="pl-c1">1</span>, name <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>rain<span class="pl-pds">'</span></span>}) <span class="pl-c">// insert a doc to 'player' collection</span>
-<span class="pl-s"><span class="pl-pds">'</span>1<span class="pl-pds">'</span></span>
-memdb<span class="pl-k">&gt;</span> db.<span class="pl-c1">find</span>(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, <span class="pl-c1">1</span>)  <span class="pl-c">// find doc by id</span>
-{ _id<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>1<span class="pl-pds">'</span></span>, name<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>rain<span class="pl-pds">'</span></span> }
-memdb<span class="pl-k">&gt;</span> db.commit() <span class="pl-c">// commit changes</span>
-<span class="pl-c1">true</span>
-memdb<span class="pl-k">&gt;</span> db.update(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, <span class="pl-c1">1</span>, {$set <span class="pl-k">:</span> {name <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>snow<span class="pl-pds">'</span></span>}}) <span class="pl-c">// update doc</span>
-<span class="pl-c1">1</span>
-memdb<span class="pl-k">&gt;</span> db.<span class="pl-c1">find</span>(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, <span class="pl-c1">1</span>, <span class="pl-s"><span class="pl-pds">'</span>name<span class="pl-pds">'</span></span>)
-{ name<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>snow<span class="pl-pds">'</span></span> }
-memdb<span class="pl-k">&gt;</span> db.rollback() <span class="pl-c">// rollback changes</span>
-<span class="pl-c1">true</span>
-memdb<span class="pl-k">&gt;</span> db.<span class="pl-c1">find</span>(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, <span class="pl-c1">1</span>, <span class="pl-s"><span class="pl-pds">'</span>name<span class="pl-pds">'</span></span>)
-{ name<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>rain<span class="pl-pds">'</span></span> }
-memdb<span class="pl-k">&gt;</span> db.remove(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, <span class="pl-c1">1</span>) <span class="pl-c">// remove doc</span>
-<span class="pl-c1">1</span>
-memdb<span class="pl-k">&gt;</span> db.commit()
-<span class="pl-c1">true</span>
-memdb<span class="pl-k">&gt;</span> <span class="pl-k">^</span>D (to exit)</pre></div>
+<p>See the top GIF, note how ACID transaction works.</p>
 
 <h3>
 <a id="nodejs-client-with-autoconnection" class="anchor" href="#nodejs-client-with-autoconnection" aria-hidden="true"><span class="octicon octicon-link"></span></a>Nodejs Client with AutoConnection</h3>
