@@ -20,7 +20,7 @@
         "transaction"
     ],
     "engines": {
-        "node": ">=0.10.x"
+        "node": ">=0.12.5"
     },
     "bin" : {
         "memdbd" : "./bin/memdbd",

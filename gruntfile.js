@@ -56,14 +56,14 @@ module.exports = function(grunt) {
                     require: 'test/blanket'
                 }
             },
-            coverage: {
-                src: watchFiles.testJS,
-                options : {
-                    reporter: 'html-cov',
-                    quiet: true,
-                    captureFile: 'coverage.html'
-                }
-            }
+            // coverage: {
+            //     src: watchFiles.testJS,
+            //     options : {
+            //         reporter: 'html-cov',
+            //         quiet: true,
+            //         captureFile: 'coverage.html'
+            //     }
+            // }
         },
         clean: {
             'coverage.html' : {
