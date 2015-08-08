@@ -1,7 +1,7 @@
 {
     "name": "memdb-server",
     "description": "The world first distributed ACID transactional 'MongoDB'",
-    "version": "0.5.0",
+    "version": "0.5.1",
     "author": "rain1017",
     "private" : false,
     "homepage" : "https://github.com/memdb/memdb",
@@ -30,8 +30,7 @@
     },
     "scripts": {
         "start": "grunt",
-        "test": "grunt test",
-        "postinstall": "mkdir -p ~/.memdb && cp -n ./memdb.conf.js ~/.memdb/ || true"
+        "test": "grunt test"
     },
     "dependencies": {
         "memdb-logger": "~0.1.7",
