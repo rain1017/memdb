@@ -5,9 +5,7 @@
 
 ### The world first distributed ACID transactional 'MongoDB'
 
-- __Performance__ : In memory data access, up to 25,000 ops/shard (tested on EC2 c4.xlarge).
-
-- __Horizontally Scalable__ : Performance grows linearly by adding more shards.
+- __Fast and Scalable__ : Fast in memory data access. Performance grows linearly by adding more shards.
 
 - __ACID Transaction__ : Full [ACID](https://en.wikipedia.org/wiki/ACID) transaction support on distributed environment.
 
@@ -36,7 +34,8 @@ sudo npm install -g memdb-server
 
 ### Configure MemDB
 
-Copy default config file `node_modules/memdb-server/memdb.conf.js` to ~/.memdb, and modify it on your need. Please read comments carefully.
+Copy default config file `node_modules/memdb-server/memdb.conf.js` to `~/.memdb/` (mkdir if not exist), and modify it on your need. 
+Please read comments carefully.
 
 ### Start MemDB
 
