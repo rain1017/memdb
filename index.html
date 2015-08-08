@@ -20,8 +20,7 @@
 
     <section class="main-content">
       <ul>
-<li><p><strong>Performance</strong> : In memory data access, up to 25,000 ops/shard (tested on EC2 c4.xlarge).</p></li>
-<li><p><strong>Horizontally Scalable</strong> : Performance grows linearly by adding more shards.</p></li>
+<li><p><strong>Fast and Scalable</strong> : Fast in memory data access, and the capacity is horizontally scalable by adding more shards.</p></li>
 <li><p><strong>ACID Transaction</strong> : Full <a href="https://en.wikipedia.org/wiki/ACID">ACID</a> transaction support on distributed environment.</p></li>
 <li><p><strong>MongoDB Compatible</strong> : It's just a 'MongoDB' with transaction support, built-in 'Mongoose' support. </p></li>
 </ul>
@@ -57,7 +56,8 @@
 <h3>
 <a id="configure-memdb" class="anchor" href="#configure-memdb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Configure MemDB</h3>
 
-<p>Modify settings in <code>~/.memdb/memdb.conf.js</code> on your need. Please read comments carefully.</p>
+<p>Copy default config file <code>node_modules/memdb-server/memdb.conf.js</code> to <code>~/.memdb/</code> (mkdir if not exist), and modify it on your need. 
+Please read comments carefully.</p>
 
 <h3>
 <a id="start-memdb" class="anchor" href="#start-memdb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Start MemDB</h3>
