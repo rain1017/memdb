@@ -5,7 +5,7 @@
 
 ### The world first distributed ACID transactional 'MongoDB'
 
-- __Fast and Scalable__ : Fast in memory data access. Performance grows linearly by adding more shards.
+- __Fast and Scalable__ : Fast in memory data access, and the capacity is horizontally scalable by adding more shards.
 
 - __ACID Transaction__ : Full [ACID](https://en.wikipedia.org/wiki/ACID) transaction support on distributed environment.
 
