@@ -5,7 +5,7 @@
 
 ### The world first distributed ACID transactional 'MongoDB'
 
-- __Fast and Scalable__ : Fast in memory data access, and the capacity is horizontally scalable by adding more shards.
+- __Fast and Scalable__ : Fast in memory data access. Capacity is horizontally scalable by adding more shards.
 
 - __ACID Transaction__ : Full [ACID](https://en.wikipedia.org/wiki/ACID) transaction support on distributed environment.
 
@@ -13,28 +13,30 @@
 
 ![memdbshell.gif](https://github.com/memdb/memdb/wiki/images/memdbshell.gif)
 
-## [The Wiki](https://github.com/memdb/memdb/wiki)
+## Documents
+
+* [The Wiki](https://github.com/memdb/memdb/wiki)
 
 ## Quick Start
 
 ### Install Dependencies
 
 * Install [Node.js](https://nodejs.org/download/)
-
 * Install [Redis](http://redis.io/download)
-
 * Install [MongoDB](https://www.mongodb.org/downloads)
+
+__Make sure Redis and MongoDB has started__
 
 ### Install MemDB
 
-* Install memdb
+* MemDB should be installed globally
 ```
 sudo npm install -g memdb-server
 ```
 
 ### Configure MemDB
 
-Copy default config file `node_modules/memdb-server/memdb.conf.js` to `~/.memdb/` (mkdir if not exist), and modify it on your need. 
+Copy default config file from `node_modules/memdb-server/memdb.conf.js` to `~/.memdb/` (mkdir if not exist), and modify it on your need. 
 Please read comments carefully.
 
 ### Start MemDB
