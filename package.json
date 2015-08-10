@@ -13,11 +13,12 @@
         "url" : "https://github.com/memdb/memdb/issues"
     },
     "keywords" : [
-        "memory",
-        "database",
         "mongodb",
+        "transaction",
+        "newsql",
         "distributed",
-        "transaction"
+        "database",
+        "memory"
     ],
     "engines": {
         "node": ">=0.12.5"

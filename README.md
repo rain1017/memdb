@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/memdb/memdb.svg?branch=master)](https://travis-ci.org/memdb/memdb)
 [![Dependencies Status](https://david-dm.org/memdb/memdb.svg)](https://david-dm.org/memdb/memdb)
 
-### The world first distributed ACID transactional 'MongoDB'
+### World first distributed ACID transactional 'MongoDB'
 
 - __Fast and Scalable__ : Fast in memory data access. Capacity is horizontally scalable by adding more shards.
 
