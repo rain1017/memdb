@@ -20,16 +20,19 @@
 
     <section class="main-content">
       <ul>
-<li><p><strong>Fast and Scalable</strong> : Fast in memory data access, and the capacity is horizontally scalable by adding more shards.</p></li>
+<li><p><strong>Fast and Scalable</strong> : Fast in memory data access. Capacity is horizontally scalable by adding more shards.</p></li>
 <li><p><strong>ACID Transaction</strong> : Full <a href="https://en.wikipedia.org/wiki/ACID">ACID</a> transaction support on distributed environment.</p></li>
-<li><p><strong>MongoDB Compatible</strong> : It's just a 'MongoDB' with transaction support, built-in 'Mongoose' support. </p></li>
+<li><p><strong>MongoDB Compatible</strong> : MongoDB and Mongoose compatible.</p></li>
 </ul>
 
 <p><img src="https://github.com/memdb/memdb/wiki/images/memdbshell.gif" alt="memdbshell.gif"></p>
 
 <h2>
-<a id="the-wiki" class="anchor" href="#the-wiki" aria-hidden="true"><span class="octicon octicon-link"></span></a><a href="https://github.com/memdb/memdb/wiki">The Wiki</a>
-</h2>
+<a id="documents" class="anchor" href="#documents" aria-hidden="true"><span class="octicon octicon-link"></span></a>Documents</h2>
+
+<ul>
+<li><a href="https://github.com/memdb/memdb/wiki">The Wiki</a></li>
+</ul>
 
 <h2>
 <a id="quick-start" class="anchor" href="#quick-start" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick Start</h2>
@@ -38,16 +41,21 @@
 <a id="install-dependencies" class="anchor" href="#install-dependencies" aria-hidden="true"><span class="octicon octicon-link"></span></a>Install Dependencies</h3>
 
 <ul>
-<li><p>Install <a href="https://nodejs.org/download/">Node.js</a></p></li>
-<li><p>Install <a href="http://redis.io/download">Redis</a></p></li>
-<li><p>Install <a href="https://www.mongodb.org/downloads">MongoDB</a></p></li>
+<li>Install <a href="https://nodejs.org/download/">Node.js</a>
+</li>
+<li>Install <a href="http://redis.io/download">Redis</a>
+</li>
+<li>Install <a href="https://www.mongodb.org/downloads">MongoDB</a>
+</li>
 </ul>
+
+<p><strong>Make sure Redis and MongoDB has started</strong></p>
 
 <h3>
 <a id="install-memdb" class="anchor" href="#install-memdb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Install MemDB</h3>
 
 <ul>
-<li>Install memdb</li>
+<li>MemDB should be installed globally</li>
 </ul>
 
 <pre><code>sudo npm install -g memdb-server
@@ -56,7 +64,7 @@
 <h3>
 <a id="configure-memdb" class="anchor" href="#configure-memdb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Configure MemDB</h3>
 
-<p>Copy default config file <code>node_modules/memdb-server/memdb.conf.js</code> to <code>~/.memdb/</code> (mkdir if not exist), and modify it on your need. 
+<p>Copy default config file from <code>node_modules/memdb-server/memdb.conf.js</code> to <code>~/.memdb/</code> (mkdir if not exist), and modify it on your need. 
 Please read comments carefully.</p>
 
 <h3>
@@ -70,92 +78,12 @@ Please read comments carefully.</p>
 <h3>
 <a id="play-with-memdb-shell" class="anchor" href="#play-with-memdb-shell" aria-hidden="true"><span class="octicon octicon-link"></span></a>Play with memdb shell</h3>
 
-<p>See the top GIF, note how ACID transaction works.</p>
-
-<h3>
-<a id="nodejs-client-with-autoconnection" class="anchor" href="#nodejs-client-with-autoconnection" aria-hidden="true"><span class="octicon octicon-link"></span></a>Nodejs Client with AutoConnection</h3>
-
-<div class="highlight highlight-js"><pre><span class="pl-k">var</span> memdb <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>memdb-client<span class="pl-pds">'</span></span>);
-<span class="pl-c">// just bluebird promise</span>
-<span class="pl-k">var</span> P <span class="pl-k">=</span> memdb.Promise;
-
-<span class="pl-k">var</span> main <span class="pl-k">=</span> P.coroutine(<span class="pl-k">function*</span>(){
-    <span class="pl-c">// All database access should via this autoconn object, you can preserve autoconn object in a global module that can be accessed anywhere</span>
-    <span class="pl-k">var</span> autoconn <span class="pl-k">=</span> <span class="pl-k">yield</span> memdb.autoConnect({
-        shards <span class="pl-k">:</span> { <span class="pl-c">// Specify all shards here</span>
-            s1 <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port <span class="pl-k">:</span> <span class="pl-c1">31017</span>},
-            s2 <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port <span class="pl-k">:</span> <span class="pl-c1">31018</span>},
-        }
-    });
-
-    <span class="pl-k">var</span> doc <span class="pl-k">=</span> {_id <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>1<span class="pl-pds">'</span></span>, name <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>rain<span class="pl-pds">'</span></span>, level <span class="pl-k">:</span> <span class="pl-c1">1</span>};
-
-    <span class="pl-c">// Get player collection object</span>
-    <span class="pl-k">var</span> Player <span class="pl-k">=</span> autoconn.collection(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>);
-
-    <span class="pl-c">// Make a transaction in shard s1</span>
-    <span class="pl-k">yield</span> autoconn.transaction(P.coroutine(<span class="pl-k">function*</span>(){
-        <span class="pl-c">// Upsert a doc (update if exist, insert if not exist)</span>
-        <span class="pl-k">yield</span> Player.update(doc._id, doc, {upsert <span class="pl-k">:</span> <span class="pl-c1">true</span>});
-        <span class="pl-c">// Find the doc</span>
-        <span class="pl-k">var</span> ret <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.<span class="pl-c1">find</span>(doc._id);
-        <span class="pl-en">console</span><span class="pl-c1">.log</span>(ret); <span class="pl-c">// {_id : '1', name : 'rain', level : 1}</span>
-    }), <span class="pl-s"><span class="pl-pds">'</span>s1<span class="pl-pds">'</span></span>); <span class="pl-c">// Auto commit after transaction</span>
-
-    <span class="pl-k">try</span>{
-        <span class="pl-c">// Make another transaction in shard s1</span>
-        <span class="pl-k">yield</span> autoconn.transaction(P.coroutine(<span class="pl-k">function*</span>(){
-            <span class="pl-c">// Update doc with $set modifier</span>
-            <span class="pl-k">yield</span> Player.update(doc._id, {$set <span class="pl-k">:</span> {level <span class="pl-k">:</span> <span class="pl-c1">2</span>}});
-            <span class="pl-c">// Find the changed doc with specified field</span>
-            <span class="pl-k">var</span> ret <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.<span class="pl-c1">find</span>(doc._id, <span class="pl-s"><span class="pl-pds">'</span>level<span class="pl-pds">'</span></span>);
-            <span class="pl-en">console</span><span class="pl-c1">.log</span>(ret); <span class="pl-c">// {level : 2}</span>
-            <span class="pl-c">// Exception here!</span>
-            <span class="pl-k">throw</span> <span class="pl-k">new</span> <span class="pl-en">Error</span>(<span class="pl-s"><span class="pl-pds">'</span>Oops!<span class="pl-pds">'</span></span>);
-        }), <span class="pl-s"><span class="pl-pds">'</span>s1<span class="pl-pds">'</span></span>);
-    }
-    <span class="pl-k">catch</span>(err){ <span class="pl-c">// Catch the exception</span>
-        <span class="pl-c">// Change is rolled back</span>
-        <span class="pl-k">yield</span> autoconn.transaction(P.coroutine(<span class="pl-k">function*</span>(){
-            <span class="pl-k">var</span> ret <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.<span class="pl-c1">find</span>(doc._id, <span class="pl-s"><span class="pl-pds">'</span>level<span class="pl-pds">'</span></span>);
-            <span class="pl-en">console</span><span class="pl-c1">.log</span>(ret); <span class="pl-c">// {level : 1}</span>
-        }), <span class="pl-s"><span class="pl-pds">'</span>s1<span class="pl-pds">'</span></span>);
-    }
-
-    <span class="pl-c">// Make transcation in another shard</span>
-    <span class="pl-k">yield</span> autoconn.transaction(P.coroutine(<span class="pl-k">function*</span>(){
-        <span class="pl-k">yield</span> Player.remove(doc._id);
-    }), <span class="pl-s"><span class="pl-pds">'</span>s2<span class="pl-pds">'</span></span>);
-
-    <span class="pl-c">// Close all connections</span>
-    <span class="pl-k">yield</span> autoconn.<span class="pl-c1">close</span>();
-});
-
-<span class="pl-k">if</span> (<span class="pl-c1">require</span>.main <span class="pl-k">===</span> <span class="pl-c1">module</span>) {
-    main().finally(<span class="pl-c1">process</span>.exit);
-}</pre></div>
-
-<p>To run the sample above</p>
-
-<ul>
-<li>Make sure you have started shard 's1' on localhost:31017, 's2' on localhost:31018.</li>
-<li>Install npm dependencies</li>
-</ul>
-
-<pre><code>npm install memdb-client
-</code></pre>
-
-<ul>
-<li>run with node &gt;= 0.12 with --harmony option</li>
-</ul>
-
-<pre><code>node --harmony sample.js
-</code></pre>
+<p>See the top GIF, note how ACID transaction work cross multiple shards.</p>
 
 <h3>
 <a id="mdbgoose" class="anchor" href="#mdbgoose" aria-hidden="true"><span class="octicon octicon-link"></span></a>Mdbgoose</h3>
 
-<p>Mdbgoose is a modified <a href="http://mongoosejs.com">Mongoose</a> version that work for memdb</p>
+<p>Mdbgoose is a modified <strong><a href="http://mongoosejs.com">Mongoose</a></strong> version that work for memdb</p>
 
 <div class="highlight highlight-js"><pre><span class="pl-k">var</span> memdb <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>memdb-client<span class="pl-pds">'</span></span>);
 <span class="pl-k">var</span> P <span class="pl-k">=</span> memdb.Promise;
@@ -244,11 +172,10 @@ Please read comments carefully.</p>
 </code></pre>
 
 <ul>
-<li>Restart memdb cluster</li>
+<li>restart memdb cluster</li>
 </ul>
 
 <pre><code>memdbcluster stop
-memdbcluster drop // drop existing data if database is not empty
 memdbcluster start
 </code></pre>
 
@@ -267,8 +194,27 @@ memdbcluster start
 <pre><code>node --harmony sample.js
 </code></pre>
 
+<p><strong>Check <a href="https://github.com/memdb/memdb/wiki/API-Reference#mdbgoose">here</a> to see how to port your Mongoose project to Mdbgoose</strong></p>
+
 <h3>
-<a id="tips" class="anchor" href="#tips" aria-hidden="true"><span class="octicon octicon-link"></span></a>Tips</h3>
+<a id="architecture" class="anchor" href="#architecture" aria-hidden="true"><span class="octicon octicon-link"></span></a>Architecture</h3>
+
+<p><img src="https://github.com/memdb/memdb/wiki/images/architecture.png" alt="architecture.png"></p>
+
+<h3>
+<a id="relationship-between-memdb-and-mongodb" class="anchor" href="#relationship-between-memdb-and-mongodb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Relationship between MemDB and MongoDB</h3>
+
+<p>MemDB is like a 'cache layer' built up on MongoDB which support distributed ACID transaction. </p>
+
+<p>MemDB has its own API which similar to MongoDB, however, you can still use MongoDB's native query API by directly access backend storage, here are the guidelines:</p>
+
+<ul>
+<li>Do simple query and update through MemDB API, which is ACID transaction safe.</li>
+<li>Do complex query through backend MongoDB, the read is not transaction safe.</li>
+<li>Do complex update through backend MongoDB <strong>offline</strong> (All MemDB shards are shutdown).</li>
+</ul>
+
+<p>Here are some basic rules for memdb:</p>
 
 <ul>
 <li>Data is not bind to specified shard, you can access any data from any shard.</li>
@@ -276,7 +222,12 @@ memdbcluster start
 <li>Access the same data from the same shard if possible, which will maximize performance.</li>
 </ul>
 
-<p><strong>Please read <a href="https://github.com/memdb/memdb/wiki">The Wiki</a> for further reference</strong></p>
+<h3>
+<a id="further-read" class="anchor" href="#further-read" aria-hidden="true"><span class="octicon octicon-link"></span></a>Further read</h3>
+
+<ul>
+<li><a href="https://github.com/memdb/memdb/wiki">The Wiki</a></li>
+</ul>
 
 <h2>
 <a id="contact-us" class="anchor" href="#contact-us" aria-hidden="true"><span class="octicon octicon-link"></span></a>Contact Us</h2>
