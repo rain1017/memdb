@@ -1,6 +1,6 @@
 {
     "name": "memdb-server",
-    "description": "World first distributed ACID transactional 'MongoDB'",
+    "description": "MongoDB with distributed ACID transaction",
     "version": "0.5.3",
     "author": "rain1017",
     "private" : false,
@@ -15,6 +15,7 @@
     "keywords" : [
         "mongodb",
         "transaction",
+        "mongoose",
         "newsql",
         "distributed",
         "database",
