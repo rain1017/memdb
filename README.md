@@ -152,7 +152,7 @@ npm install memdb-client
 node --harmony sample.js
 ```
 
-Check [here](https://github.com/memdb/memdb/wiki/API-Reference#mdbgoose) to see how to port your Mongoose project to Mdbgoose
+__Check [here](https://github.com/memdb/memdb/wiki/API-Reference#mdbgoose) to see how to port your Mongoose project to Mdbgoose__
 
 
 ### Architecture
@@ -166,12 +166,13 @@ MemDB has its own API which similar to MongoDB, however, you can still use Mongo
 * Do complex query through backend MongoDB, the read is not transaction safe.
 * Do complex update through backend MongoDB __offline__ (All MemDB shards are shutdown).
 
-Here is some basic rules for memdb:
+Here are some basic rules for memdb:
 * Data is not bind to specified shard, you can access any data from any shard.
 * All operations inside a single transaction must be executed on one single shard.
 * Access the same data from the same shard if possible, which will maximize performance.
 
-__Please read [The Wiki](https://github.com/memdb/memdb/wiki) for further reference__
+### Further read
+* [The Wiki](https://github.com/memdb/memdb/wiki)
 
 ## Contact Us
 * [Github Issue](https://github.com/memdb/memdb/issues)
