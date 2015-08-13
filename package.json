@@ -1,7 +1,7 @@
 {
     "name": "memdb-server",
-    "description": "MongoDB with distributed ACID transaction",
-    "version": "0.5.3",
+    "description": "Distributed Transactional In-Memory Database",
+    "version": "0.5.4",
     "author": "rain1017",
     "private" : false,
     "homepage" : "https://github.com/memdb/memdb",

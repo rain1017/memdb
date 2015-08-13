@@ -3,19 +3,34 @@
 [![Build Status](https://travis-ci.org/memdb/memdb.svg?branch=master)](https://travis-ci.org/memdb/memdb)
 [![Dependencies Status](https://david-dm.org/memdb/memdb.svg)](https://david-dm.org/memdb/memdb)
 
-### MongoDB with distributed ACID transaction
+__Distributed Transactional In-Memory Database__
 
-- __Fast and Scalable__ : Fast in memory data access. Capacity is horizontally scalable by adding more shards.
+## Why MemDB
 
-- __ACID Transaction__ : Full [ACID](https://en.wikipedia.org/wiki/ACID) transaction support on distributed environment.
+### Performance and Scalable
+* Fast in memory data access, up to 25,000 ops (single doc read/write) per shard (each shard take one CPU core).
+* System capacity is horizontally scalable, performance grows linearly by adding more shards.
+* No single point bottleneck, all part of system is scalable, unlimited capability potential.
 
-- __MongoDB Compatible__ : MongoDB and Mongoose compatible.
+### True Distributed ACID Transaction
+* True [ACID](https://en.wikipedia.org/wiki/ACID)(Atomicity, Consistency, Isolation, Durability) transaction support on distributed environment.
+* MemDB brings ACID transaction support for MongoDB, on distributed environment! You can get full transaction support of traditional SQL database (like MySQL), while not losing the scalibility of NoSQL database (like MongoDB).
 
-![memdbshell.gif](https://github.com/memdb/memdb/wiki/images/memdbshell.gif)
+### MongoDB and Mongoose Compatible
+* It's just a 'MongoDB' with a cache layer which support distributed transaction.
+* Directly use of of MongoDB query API.
+* Built-in Mongoose support, easy to port existing Mongoose project to MemDB.
 
-## Documents
+### High Availability
+* Each shard is backed by one or more slaves, no single point of failure.
 
-* [The Wiki](https://github.com/memdb/memdb/wiki)
+## Links
+
+* Home Page: [http://memdb.org](http://memdb.org)
+* Github: [https://github.com/memdb/memdb](https://github.com/memdb/memdb)
+* Wiki : [https://github.com/memdb/memdb/wiki](https://github.com/memdb/memdb/wiki)
+* Mailing list: [memdbd@googlegroups.com](https://groups.google.com/forum/#!forum/memdbd)
+* Email: [memdbd@gmail.com](mailto:memdbd@gmail.com)
 
 ## Quick Start
 
@@ -25,7 +40,7 @@
 * Install [Redis](http://redis.io/download)
 * Install [MongoDB](https://www.mongodb.org/downloads)
 
-__Make sure Redis and MongoDB has started__
+Make sure Redis and MongoDB has started
 
 ### Install MemDB
 
@@ -47,7 +62,8 @@ memdbcluster [start | stop | status] [--conf=memdb.conf.js] [--shard=shardId]
 ```
 
 ### Play with memdb shell
-See the top GIF, note how ACID transaction work cross multiple shards.
+See the video bellow, note how ACID transaction work cross multiple shards.
+![memdbshell.gif](https://github.com/memdb/memdb/wiki/images/memdbshell.gif)
 
 ### Mdbgoose
 
@@ -173,11 +189,6 @@ Here are some basic rules for memdb:
 
 ### Further read
 * [The Wiki](https://github.com/memdb/memdb/wiki)
-
-## Contact Us
-* [Github Issue](https://github.com/memdb/memdb/issues)
-* Mailing list: [memdbd@googlegroups.com](https://groups.google.com/forum/#!forum/memdbd)
-* Email: [memdbd@gmail.com](mailto:memdbd@gmail.com)
 
 ## License
 
