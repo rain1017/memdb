@@ -1,37 +1,79 @@
-<!DOCTYPE html>
-<html lang="en-us">
+<!doctype html>
+<html>
   <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
     <title>MemDB by memdb</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
-    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
-    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
-    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-dark.css">
+    <script src="javascripts/scale.fix.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
   </head>
   <body>
-    <section class="page-header">
-      <h1 class="project-name">MemDB</h1>
-      <h2 class="project-tagline">MongoDB with Distributed ACID Transaction</h2>
-      <a href="https://github.com/memdb/memdb" class="btn">View on GitHub</a>
-      <a href="https://github.com/memdb/memdb/zipball/master" class="btn">Download .zip</a>
-      <a href="https://github.com/memdb/memdb/tarball/master" class="btn">Download .tar.gz</a>
-    </section>
-
-    <section class="main-content">
-      <ul>
-<li><p><strong>Fast and Scalable</strong> : Fast in memory data access. Capacity is horizontally scalable by adding more shards.</p></li>
-<li><p><strong>ACID Transaction</strong> : Full <a href="https://en.wikipedia.org/wiki/ACID">ACID</a> transaction support on distributed environment.</p></li>
-<li><p><strong>MongoDB Compatible</strong> : MongoDB and Mongoose compatible.</p></li>
-</ul>
-
-<p><img src="https://github.com/memdb/memdb/wiki/images/memdbshell.gif" alt="memdbshell.gif"></p>
-
-<h2>
-<a id="documents" class="anchor" href="#documents" aria-hidden="true"><span class="octicon octicon-link"></span></a>Documents</h2>
+    <div class="wrapper">
+      <header>
+        <h1>MemDB</h1>
+        <p>Distributed Transactional In-Memory Database</p>
+        <p class="view"><a href="https://github.com/memdb/memdb">View the Project on GitHub <small>memdb/memdb</small></a></p>
+        <ul>
+          <li><a href="https://github.com/memdb/memdb/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/memdb/memdb/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/memdb/memdb">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h3>
+<a id="performance-and-scalable" class="anchor" href="#performance-and-scalable" aria-hidden="true"><span class="octicon octicon-link"></span></a>Performance and Scalable</h3>
 
 <ul>
-<li><a href="https://github.com/memdb/memdb/wiki">The Wiki</a></li>
+<li>Fast in memory data access, up to 25,000 ops (single doc read/write) per shard (each shard take one CPU core).</li>
+<li>System capacity is horizontally scalable, performance grows linearly by adding more shards.</li>
+<li>No single point bottleneck, all part of system is scalable, unlimited capability potential.</li>
+</ul>
+
+<h3>
+<a id="true-distributed-acid-transaction" class="anchor" href="#true-distributed-acid-transaction" aria-hidden="true"><span class="octicon octicon-link"></span></a>True Distributed ACID Transaction</h3>
+
+<ul>
+<li>True <a href="https://en.wikipedia.org/wiki/ACID">ACID</a>(Stands for Atomicity, Consistency, Isolation, Durability) transaction support on distributed environment.</li>
+<li>MemDB brings ACID transaction support for MongoDB, on distributed environment! You can get full transaction support of traditional SQL database (like MySQL), while not losing the scalability of NoSQL database (like MongoDB).</li>
+</ul>
+
+<h3>
+<a id="mongodb-and-mongoose-compatible" class="anchor" href="#mongodb-and-mongoose-compatible" aria-hidden="true"><span class="octicon octicon-link"></span></a>MongoDB and Mongoose Compatible</h3>
+
+<ul>
+<li>It's just a 'MongoDB' with a cache layer which support distributed transaction.</li>
+<li>Directly use of MongoDB's query API.</li>
+<li>Built-in Mongoose support, easy to port existing Mongoose project to MemDB.</li>
+</ul>
+
+<h3>
+<a id="high-availability" class="anchor" href="#high-availability" aria-hidden="true"><span class="octicon octicon-link"></span></a>High Availability</h3>
+
+<ul>
+<li>Each shard is backed by one or more slaves, no single point of failure.</li>
+</ul>
+
+<h2>
+<a id="links" class="anchor" href="#links" aria-hidden="true"><span class="octicon octicon-link"></span></a>Links</h2>
+
+<ul>
+<li>Home Page: <a href="http://memdb.org">http://memdb.org</a>
+</li>
+<li>Github: <a href="https://github.com/memdb/memdb">https://github.com/memdb/memdb</a>
+</li>
+<li>Wiki : <a href="https://github.com/memdb/memdb/wiki">https://github.com/memdb/memdb/wiki</a>
+</li>
+<li>Mailing list: <a href="https://groups.google.com/forum/#!forum/memdbd">memdbd@googlegroups.com</a>
+</li>
+<li>Email: <a href="mailto:memdbd@gmail.com">memdbd@gmail.com</a>
+</li>
 </ul>
 
 <h2>
@@ -49,7 +91,7 @@
 </li>
 </ul>
 
-<p><strong>Make sure Redis and MongoDB has started</strong></p>
+<p>Make sure Redis and MongoDB has started</p>
 
 <h3>
 <a id="install-memdb" class="anchor" href="#install-memdb" aria-hidden="true"><span class="octicon octicon-link"></span></a>Install MemDB</h3>
@@ -78,7 +120,8 @@ Please read comments carefully.</p>
 <h3>
 <a id="play-with-memdb-shell" class="anchor" href="#play-with-memdb-shell" aria-hidden="true"><span class="octicon octicon-link"></span></a>Play with memdb shell</h3>
 
-<p>See the top GIF, note how ACID transaction work cross multiple shards.</p>
+<p>See the video bellow, note how ACID transaction work cross multiple shards.
+<img src="https://github.com/memdb/memdb/wiki/images/memdbshell.gif" alt="memdbshell.gif"></p>
 
 <h3>
 <a id="mdbgoose" class="anchor" href="#mdbgoose" aria-hidden="true"><span class="octicon octicon-link"></span></a>Mdbgoose</h3>
@@ -230,17 +273,6 @@ memdbcluster start
 </ul>
 
 <h2>
-<a id="contact-us" class="anchor" href="#contact-us" aria-hidden="true"><span class="octicon octicon-link"></span></a>Contact Us</h2>
-
-<ul>
-<li><a href="https://github.com/memdb/memdb/issues">Github Issue</a></li>
-<li>Mailing list: <a href="https://groups.google.com/forum/#!forum/memdbd">memdbd@googlegroups.com</a>
-</li>
-<li>Email: <a href="mailto:memdbd@gmail.com">memdbd@gmail.com</a>
-</li>
-</ul>
-
-<h2>
 <a id="license" class="anchor" href="#license" aria-hidden="true"><span class="octicon octicon-link"></span></a>License</h2>
 
 <p>Copyright 2015 The MemDB Authors.</p>
@@ -258,16 +290,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 implied. See the License for the specific language governing
 permissions and limitations under the License. See the AUTHORS file
 for names of contributors.</p>
-
-      <footer class="site-footer">
-        <span class="site-footer-owner"><a href="https://github.com/memdb/memdb">MemDB</a> is maintained by <a href="https://github.com/memdb">memdb</a>.</span>
-
-        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
-      </footer>
-
-    </section>
-
-            <script type="text/javascript">
+      </section>
+    </div>
+    <footer>
+      <p>Project maintained by <a href="https://github.com/memdb">memdb</a></p>
+      <p>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></p>
+    </footer>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+              <script type="text/javascript">
             var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
             document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
           </script>
