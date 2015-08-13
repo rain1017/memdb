@@ -5,20 +5,18 @@
 
 __Distributed Transactional In-Memory Database__
 
-## Why MemDB
-
 ### Performance and Scalable
 * Fast in memory data access, up to 25,000 ops (single doc read/write) per shard (each shard take one CPU core).
 * System capacity is horizontally scalable, performance grows linearly by adding more shards.
 * No single point bottleneck, all part of system is scalable, unlimited capability potential.
 
 ### True Distributed ACID Transaction
-* True [ACID](https://en.wikipedia.org/wiki/ACID)(Atomicity, Consistency, Isolation, Durability) transaction support on distributed environment.
+* True [ACID](https://en.wikipedia.org/wiki/ACID)(Stands for Atomicity, Consistency, Isolation, Durability) transaction support on distributed environment.
 * MemDB brings ACID transaction support for MongoDB, on distributed environment! You can get full transaction support of traditional SQL database (like MySQL), while not losing the scalibility of NoSQL database (like MongoDB).
 
 ### MongoDB and Mongoose Compatible
 * It's just a 'MongoDB' with a cache layer which support distributed transaction.
-* Directly use of of MongoDB query API.
+* Directly use of MongoDB's query API.
 * Built-in Mongoose support, easy to port existing Mongoose project to MemDB.
 
 ### High Availability
