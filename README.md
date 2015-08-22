@@ -12,7 +12,7 @@ __Distributed Transactional In-Memory Database__
 
 ### True Distributed ACID Transaction
 * True [ACID](https://en.wikipedia.org/wiki/ACID)(Stands for Atomicity, Consistency, Isolation, Durability) transaction support on distributed environment.
-* MemDB brings ACID transaction support for MongoDB, on distributed environment! You can get full transaction support of traditional SQL database (like MySQL), while not losing the scalibility of NoSQL database (like MongoDB).
+* MemDB brings ACID transaction support for MongoDB, on distributed environment! You can get full transaction support of traditional SQL database (like MySQL), while not losing the scalability of NoSQL database (like MongoDB).
 
 ### MongoDB and Mongoose Compatible
 * It's just a 'MongoDB' with a cache layer which support distributed transaction.

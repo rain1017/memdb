@@ -17,7 +17,7 @@
 
 var P = require('bluebird');
 var path = require('path');
-var fs = require('fs');
+var fs = require('fs-extra');
 var mkdirp = require('mkdirp');
 var memdbLogger = require('memdb-logger');
 var logger = memdbLogger.getLogger('memdb', __filename);
@@ -28,6 +28,9 @@ var _config = null;
 exports.init = function(confPath, shardId){
     var searchPaths = [];
     var homePath = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
+
+    var localDataPath = path.join(homePath, '.memdb');
+    mkdirp(localDataPath);
 
     searchPaths = confPath ? [confPath] : [path.join(homePath, '.memdb/memdb.conf.js'), '/etc/memdb.conf.js'];
 
@@ -41,7 +44,16 @@ exports.init = function(confPath, shardId){
         }
     }
     if(!conf){
-        throw new Error('config file not found - ' + searchPaths);
+        if(confPath){
+            throw new Error('config file not found - ' + searchPaths);
+        }
+
+        // copy and load default config
+        var confTemplatePath = path.join(__dirname, '../memdb.conf.js');
+        var defaultConfPath = path.join(localDataPath, 'memdb.conf.js');
+        fs.copySync(confTemplatePath, defaultConfPath);
+
+        conf = require(defaultConfPath);
     }
 
     // Configure promise
@@ -52,7 +64,7 @@ exports.init = function(confPath, shardId){
     // Configure log
     var logConf = conf.log || {};
 
-    var logPath = logConf.path || path.join(homePath, '.memdb/log');
+    var logPath = logConf.path || path.join(localDataPath, 'log');
     mkdirp(logPath);
 
     console.log('log path: %s', logPath);
