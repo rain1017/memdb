@@ -1,7 +1,7 @@
 {
     "name": "memdb-server",
     "description": "Distributed Transactional In-Memory Database",
-    "version": "0.5.5",
+    "version": "0.5.6",
     "author": "rain1017",
     "private" : false,
     "homepage" : "https://github.com/memdb/memdb",
@@ -42,7 +42,7 @@
         "redis": "~0.12.1",
         "hiredis": "~0.4.0",
         "mongodb": "2.0.39",
-        "mongoose": "4.1.0",
+        "mongoose": "4.1.5",
         "minimist" : "~1.1.1",
         "node-uuid" : "~1.4.3",
         "mkdirp": "~0.5.1",
@@ -60,7 +60,6 @@
         "load-grunt-tasks": "~2.0.0",
         "grunt-concurrent": "~0.4.1",
         "grunt-nodemon": "~0.2.0",
-        "grunt-node-inspector": "~0.1.3",
         "blanket" : "~1.1.6"
     }
 }
