@@ -4,13 +4,13 @@
     "version": "0.5.6",
     "author": "rain1017",
     "private" : false,
-    "homepage" : "https://github.com/memdb/memdb",
+    "homepage" : "https://github.com/rain1017/memdb",
     "repository" : {
         "type" : "git",
-        "url" : "https://github.com/memdb/memdb.git"
+        "url" : "https://github.com/rain1017/memdb.git"
     },
     "bugs" : {
-        "url" : "https://github.com/memdb/memdb/issues"
+        "url" : "https://github.com/rain1017/memdb/issues"
     },
     "keywords" : [
         "mongodb",
