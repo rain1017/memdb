@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>MemDB by memdb</title>
+    <title>MemDB by rain1017</title>
 
     <link rel="stylesheet" href="stylesheets/styles.css">
     <link rel="stylesheet" href="stylesheets/github-dark.css">
@@ -19,11 +19,11 @@
       <header>
         <h1>MemDB</h1>
         <p>Distributed Transactional In-Memory Database</p>
-        <p class="view"><a href="https://github.com/memdb/memdb">View the Project on GitHub <small>memdb/memdb</small></a></p>
+        <p class="view"><a href="https://github.com/rain1017/memdb">View the Project on GitHub <small>rain1017/memdb</small></a></p>
         <ul>
-          <li><a href="https://github.com/memdb/memdb/zipball/master">Download <strong>ZIP File</strong></a></li>
-          <li><a href="https://github.com/memdb/memdb/tarball/master">Download <strong>TAR Ball</strong></a></li>
-          <li><a href="https://github.com/memdb/memdb">View On <strong>GitHub</strong></a></li>
+          <li><a href="https://github.com/rain1017/memdb/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/rain1017/memdb/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/rain1017/memdb">View On <strong>GitHub</strong></a></li>
         </ul>
       </header>
       <section>
@@ -129,8 +129,8 @@ Please read comments carefully.</p>
 <p>Mdbgoose is a modified <strong><a href="http://mongoosejs.com">Mongoose</a></strong> version that work for memdb</p>
 
 <div class="highlight highlight-js"><pre><span class="pl-k">var</span> memdb <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>memdb-client<span class="pl-pds">'</span></span>);
-<span class="pl-k">var</span> P <span class="pl-k">=</span> memdb.<span class="pl-c1">Promise</span>;
-<span class="pl-k">var</span> mdbgoose <span class="pl-k">=</span> memdb.<span class="pl-c1">goose</span>;
+<span class="pl-k">var</span> P <span class="pl-k">=</span> memdb.Promise;
+<span class="pl-k">var</span> mdbgoose <span class="pl-k">=</span> memdb.goose;
 
 <span class="pl-c">// Define player schema</span>
 <span class="pl-k">var</span> playerSchema <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">mdbgoose.Schema</span>({
@@ -139,14 +139,14 @@ Please read comments carefully.</p>
     areaId <span class="pl-k">:</span> <span class="pl-c1">Number</span>,
     deviceType <span class="pl-k">:</span> <span class="pl-c1">Number</span>,
     deviceId <span class="pl-k">:</span> <span class="pl-c1">String</span>,
-    items <span class="pl-k">:</span> [mdbgoose.<span class="pl-c1">SchemaTypes</span>.<span class="pl-c1">Mixed</span>],
+    items <span class="pl-k">:</span> [mdbgoose.SchemaTypes.Mixed],
 }, {collection <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>});
 <span class="pl-c">// Define player model</span>
-<span class="pl-k">var</span> Player <span class="pl-k">=</span> mdbgoose.<span class="pl-c1">model</span>(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, playerSchema);
+<span class="pl-k">var</span> Player <span class="pl-k">=</span> mdbgoose.model(<span class="pl-s"><span class="pl-pds">'</span>player<span class="pl-pds">'</span></span>, playerSchema);
 
-<span class="pl-k">var</span> main <span class="pl-k">=</span> P.<span class="pl-c1">coroutine</span>(<span class="pl-k">function*</span>(){
+<span class="pl-k">var</span> main <span class="pl-k">=</span> P.coroutine(<span class="pl-k">function*</span>(){
     <span class="pl-c">// Connect to memdb</span>
-    <span class="pl-k">yield</span> mdbgoose.<span class="pl-c1">connectAsync</span>({
+    <span class="pl-k">yield</span> mdbgoose.connectAsync({
         shards <span class="pl-k">:</span> { <span class="pl-c">// specify all shards here</span>
             s1 <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port<span class="pl-k">:</span> <span class="pl-c1">31017</span>},
             s2 <span class="pl-k">:</span> {host <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>127.0.0.1<span class="pl-pds">'</span></span>, port<span class="pl-k">:</span> <span class="pl-c1">31018</span>},
@@ -154,7 +154,7 @@ Please read comments carefully.</p>
     });
 
     <span class="pl-c">// Make a transaction in s1</span>
-    <span class="pl-k">yield</span> mdbgoose.<span class="pl-c1">transactionAsync</span>(P.<span class="pl-c1">coroutine</span>(<span class="pl-k">function*</span>(){
+    <span class="pl-k">yield</span> mdbgoose.transactionAsync(P.coroutine(<span class="pl-k">function*</span>(){
 
         <span class="pl-k">var</span> player <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">Player</span>({
             _id <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>p1<span class="pl-pds">'</span></span>,
@@ -166,31 +166,31 @@ Please read comments carefully.</p>
         });
 
         <span class="pl-c">// insert a player</span>
-        <span class="pl-k">yield</span> player.<span class="pl-c1">saveAsync</span>();
+        <span class="pl-k">yield</span> player.saveAsync();
 
         <span class="pl-c">// find player by id</span>
-        <span class="pl-k">var</span> doc <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.<span class="pl-c1">findByIdAsync</span>(<span class="pl-s"><span class="pl-pds">'</span>p1<span class="pl-pds">'</span></span>);
+        <span class="pl-k">var</span> doc <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.findByIdAsync(<span class="pl-s"><span class="pl-pds">'</span>p1<span class="pl-pds">'</span></span>);
         <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-s"><span class="pl-pds">'</span>%j<span class="pl-pds">'</span></span>, doc);
 
         <span class="pl-c">// find player by areaId, return array of players</span>
-        <span class="pl-k">var</span> docs <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.<span class="pl-c1">findAsync</span>({areaId <span class="pl-k">:</span> <span class="pl-c1">1</span>});
+        <span class="pl-k">var</span> docs <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.findAsync({areaId <span class="pl-k">:</span> <span class="pl-c1">1</span>});
         <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-s"><span class="pl-pds">'</span>%j<span class="pl-pds">'</span></span>, docs);
 
         <span class="pl-c">// find player by deviceType and deviceId</span>
-        player <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.<span class="pl-c1">findOneAsync</span>({deviceType <span class="pl-k">:</span> <span class="pl-c1">1</span>, deviceId <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>id1<span class="pl-pds">'</span></span>});
+        player <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.findOneAsync({deviceType <span class="pl-k">:</span> <span class="pl-c1">1</span>, deviceId <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>id1<span class="pl-pds">'</span></span>});
 
         <span class="pl-c">// update player</span>
-        player.<span class="pl-c1">areaId</span> <span class="pl-k">=</span> <span class="pl-c1">2</span>;
-        <span class="pl-k">yield</span> player.<span class="pl-c1">saveAsync</span>();
+        player.areaId <span class="pl-k">=</span> <span class="pl-c1">2</span>;
+        <span class="pl-k">yield</span> player.saveAsync();
 
         <span class="pl-c">// remove the player</span>
-        <span class="pl-k">yield</span> player.<span class="pl-c1">removeAsync</span>();
+        <span class="pl-k">yield</span> player.removeAsync();
 
     }), <span class="pl-s"><span class="pl-pds">'</span>s1<span class="pl-pds">'</span></span>);
 });
 
-<span class="pl-k">if</span> (<span class="pl-c1">require</span>.<span class="pl-c1">main</span> <span class="pl-k">===</span> <span class="pl-c1">module</span>) {
-    <span class="pl-c1">main</span>().<span class="pl-c1">finally</span>(<span class="pl-c1">process</span>.<span class="pl-c1">exit</span>);
+<span class="pl-k">if</span> (<span class="pl-c1">require</span>.main <span class="pl-k">===</span> <span class="pl-c1">module</span>) {
+    main().finally(<span class="pl-c1">process</span>.exit);
 }</pre></div>
 
 <p>To run the sample above:</p>
@@ -293,7 +293,7 @@ for names of contributors.</p>
       </section>
     </div>
     <footer>
-      <p>Project maintained by <a href="https://github.com/memdb">memdb</a></p>
+      <p>Project maintained by <a href="https://github.com/rain1017">rain1017</a></p>
       <p>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></p>
     </footer>
     <!--[if !IE]><script>fixScale(document);</script><![endif]-->
