@@ -156,6 +156,14 @@ describe('mdbgoose test', function(){
                 })
                 .then(function(){
                     return P.try(function(){
+                        return Player.countAsync({areaId : 'a1'});
+                    })
+                    .then(function(count){
+                        count.should.eql(2);
+                    });
+                })
+                .then(function(){
+                    return P.try(function(){
                         return Player.findAsync({areaId : 'a1'}, null, {limit : 1});
                     })
                     .then(function(players){
@@ -185,6 +193,12 @@ describe('mdbgoose test', function(){
             // .catch(function(e){
             //     logger.error(e.stack); // should throw error
             // });
+        })
+        .then(function(){
+            return Player.countMongoAsync({}); //TODO: callback not called when not pass any arguments, bluebird's bug?
+        })
+        .then(function(ret){
+            ret.should.eql(2);
         })
         .then(function(){
             return mdbgoose.disconnectAsync();

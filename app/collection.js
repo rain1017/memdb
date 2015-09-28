@@ -192,6 +192,27 @@ proto.findByIdReadOnly = function(id, fields, opts){
     return this.findById(id, fields, opts);
 };
 
+proto.count = function(query, opts){
+    opts = opts || {};
+    opts.count = true;
+    var self = this;
+    return P.try(function(){
+        return self.find(query, null, opts);
+    })
+    .then(function(ret){
+        if(typeof(ret) === 'number'){
+            return ret;
+        }
+        else if(Array.isArray(ret)){
+            return ret.length;
+        }
+        else if(!ret){
+            return 0;
+        }
+        throw new Error('Unexpected find result - ' + ret);
+    });
+};
+
 proto._findByIndex = function(indexKey, indexValue, fields, opts){
     opts = opts || {};
     var self = this;
@@ -226,6 +247,9 @@ proto._findByIndex = function(indexKey, indexValue, fields, opts){
         }
 
         ids = Object.keys(ids);
+        if(opts && opts.count){ // return count only
+            return ids.length;
+        }
         if(opts && opts.limit){
             ids = ids.slice(0, opts.limit);
         }

@@ -1,7 +1,7 @@
 {
     "name": "memdb-server",
     "description": "Distributed Transactional In-Memory Database",
-    "version": "0.5.6",
+    "version": "0.5.7",
     "author": "rain1017",
     "private" : false,
     "homepage" : "https://github.com/rain1017/memdb",
