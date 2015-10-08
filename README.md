@@ -188,6 +188,9 @@ Here are some basic rules for memdb:
 ### Further read
 * [The Wiki](https://github.com/rain1017/memdb/wiki)
 
+### Quick Pomelo
+[Quick Pomelo](https://github.com/rain1017/quick-pomelo) is a Scalable, Transactional and Reliable Game Server Framework based on Pomelo and MemDB
+
 ## License
 
 Copyright 2015 rain1017.
