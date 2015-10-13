@@ -18,7 +18,7 @@
     <div class="wrapper">
       <header>
         <h1>MemDB</h1>
-        <p>Distributed Transactional In-Memory Database</p>
+        <p>Distributed Transactional In-Memory Database (全球首个支持分布式事务的MongoDB)</p>
         <p class="view"><a href="https://github.com/rain1017/memdb">View the Project on GitHub <small>rain1017/memdb</small></a></p>
         <ul>
           <li><a href="https://github.com/rain1017/memdb/zipball/master">Download <strong>ZIP File</strong></a></li>
@@ -70,10 +70,9 @@
 </li>
 <li>Wiki : <a href="https://github.com/rain1017/memdb/wiki">https://github.com/rain1017/memdb/wiki</a>
 </li>
-<li>Mailing list: <a href="https://groups.google.com/forum/#!forum/memdbd">memdbd@googlegroups.com</a>
+<li>Email: <a href="mailto:rain1017@gmail.com">rain1017@gmail.com</a>
 </li>
-<li>Email: <a href="mailto:memdbd@gmail.com">memdbd@gmail.com</a>
-</li>
+<li>QQ: 9040044</li>
 </ul>
 
 <h2>
@@ -128,7 +127,7 @@ Please read comments carefully.</p>
 
 <p>Mdbgoose is a modified <strong><a href="http://mongoosejs.com">Mongoose</a></strong> version that work for memdb</p>
 
-<div class="highlight highlight-js"><pre><span class="pl-k">var</span> memdb <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>memdb-client<span class="pl-pds">'</span></span>);
+<div class="highlight highlight-source-js"><pre><span class="pl-k">var</span> memdb <span class="pl-k">=</span> <span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>memdb-client<span class="pl-pds">'</span></span>);
 <span class="pl-k">var</span> P <span class="pl-k">=</span> memdb.Promise;
 <span class="pl-k">var</span> mdbgoose <span class="pl-k">=</span> memdb.goose;
 
@@ -170,11 +169,11 @@ Please read comments carefully.</p>
 
         <span class="pl-c">// find player by id</span>
         <span class="pl-k">var</span> doc <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.findByIdAsync(<span class="pl-s"><span class="pl-pds">'</span>p1<span class="pl-pds">'</span></span>);
-        <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-s"><span class="pl-pds">'</span>%j<span class="pl-pds">'</span></span>, doc);
+        <span class="pl-en">console</span>.<span class="pl-c1">log</span>(<span class="pl-s"><span class="pl-pds">'</span>%j<span class="pl-pds">'</span></span>, doc);
 
         <span class="pl-c">// find player by areaId, return array of players</span>
         <span class="pl-k">var</span> docs <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.findAsync({areaId <span class="pl-k">:</span> <span class="pl-c1">1</span>});
-        <span class="pl-en">console</span><span class="pl-c1">.log</span>(<span class="pl-s"><span class="pl-pds">'</span>%j<span class="pl-pds">'</span></span>, docs);
+        <span class="pl-en">console</span>.<span class="pl-c1">log</span>(<span class="pl-s"><span class="pl-pds">'</span>%j<span class="pl-pds">'</span></span>, docs);
 
         <span class="pl-c">// find player by deviceType and deviceId</span>
         player <span class="pl-k">=</span> <span class="pl-k">yield</span> Player.findOneAsync({deviceType <span class="pl-k">:</span> <span class="pl-c1">1</span>, deviceId <span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>id1<span class="pl-pds">'</span></span>});
@@ -231,7 +230,7 @@ memdbcluster start
 </code></pre>
 
 <ul>
-<li>Run with node &gt;= 0.12 with --harmony option</li>
+<li>Run with node &gt;= 0.12 with --harmony option (or with node &gt;= 0.4.0)</li>
 </ul>
 
 <pre><code>node --harmony sample.js
@@ -271,6 +270,11 @@ memdbcluster start
 <ul>
 <li><a href="https://github.com/rain1017/memdb/wiki">The Wiki</a></li>
 </ul>
+
+<h3>
+<a id="quick-pomelo" class="anchor" href="#quick-pomelo" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick Pomelo</h3>
+
+<p><a href="https://github.com/rain1017/quick-pomelo">Quick Pomelo</a> is a Scalable, Transactional and Reliable Game Server Framework based on Pomelo and MemDB</p>
 
 <h2>
 <a id="license" class="anchor" href="#license" aria-hidden="true"><span class="octicon octicon-link"></span></a>License</h2>
