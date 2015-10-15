@@ -27,6 +27,7 @@ __Distributed Transactional In-Memory Database__
 * Home Page: [http://memdb.org](http://memdb.org)
 * Github: [https://github.com/rain1017/memdb](https://github.com/rain1017/memdb)
 * Wiki : [https://github.com/rain1017/memdb/wiki](https://github.com/rain1017/memdb/wiki)
+* API Reference: [https://github.com/rain1017/memdb/wiki/API-Reference](https://github.com/rain1017/memdb/wiki/API-Reference)
 * Email: [rain1017@gmail.com](mailto:rain1017@gmail.com)
 * QQ: 9040044
 
