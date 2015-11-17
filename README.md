@@ -162,7 +162,7 @@ memdbcluster start
 ```
 npm install memdb-client
 ```
-* Run with node >= 0.12 with --harmony option (or with node >= 0.4.0)
+* Run with node >= 0.12 (should add --harmony option on node 0.12.x)
 ```
 node --harmony sample.js
 ```
