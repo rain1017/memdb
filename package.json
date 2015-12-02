@@ -39,7 +39,7 @@
         "bluebird": "2.9.34",
         "lodash": "~3.10.1",
         "async-lock": "~0.3.5",
-        "redis": "~2.3.0",
+        "redis": "~2.4.2",
         "hiredis": "~0.4.0",
         "mongodb": "2.0.39",
         "mongoose": "4.1.5",
